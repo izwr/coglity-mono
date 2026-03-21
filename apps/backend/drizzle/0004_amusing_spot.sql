@@ -1,0 +1,2 @@
+ALTER TABLE "test_cases" ADD COLUMN "test_suite_id" uuid NOT NULL;--> statement-breakpoint
+ALTER TABLE "test_cases" ADD CONSTRAINT "test_cases_test_suite_id_test_suites_id_fk" FOREIGN KEY ("test_suite_id") REFERENCES "public"."test_suites"("id") ON DELETE cascade ON UPDATE no action;

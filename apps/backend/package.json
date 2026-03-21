@@ -1,0 +1,33 @@
+{
+  "name": "@coglity/backend",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "lint": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@coglity/shared": "workspace:*",
+    "connect-pg-simple": "^10.0.0",
+    "drizzle-orm": "^0.44.7",
+    "express": "^5",
+    "express-session": "^1.18.1",
+    "postgres": "^3.4.8"
+  },
+  "devDependencies": {
+    "@types/connect-pg-simple": "^7.0.3",
+    "@types/express": "^5",
+    "@types/express-session": "^1.18.1",
+    "@types/node": "^22",
+    "drizzle-kit": "^0.31.10",
+    "tsx": "^4",
+    "typescript": "^5"
+  }
+}
