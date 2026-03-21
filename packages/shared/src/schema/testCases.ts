@@ -1,8 +1,10 @@
-import { pgTable, uuid, varchar, text, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, text, timestamp, pgEnum } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { users } from "./users.js";
 import { testSuites } from "./testSuites.js";
+
+export const testCaseStatusEnum = pgEnum("test_case_status", ["draft", "active"]);
 
 export const testCases = pgTable("test_cases", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -11,6 +13,7 @@ export const testCases = pgTable("test_cases", {
   testSteps: text("test_steps").default("").notNull(),
   data: text("data").default("").notNull(),
   expectedResults: text("expected_results").default("").notNull(),
+  status: testCaseStatusEnum("status").default("active").notNull(),
   createdBy: uuid("created_by").references(() => users.id),
   updatedBy: uuid("updated_by").references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

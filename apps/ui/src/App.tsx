@@ -11,6 +11,7 @@ import { TestSuites } from "./pages/TestSuites";
 import { ScheduledTestSuites } from "./pages/ScheduledTestSuites";
 import { Reporting } from "./pages/Reporting";
 import { Tags } from "./pages/Tags";
+import { GenerateTestCases } from "./pages/GenerateTestCases";
 
 export function App() {
   return (
@@ -24,6 +25,7 @@ export function App() {
               <Route path="search" element={<Search />} />
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="test-cases" element={<TestCases />} />
+              <Route path="test-cases/generate" element={<GenerateTestCases />} />
               <Route path="test-cases/:id" element={<TestCaseDetail />} />
               <Route path="test-suites" element={<TestSuites />} />
               <Route path="scheduled-test-suites" element={<ScheduledTestSuites />} />

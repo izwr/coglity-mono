@@ -39,6 +39,7 @@ const caseColumns = {
   testSteps: testCases.testSteps,
   data: testCases.data,
   expectedResults: testCases.expectedResults,
+  status: testCases.status,
   createdBy: testCases.createdBy,
   updatedBy: testCases.updatedBy,
   createdAt: testCases.createdAt,

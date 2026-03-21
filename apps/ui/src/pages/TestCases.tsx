@@ -107,9 +107,22 @@ export function TestCases() {
       <div className="page-header">
         <h1>Test Cases</h1>
         {!showForm && (
-          <button className="btn btn-primary" onClick={() => setShowForm(true)}>
-            + New Test Case
-          </button>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button className="btn btn-primary" onClick={() => setShowForm(true)}>
+              + Add Test Case
+            </button>
+            <button
+              className="btn btn-primary ai-generate-btn"
+              onClick={() => navigate("/test-cases/generate")}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: "6px" }}>
+                <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                <path d="M2 17l10 5 10-5" />
+                <path d="M2 12l10 5 10-5" />
+              </svg>
+              Generate with AI
+            </button>
+          </div>
         )}
       </div>
 
@@ -197,7 +210,15 @@ export function TestCases() {
               onClick={() => navigate(`/test-cases/${tc.id}`)}
             >
               <div className="ts-card-body">
-                <div className="ts-card-name">{tc.title}</div>
+                <div className="ts-card-name">
+                  {tc.title}
+                  {tc.status === "draft" && (
+                    <span className="status-badge status-draft">Draft</span>
+                  )}
+                  {tc.status === "active" && (
+                    <span className="status-badge status-active">Active</span>
+                  )}
+                </div>
                 <div className="ts-card-desc">{tc.testSuiteName}</div>
                 {tc.tags.length > 0 && (
                   <div className="ts-card-tags">

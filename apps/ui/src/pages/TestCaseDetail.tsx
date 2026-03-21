@@ -126,7 +126,11 @@ export function TestCaseDetail() {
               {...register("title")}
             />
           ) : (
-            <h1 className="tc-detail-title">{tc.title}</h1>
+            <h1 className="tc-detail-title">
+              {tc.title}
+              {tc.status === "draft" && <span className="status-badge status-draft">Draft</span>}
+              {tc.status === "active" && <span className="status-badge status-active">Active</span>}
+            </h1>
           )}
           {errors.title && <span className="ts-form-error">{errors.title.message}</span>}
         </div>
@@ -138,6 +142,26 @@ export function TestCaseDetail() {
             </div>
           ) : (
             <button className="btn btn-danger" onClick={() => setDeleteConfirm(true)}>Delete</button>
+          )}
+          {tc.status === "draft" && !editing && (
+            <button
+              className="btn btn-primary"
+              style={{ background: "#059669" }}
+              onClick={async () => {
+                if (!id) return;
+                const updated = await testCaseService.update(id, {
+                  title: tc.title,
+                  testSteps: tc.testSteps,
+                  data: tc.data,
+                  expectedResults: tc.expectedResults,
+                  tagIds: selectedTagIds,
+                  status: "active",
+                });
+                setTc(updated);
+              }}
+            >
+              Mark Active
+            </button>
           )}
           {editing ? (
             <>

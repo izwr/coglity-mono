@@ -5,6 +5,7 @@ import authRouter from "./routes/auth.js";
 import testSuitesRouter from "./routes/testSuites.js";
 import testCasesRouter from "./routes/testCases.js";
 import tagsRouter from "./routes/tags.js";
+import aiRouter from "./routes/ai.js";
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -22,6 +23,7 @@ app.use("/api/auth", authRouter);
 app.use("/api/test-suites", requireAuth, testSuitesRouter);
 app.use("/api/test-cases", requireAuth, testCasesRouter);
 app.use("/api/tags", requireAuth, tagsRouter);
+app.use("/api/ai", requireAuth, aiRouter);
 
 app.listen(port, () => {
   console.log(`Backend running on http://localhost:${port}`);

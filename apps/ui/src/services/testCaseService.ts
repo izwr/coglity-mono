@@ -6,6 +6,7 @@ export interface TestCaseWithTags extends TestCase {
   createdByName: string | null;
   updatedByName: string | null;
   testSuiteName: string;
+  status: "draft" | "active";
 }
 
 export interface CreateTestCasePayload {
@@ -23,6 +24,7 @@ export interface UpdateTestCasePayload {
   data: string;
   expectedResults: string;
   tagIds?: string[];
+  status?: "draft" | "active";
 }
 
 export const testCaseService = {

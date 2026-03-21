@@ -1,0 +1,322 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { testSuiteService, type TestSuiteWithTags } from "../services/testSuiteService";
+import { aiService, type FollowUpQA, type GeneratedScenario } from "../services/aiService";
+
+type Step = "setup" | "followup" | "scenarios" | "done";
+
+export function GenerateTestCases() {
+  const navigate = useNavigate();
+
+  // Step tracking
+  const [step, setStep] = useState<Step>("setup");
+  const [sessionId, setSessionId] = useState<string | null>(null);
+
+  // Step 1: Setup
+  const [allSuites, setAllSuites] = useState<TestSuiteWithTags[]>([]);
+  const [testSuiteId, setTestSuiteId] = useState("");
+  const [userStory, setUserStory] = useState("");
+  const [loadingSuites, setLoadingSuites] = useState(true);
+
+  // Step 2: Follow-up questions
+  const [questions, setQuestions] = useState<string[]>([]);
+  const [answers, setAnswers] = useState<string[]>([]);
+
+  // Step 3: Scenarios
+  const [scenarios, setScenarios] = useState<GeneratedScenario[]>([]);
+  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+
+  // Shared
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    testSuiteService.getAll().then((data) => {
+      setAllSuites(Array.isArray(data) ? data : []);
+      setLoadingSuites(false);
+    }).catch(() => setLoadingSuites(false));
+  }, []);
+
+  const handleCreateSession = async () => {
+    if (!testSuiteId || !userStory.trim()) return;
+    setLoading(true);
+    setError("");
+    try {
+      const session = await aiService.createSession(testSuiteId, userStory);
+      setSessionId(session.id);
+      const qs = await aiService.getFollowUpQuestions(session.id);
+      setQuestions(qs);
+      setAnswers(new Array(qs.length).fill(""));
+      setStep("followup");
+    } catch {
+      setError("Failed to start AI session. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmitAnswers = async () => {
+    if (!sessionId) return;
+    setLoading(true);
+    setError("");
+    try {
+      const qa: FollowUpQA[] = questions.map((q, i) => ({
+        question: q,
+        answer: answers[i] || "Not provided",
+      }));
+      await aiService.submitAnswers(sessionId, qa);
+      const updated = await aiService.generateScenarios(sessionId);
+      setScenarios(updated.generatedScenarios);
+      // Select all by default
+      setSelectedIndices(new Set(updated.generatedScenarios.map((_, i) => i)));
+      setStep("scenarios");
+    } catch {
+      setError("Failed to generate scenarios. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSkipFollowUp = async () => {
+    if (!sessionId) return;
+    setLoading(true);
+    setError("");
+    try {
+      const updated = await aiService.generateScenarios(sessionId);
+      setScenarios(updated.generatedScenarios);
+      setSelectedIndices(new Set(updated.generatedScenarios.map((_, i) => i)));
+      setStep("scenarios");
+    } catch {
+      setError("Failed to generate scenarios. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleScenario = (index: number) => {
+    setSelectedIndices((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selectedIndices.size === scenarios.length) {
+      setSelectedIndices(new Set());
+    } else {
+      setSelectedIndices(new Set(scenarios.map((_, i) => i)));
+    }
+  };
+
+  const handleCreateTestCases = async () => {
+    if (!sessionId || selectedIndices.size === 0) return;
+    setLoading(true);
+    setError("");
+    try {
+      await aiService.createTestCases(sessionId, Array.from(selectedIndices));
+      setStep("done");
+    } catch {
+      setError("Failed to create test cases. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const stepLabels = ["Describe Feature", "Answer Questions", "Select Scenarios", "Done"];
+  const stepKeys: Step[] = ["setup", "followup", "scenarios", "done"];
+  const currentStepIndex = stepKeys.indexOf(step);
+
+  return (
+    <div className="page-test-suites">
+      <div className="page-header">
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <button className="btn btn-ghost" onClick={() => navigate("/test-cases")} style={{ padding: "4px 8px" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+          <h1>Generate Test Cases with AI</h1>
+        </div>
+      </div>
+
+      {/* Stepper */}
+      <div className="ai-stepper">
+        {stepLabels.map((label, i) => (
+          <div key={label} className={`ai-step${i <= currentStepIndex ? " ai-step-active" : ""}${i < currentStepIndex ? " ai-step-completed" : ""}`}>
+            <div className="ai-step-number">
+              {i < currentStepIndex ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              ) : (
+                i + 1
+              )}
+            </div>
+            <span className="ai-step-label">{label}</span>
+            {i < stepLabels.length - 1 && <div className="ai-step-line" />}
+          </div>
+        ))}
+      </div>
+
+      {error && <div className="ai-error">{error}</div>}
+
+      {/* Step 1: Setup */}
+      {step === "setup" && (
+        <div className="ts-form">
+          <div className="ts-form-title">Describe the Feature</div>
+          <div className="ts-form-field">
+            <label htmlFor="ai-suite">Test Suite</label>
+            {loadingSuites ? (
+              <p className="ts-form-hint">Loading suites...</p>
+            ) : allSuites.length === 0 ? (
+              <p className="ts-form-hint">No test suites available. Create a test suite first.</p>
+            ) : (
+              <select id="ai-suite" value={testSuiteId} onChange={(e) => setTestSuiteId(e.target.value)}>
+                <option value="">Select a test suite</option>
+                {allSuites.map((suite) => (
+                  <option key={suite.id} value={suite.id}>{suite.name}</option>
+                ))}
+              </select>
+            )}
+          </div>
+          <div className="ts-form-field">
+            <label htmlFor="ai-story">User Story / Feature Description</label>
+            <textarea
+              id="ai-story"
+              placeholder="As a user, I want to... so that..."
+              value={userStory}
+              onChange={(e) => setUserStory(e.target.value)}
+              rows={6}
+              style={{ resize: "vertical" }}
+            />
+          </div>
+          <div className="ts-form-actions">
+            <button className="btn btn-ghost" onClick={() => navigate("/test-cases")}>Cancel</button>
+            <button
+              className="btn btn-primary"
+              onClick={handleCreateSession}
+              disabled={loading || !testSuiteId || !userStory.trim()}
+            >
+              {loading ? "Starting..." : "Continue"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 2: Follow-up Questions */}
+      {step === "followup" && (
+        <div className="ts-form">
+          <div className="ts-form-title">Follow-up Questions</div>
+          <p className="ts-form-hint" style={{ marginBottom: "16px" }}>
+            The AI has some questions to help generate better test scenarios. Answer as many as you can.
+          </p>
+          {questions.map((q, i) => (
+            <div className="ts-form-field" key={i}>
+              <label>{q}</label>
+              <textarea
+                placeholder="Your answer..."
+                value={answers[i]}
+                onChange={(e) => {
+                  const next = [...answers];
+                  next[i] = e.target.value;
+                  setAnswers(next);
+                }}
+                rows={2}
+                style={{ resize: "vertical" }}
+              />
+            </div>
+          ))}
+          <div className="ts-form-actions">
+            <button className="btn btn-ghost" onClick={handleSkipFollowUp} disabled={loading}>
+              Skip & Generate
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={handleSubmitAnswers}
+              disabled={loading}
+            >
+              {loading ? "Generating Scenarios..." : "Submit & Generate"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 3: Select Scenarios */}
+      {step === "scenarios" && (
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+            <div>
+              <span style={{ fontSize: "15px", fontWeight: 600, color: "var(--color-text)" }}>
+                Generated Scenarios ({selectedIndices.size}/{scenarios.length} selected)
+              </span>
+            </div>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button className="btn btn-ghost" onClick={toggleAll}>
+                {selectedIndices.size === scenarios.length ? "Deselect All" : "Select All"}
+              </button>
+            </div>
+          </div>
+          <div className="ts-list">
+            {scenarios.map((scenario, index) => (
+              <div
+                key={index}
+                className="ts-card"
+                style={{
+                  cursor: "pointer",
+                  borderColor: selectedIndices.has(index) ? "var(--color-accent)" : undefined,
+                  background: selectedIndices.has(index) ? "var(--color-accent-subtle)" : undefined,
+                }}
+                onClick={() => toggleScenario(index)}
+              >
+                <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", flex: 1, minWidth: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={selectedIndices.has(index)}
+                    onChange={() => toggleScenario(index)}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ marginTop: "3px", flexShrink: 0 }}
+                  />
+                  <div className="ts-card-body">
+                    <div className="ts-card-name">{scenario.title}</div>
+                    <div className="ts-card-desc" style={{ whiteSpace: "pre-wrap", overflow: "visible" }}>
+                      {scenario.description}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="ts-form-actions" style={{ marginTop: "20px" }}>
+            <button className="btn btn-ghost" onClick={() => navigate("/test-cases")}>Cancel</button>
+            <button
+              className="btn btn-primary"
+              onClick={handleCreateTestCases}
+              disabled={loading || selectedIndices.size === 0}
+            >
+              {loading ? "Creating..." : `Create ${selectedIndices.size} Test Case${selectedIndices.size !== 1 ? "s" : ""} as Draft`}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 4: Done */}
+      {step === "done" && (
+        <div className="ts-empty-state">
+          <div className="ts-empty-icon" style={{ opacity: 1 }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+              <polyline points="22 4 12 14.01 9 11.01" />
+            </svg>
+          </div>
+          <p>Test cases created as drafts!</p>
+          <span style={{ marginBottom: "20px" }}>Review them in the test cases list and mark them active when ready.</span>
+          <button className="btn btn-primary" onClick={() => navigate("/test-cases")}>
+            View Test Cases
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
