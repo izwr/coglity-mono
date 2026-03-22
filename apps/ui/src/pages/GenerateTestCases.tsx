@@ -31,8 +31,8 @@ export function GenerateTestCases() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    testSuiteService.getAll().then((data) => {
-      setAllSuites(Array.isArray(data) ? data : []);
+    testSuiteService.getAll({ limit: 100 }).then((res) => {
+      setAllSuites(Array.isArray(res.data) ? res.data : []);
       setLoadingSuites(false);
     }).catch(() => setLoadingSuites(false));
   }, []);

@@ -12,6 +12,7 @@ export interface TestCaseWithTags extends TestCase {
 export interface CreateTestCasePayload {
   testSuiteId: string;
   title: string;
+  preCondition: string;
   testSteps: string;
   data: string;
   expectedResults: string;
@@ -20,6 +21,7 @@ export interface CreateTestCasePayload {
 
 export interface UpdateTestCasePayload {
   title: string;
+  preCondition: string;
   testSteps: string;
   data: string;
   expectedResults: string;
@@ -27,10 +29,27 @@ export interface UpdateTestCasePayload {
   status?: "draft" | "active";
 }
 
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface TestCaseListParams {
+  search?: string;
+  testSuiteId?: string;
+  status?: string;
+  tagId?: string;
+  sortBy?: string;
+  sortDir?: string;
+  page?: number;
+  limit?: number;
+}
+
 export const testCaseService = {
-  async getAll(testSuiteId?: string): Promise<TestCaseWithTags[]> {
-    const params = testSuiteId ? { testSuiteId } : {};
-    const { data } = await api.get<TestCaseWithTags[]>("/test-cases", { params });
+  async getAll(params?: TestCaseListParams): Promise<PaginatedResponse<TestCaseWithTags>> {
+    const { data } = await api.get<PaginatedResponse<TestCaseWithTags>>("/test-cases", { params });
     return data;
   },
 

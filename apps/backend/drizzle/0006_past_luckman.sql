@@ -1,0 +1,1 @@
+ALTER TABLE "test_cases" ADD COLUMN "pre_condition" text DEFAULT '' NOT NULL;

@@ -9,6 +9,7 @@ import { tagService } from "../services/tagService";
 
 const testCaseFormSchema = yup.object({
   title: yup.string().required("Title is required").max(255),
+  preCondition: yup.string().max(10000).default(""),
   testSteps: yup.string().max(10000).default(""),
   expectedResults: yup.string().max(10000).default(""),
   data: yup.string().max(10000).default(""),
@@ -35,7 +36,7 @@ export function TestCaseDetail() {
   } = useForm<FormValues>({
     resolver: yupResolver(testCaseFormSchema),
     mode: "onChange",
-    defaultValues: { title: "", testSteps: "", expectedResults: "", data: "" },
+    defaultValues: { title: "", preCondition: "", testSteps: "", expectedResults: "", data: "" },
   });
 
   useEffect(() => {
@@ -57,6 +58,7 @@ export function TestCaseDetail() {
   const populateFields = (d: TestCaseWithTags) => {
     reset({
       title: d.title,
+      preCondition: d.preCondition,
       testSteps: d.testSteps,
       expectedResults: d.expectedResults,
       data: d.data,
@@ -78,6 +80,7 @@ export function TestCaseDetail() {
     if (!id) return;
     const updated = await testCaseService.update(id, {
       title: formData.title,
+      preCondition: formData.preCondition,
       testSteps: formData.testSteps,
       data: formData.data,
       expectedResults: formData.expectedResults,
@@ -151,6 +154,7 @@ export function TestCaseDetail() {
                 if (!id) return;
                 const updated = await testCaseService.update(id, {
                   title: tc.title,
+                  preCondition: tc.preCondition,
                   testSteps: tc.testSteps,
                   data: tc.data,
                   expectedResults: tc.expectedResults,
@@ -217,6 +221,23 @@ export function TestCaseDetail() {
             <> · Updated {new Date(tc.updatedAt).toLocaleDateString()} by {tc.updatedByName}</>
           )}
         </div>
+      </div>
+
+      {/* Pre Condition */}
+      <div className="tc-detail-section" style={{ marginBottom: "16px" }}>
+        <label className="tc-detail-label">Pre Condition</label>
+        {editing ? (
+          <textarea
+            className="tc-detail-textarea"
+            placeholder="Enter pre conditions..."
+            {...register("preCondition")}
+          />
+        ) : (
+          <div className="tc-detail-content">
+            {tc.preCondition || <span className="tc-detail-placeholder">No pre conditions defined.</span>}
+          </div>
+        )}
+        {errors.preCondition && <span className="ts-form-error">{errors.preCondition.message}</span>}
       </div>
 
       {/* Content grid: Test Steps (left tall), Expected Results + Data (right stacked) */}

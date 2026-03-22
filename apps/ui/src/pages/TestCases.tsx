@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -7,6 +7,7 @@ import type { Tag } from "@coglity/shared";
 import { testCaseService, type TestCaseWithTags } from "../services/testCaseService";
 import { testSuiteService, type TestSuiteWithTags } from "../services/testSuiteService";
 import { tagService } from "../services/tagService";
+import { ListToolbar, type AppliedFilters } from "../components/ListToolbar";
 
 const createTestCaseSchema = yup.object({
   title: yup.string().required("Title is required").max(255),
@@ -15,15 +16,40 @@ const createTestCaseSchema = yup.object({
 
 type CreateFormValues = yup.InferType<typeof createTestCaseSchema>;
 
+const PAGE_SIZE = 10;
+
+const SORT_OPTIONS = [
+  { label: "Newest first", field: "createdAt", dir: "desc" as const },
+  { label: "Oldest first", field: "createdAt", dir: "asc" as const },
+  { label: "Title A-Z", field: "title", dir: "asc" as const },
+  { label: "Title Z-A", field: "title", dir: "desc" as const },
+  { label: "Recently updated", field: "updatedAt", dir: "desc" as const },
+];
+
+const STATUS_TOGGLE = {
+  options: [
+    { value: "active", label: "Active", activeClass: "active-selected" },
+    { value: "draft", label: "Draft", activeClass: "draft-selected" },
+  ],
+};
+
 export function TestCases() {
   const navigate = useNavigate();
   const [cases, setCases] = useState<TestCaseWithTags[]>([]);
+  const [total, setTotal] = useState(0);
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [allSuites, setAllSuites] = useState<TestSuiteWithTags[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  // Applied filters
+  const [filters, setFilters] = useState<AppliedFilters>({
+    search: "", tagId: "", sortBy: "createdAt", sortDir: "desc", suiteId: "", status: "",
+  });
+  const [page, setPage] = useState(1);
 
   const {
     register,
@@ -36,16 +62,29 @@ export function TestCases() {
     defaultValues: { title: "", testSuiteId: "" },
   });
 
-  const fetchCases = async () => {
+  const fetchCases = useCallback(async () => {
+    setLoading(true);
     try {
-      const data = await testCaseService.getAll();
-      setCases(Array.isArray(data) ? data : []);
+      const res = await testCaseService.getAll({
+        search: filters.search || undefined,
+        testSuiteId: filters.suiteId || undefined,
+        status: filters.status || undefined,
+        tagId: filters.tagId || undefined,
+        sortBy: filters.sortBy,
+        sortDir: filters.sortDir,
+        page,
+        limit: PAGE_SIZE,
+      });
+      setCases(res.data);
+      setTotal(res.total);
     } catch {
       setCases([]);
+      setTotal(0);
     } finally {
       setLoading(false);
+      setInitialLoad(false);
     }
-  };
+  }, [filters, page]);
 
   const fetchTags = async () => {
     try {
@@ -58,18 +97,26 @@ export function TestCases() {
 
   const fetchSuites = async () => {
     try {
-      const data = await testSuiteService.getAll();
-      setAllSuites(Array.isArray(data) ? data : []);
+      const data = await testSuiteService.getAll({ limit: 100 });
+      setAllSuites(Array.isArray(data.data) ? data.data : []);
     } catch {
       setAllSuites([]);
     }
   };
 
   useEffect(() => {
-    fetchCases();
     fetchTags();
     fetchSuites();
   }, []);
+
+  useEffect(() => {
+    fetchCases();
+  }, [fetchCases]);
+
+  const handleApplyFilters = (applied: AppliedFilters) => {
+    setFilters(applied);
+    setPage(1);
+  };
 
   const closeForm = () => {
     reset({ title: "", testSuiteId: "" });
@@ -81,6 +128,7 @@ export function TestCases() {
     const created = await testCaseService.create({
       title: data.title,
       testSuiteId: data.testSuiteId,
+      preCondition: "",
       testSteps: "",
       data: "",
       expectedResults: "",
@@ -101,6 +149,9 @@ export function TestCases() {
       prev.includes(tagId) ? prev.filter((i) => i !== tagId) : [...prev, tagId],
     );
   };
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const hasFilters = !!(filters.search || filters.tagId || filters.suiteId || filters.status);
 
   return (
     <div className="page-test-suites">
@@ -184,9 +235,9 @@ export function TestCases() {
         </form>
       )}
 
-      {loading ? (
+      {initialLoad ? (
         <p className="ts-empty">Loading...</p>
-      ) : cases.length === 0 && !showForm ? (
+      ) : total === 0 && !hasFilters && !showForm ? (
         <div className="ts-empty-state">
           <div className="ts-empty-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -201,7 +252,22 @@ export function TestCases() {
           <span>Create your first test case to get started</span>
         </div>
       ) : (
-        <div className="ts-list">
+        <>
+          <ListToolbar
+            searchPlaceholder="Search test cases..."
+            tags={allTags}
+            sortOptions={SORT_OPTIONS}
+            onApply={handleApplyFilters}
+            suites={allSuites}
+            statusToggle={STATUS_TOGGLE}
+          />
+
+          {loading ? (
+            <p className="ts-empty">Loading...</p>
+          ) : cases.length === 0 ? (
+            <p className="ts-empty">No test cases match your filters.</p>
+          ) : (
+          <div className="ts-list">
           {cases.map((tc) => (
             <div
               key={tc.id}
@@ -263,7 +329,20 @@ export function TestCases() {
               </div>
             </div>
           ))}
-        </div>
+          </div>
+          )}
+
+          {totalPages > 1 && (
+            <div className="pagination">
+              <button className="pagination-btn" disabled={page <= 1} onClick={() => setPage(page - 1)}>Prev</button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <button key={p} className={`pagination-btn${p === page ? " active" : ""}`} onClick={() => setPage(p)}>{p}</button>
+              ))}
+              <button className="pagination-btn" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Next</button>
+              <span className="pagination-info">{total} result{total !== 1 ? "s" : ""}</span>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

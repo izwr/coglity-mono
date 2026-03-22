@@ -10,6 +10,7 @@ export const testCases = pgTable("test_cases", {
   id: uuid("id").defaultRandom().primaryKey(),
   testSuiteId: uuid("test_suite_id").notNull().references(() => testSuites.id, { onDelete: "cascade" }),
   title: varchar("title", { length: 255 }).notNull(),
+  preCondition: text("pre_condition").default("").notNull(),
   testSteps: text("test_steps").default("").notNull(),
   data: text("data").default("").notNull(),
   expectedResults: text("expected_results").default("").notNull(),
@@ -22,6 +23,7 @@ export const testCases = pgTable("test_cases", {
 
 export const insertTestCaseSchema = createInsertSchema(testCases, {
   title: (schema) => schema.min(1, "Title is required").max(255),
+  preCondition: (schema) => schema.max(10000).optional().default(""),
   testSteps: (schema) => schema.max(10000).optional().default(""),
   data: (schema) => schema.max(10000).optional().default(""),
   expectedResults: (schema) => schema.max(10000).optional().default(""),

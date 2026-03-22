@@ -98,19 +98,25 @@ body {
 /* ─── Sidebar ─── */
 .sidebar {
   width: 252px;
-  min-height: 100vh;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
   background: var(--color-sidebar-bg);
   border-right: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   transition: width var(--transition-normal), background-color var(--transition-normal), border-color var(--transition-normal);
-  position: relative;
   z-index: 10;
   overflow: hidden;
 }
 
 .sidebar.collapsed {
   width: 64px;
+}
+
+.sidebar.collapsed + .main-content {
+  margin-left: 64px;
 }
 
 /* ─── Sidebar Header ─── */
@@ -380,10 +386,12 @@ body {
 /* ─── Main Content ─── */
 .main-content {
   flex: 1;
+  margin-left: 252px;
   padding: 28px 32px;
   background: var(--color-bg);
-  transition: background-color var(--transition-normal);
+  transition: background-color var(--transition-normal), margin-left var(--transition-normal);
   min-height: 100vh;
+  overflow-y: auto;
 }
 
 .main-content h1 {
@@ -571,6 +579,156 @@ body {
   justify-content: flex-end;
   gap: 8px;
   margin-top: 18px;
+}
+
+/* ─── List Toolbar ─── */
+.list-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.list-toolbar-search {
+  flex: 1;
+  min-width: 200px;
+  padding: 8px 12px;
+  font-size: 13.5px;
+  font-family: inherit;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  transition: border-color var(--transition-fast);
+}
+
+.list-toolbar-search::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.list-toolbar-search:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.list-toolbar select {
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+}
+
+.list-toolbar select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+/* ─── Status Toggle ─── */
+.status-toggle {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.status-toggle-btn {
+  padding: 7px 14px;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 500;
+  border: none;
+  background: var(--color-surface-raised);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.status-toggle-btn:not(:last-child) {
+  border-right: 1px solid var(--color-border);
+}
+
+.status-toggle-btn:hover {
+  background: var(--color-bg-muted);
+}
+
+.status-toggle-btn.active-selected {
+  background: #059669;
+  color: #fff;
+}
+
+.status-toggle-btn.draft-selected {
+  background: var(--color-text-tertiary);
+  color: #fff;
+}
+
+/* ─── Toolbar Apply ─── */
+.list-toolbar-apply {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.list-toolbar-apply:hover {
+  background: var(--color-accent-hover);
+}
+
+/* ─── Pagination ─── */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 20px;
+}
+
+.pagination-btn {
+  padding: 6px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 500;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface-raised);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.pagination-btn:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  background: var(--color-bg-muted);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pagination-btn.active {
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+  border-color: var(--color-accent);
+}
+
+.pagination-info {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  margin-left: 12px;
 }
 
 /* ─── Test Suites List ─── */

@@ -7,7 +7,8 @@
     "AZURE_CLIENT_SECRET",
     "AZURE_TENANT_ID",
     "AZURE_REDIRECT_URI",
-    "CLIENT_URL"
+    "CLIENT_URL",
+    "OPENAI_API_KEY"
   ],
   "tasks": {
     "build": {

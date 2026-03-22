@@ -1,5 +1,5 @@
 import { type Router as RouterType, Router } from "express";
-import { eq, and } from "drizzle-orm";
+import { eq, and, or, ilike, desc, asc, sql, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { testSuites, insertTestSuiteSchema, tags, entityTags, users, type EntityTagEntityType } from "@coglity/shared/schema";
 import { db } from "../db.js";
@@ -53,16 +53,65 @@ function suitesBaseQuery() {
     .leftJoin(updatedByUser, eq(testSuites.updatedBy, updatedByUser.id));
 }
 
-// List all (with tags + user names)
-router.get("/", async (_req, res) => {
-  const suites = await suitesBaseQuery().orderBy(testSuites.createdAt);
+// List all (with tags + user names) — supports search, filter, sort, pagination
+router.get("/", async (req, res) => {
+  const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
+  const tagId = typeof req.query.tagId === "string" ? req.query.tagId : "";
+  const sortBy = typeof req.query.sortBy === "string" ? req.query.sortBy : "createdAt";
+  const sortDir = req.query.sortDir === "asc" ? "asc" : "desc";
+  const page = Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit ?? "10"), 10) || 10));
+
+  // If filtering by tag, get matching entity IDs first
+  let tagFilterIds: string[] | null = null;
+  if (tagId) {
+    const tagRows = await db
+      .select({ entityId: entityTags.entityId })
+      .from(entityTags)
+      .where(and(eq(entityTags.tagId, tagId), eq(entityTags.entityType, "test_suite")));
+    tagFilterIds = tagRows.map((r) => r.entityId);
+    if (tagFilterIds.length === 0) {
+      res.json({ data: [], total: 0, page, limit });
+      return;
+    }
+  }
+
+  // Build conditions
+  const conditions = [];
+  if (search) {
+    conditions.push(or(ilike(testSuites.name, `%${search}%`), ilike(testSuites.description, `%${search}%`)));
+  }
+  if (tagFilterIds) {
+    conditions.push(inArray(testSuites.id, tagFilterIds));
+  }
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+  // Sort
+  const sortColumn = sortBy === "name" ? testSuites.name : sortBy === "updatedAt" ? testSuites.updatedAt : testSuites.createdAt;
+  const orderFn = sortDir === "asc" ? asc : desc;
+
+  // Count
+  const [{ count: total }] = await db
+    .select({ count: sql<number>`cast(count(*) as int)` })
+    .from(testSuites)
+    .where(where);
+
+  // Query
+  const offset = (page - 1) * limit;
+  const suites = await suitesBaseQuery()
+    .where(where)
+    .orderBy(orderFn(sortColumn))
+    .limit(limit)
+    .offset(offset);
+
   const result = await Promise.all(
     suites.map(async (suite) => ({
       ...suite,
       tags: await getTagsForEntity(suite.id, "test_suite"),
     })),
   );
-  res.json(result);
+
+  res.json({ data: result, total, page, limit });
 });
 
 // Get by ID (with tags + user names)

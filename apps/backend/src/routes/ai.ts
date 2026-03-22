@@ -7,7 +7,9 @@ import { db } from "../db.js";
 
 const router: RouterType = Router();
 
-const openai = new OpenAI();
+const openai = new OpenAI({
+  baseURL: "https://solly-foundry-resource.services.ai.azure.com/api/projects/solly-foundry/openai/v1/",
+});
 
 // Create a new AI generation session
 router.post("/session", async (req, res) => {
@@ -49,7 +51,7 @@ router.post("/session/:id/followup", async (req, res) => {
   }
 
   const completion = await openai.responses.parse({
-    model: "gpt-4o-mini",
+    model: "gpt-4.1-mini",
     instructions:
       "You are a senior QA engineer. Given a user story or feature description, generate 3-5 clarifying follow-up questions " +
       "that would help you create better, more comprehensive test scenarios. " +
@@ -131,10 +133,10 @@ router.post("/session/:id/generate-scenarios", async (req, res) => {
     : "";
 
   const completion = await openai.responses.parse({
-    model: "gpt-4o-mini",
+    model: "gpt-4.1-mini",
     instructions:
       "You are a senior QA engineer. Given a user story and additional context, generate a comprehensive list of test scenarios. " +
-      "Each scenario should have a clear, concise title and a detailed description of what to test including preconditions, steps, and expected results. " +
+      "Each scenario should have a clear, concise title and a brief description of what to test. " +
       "Cover happy paths, edge cases, error scenarios, and boundary conditions.",
     input: `User Story: ${session.userStory}${qaContext}`,
     text: {
@@ -221,15 +223,64 @@ router.post("/session/:id/create-test-cases", async (req, res) => {
     return;
   }
 
+  // Generate detailed test case fields for each selected scenario
+  const followUpQA = session.followUpQA as { question: string; answer: string }[];
+  const qaContext = followUpQA.length > 0
+    ? "\n\nAdditional context from Q&A:\n" +
+      followUpQA.map((qa) => `Q: ${qa.question}\nA: ${qa.answer}`).join("\n\n")
+    : "";
+
+  const detailCompletion = await openai.responses.parse({
+    model: "gpt-4.1-mini",
+    instructions:
+      "You are a senior QA engineer. Given a user story, context, and a list of test scenarios, " +
+      "generate detailed test case information for each scenario. " +
+      "For each scenario, provide: preCondition (setup or state required before testing), " +
+      "testSteps (numbered step-by-step instructions to execute the test), " +
+      "and expectedResults (what should happen when the test is executed correctly). " +
+      "Return the results in the same order as the input scenarios.",
+    input: `User Story: ${session.userStory}${qaContext}\n\nScenarios:\n${selectedScenarios.map((s, i) => `${i + 1}. ${s.title}: ${s.description}`).join("\n")}`,
+    text: {
+      format: {
+        type: "json_schema",
+        name: "test_case_details",
+        strict: true,
+        schema: {
+          type: "object",
+          properties: {
+            testCases: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  preCondition: { type: "string" },
+                  testSteps: { type: "string" },
+                  expectedResults: { type: "string" },
+                },
+                required: ["preCondition", "testSteps", "expectedResults"],
+                additionalProperties: false,
+              },
+            },
+          },
+          required: ["testCases"],
+          additionalProperties: false,
+        },
+      },
+    },
+  });
+
+  const details = detailCompletion.output_parsed as { testCases: { preCondition: string; testSteps: string; expectedResults: string }[] } | null;
+
   const insertedCases = await db
     .insert(testCases)
     .values(
-      selectedScenarios.map((scenario) => ({
+      selectedScenarios.map((scenario, i) => ({
         testSuiteId: session.testSuiteId,
         title: scenario.title,
-        testSteps: scenario.description,
+        preCondition: details?.testCases[i]?.preCondition ?? "",
+        testSteps: details?.testCases[i]?.testSteps ?? scenario.description,
         data: "",
-        expectedResults: "",
+        expectedResults: details?.testCases[i]?.expectedResults ?? "",
         status: "draft" as const,
         createdBy: userId,
         updatedBy: userId,

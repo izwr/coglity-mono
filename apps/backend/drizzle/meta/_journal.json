@@ -36,6 +36,20 @@
       "when": 1773995736298,
       "tag": "0004_amusing_spot",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1774089065862,
+      "tag": "0005_cultured_angel",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1774158890818,
+      "tag": "0006_past_luckman",
+      "breakpoints": true
     }
   ]
 }

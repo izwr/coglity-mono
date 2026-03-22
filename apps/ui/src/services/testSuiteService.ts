@@ -15,9 +15,25 @@ export interface CreateTestSuitePayload {
 
 export type UpdateTestSuitePayload = CreateTestSuitePayload;
 
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface ListQueryParams {
+  search?: string;
+  tagId?: string;
+  sortBy?: string;
+  sortDir?: string;
+  page?: number;
+  limit?: number;
+}
+
 export const testSuiteService = {
-  async getAll(): Promise<TestSuiteWithTags[]> {
-    const { data } = await api.get<TestSuiteWithTags[]>("/test-suites");
+  async getAll(params?: ListQueryParams): Promise<PaginatedResponse<TestSuiteWithTags>> {
+    const { data } = await api.get<PaginatedResponse<TestSuiteWithTags>>("/test-suites", { params });
     return data;
   },
 
