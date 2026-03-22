@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { tagService, type TagWithUsers } from "../services/tagService";
+import { Button } from "../components/ui/Button";
 
 const tagFormSchema = yup.object({
   name: yup.string().required("Name is required").max(255),
@@ -77,9 +78,7 @@ export function Tags() {
       <div className="page-header">
         <h1>Tags</h1>
         {!showForm && (
-          <button className="btn btn-primary" onClick={() => setShowForm(true)}>
-            + New Tag
-          </button>
+          <Button onClick={() => setShowForm(true)}>+ New Tag</Button>
         )}
       </div>
 
@@ -110,12 +109,10 @@ export function Tags() {
             {errors.description && <span className="ts-form-error">{errors.description.message}</span>}
           </div>
           <div className="ts-form-actions">
-            <button type="button" className="btn btn-ghost" onClick={closeForm}>
-              Cancel
-            </button>
-            <button type="submit" className="btn btn-primary" disabled={!isValid || isSubmitting}>
+            <Button type="button" variant="ghost" onClick={closeForm}>Cancel</Button>
+            <Button type="submit" disabled={!isValid || isSubmitting}>
               {editingId ? "Update" : "Create"}
-            </button>
+            </Button>
           </div>
         </form>
       )}
@@ -151,37 +148,19 @@ export function Tags() {
                 </div>
               </div>
               <div className="ts-card-actions">
-                <button
-                  className="btn btn-icon"
-                  title="Edit"
-                  onClick={() => startEdit(tag)}
-                >
+                <Button variant="icon" title="Edit" onClick={() => startEdit(tag)}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                   </svg>
-                </button>
+                </Button>
                 {deleteConfirmId === tag.id ? (
                   <div className="ts-delete-confirm">
-                    <button
-                      className="btn btn-danger-sm"
-                      onClick={() => handleDelete(tag.id)}
-                    >
-                      Confirm
-                    </button>
-                    <button
-                      className="btn btn-ghost-sm"
-                      onClick={() => setDeleteConfirmId(null)}
-                    >
-                      Cancel
-                    </button>
+                    <Button variant="danger" size="sm" onClick={() => handleDelete(tag.id)}>Confirm</Button>
+                    <Button variant="ghost" size="sm" onClick={() => setDeleteConfirmId(null)}>Cancel</Button>
                   </div>
                 ) : (
-                  <button
-                    className="btn btn-icon btn-icon-danger"
-                    title="Delete"
-                    onClick={() => setDeleteConfirmId(tag.id)}
-                  >
+                  <Button variant="icon-danger" title="Delete" onClick={() => setDeleteConfirmId(tag.id)}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="3 6 5 6 21 6" />
                       <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
@@ -189,7 +168,7 @@ export function Tags() {
                       <path d="M14 11v6" />
                       <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
                     </svg>
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>

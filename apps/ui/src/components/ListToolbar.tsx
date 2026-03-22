@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Tag } from "@coglity/shared";
 import type { TestSuiteWithTags } from "../services/testSuiteService";
+import { Select } from "./ui/Select";
 
 type SortDir = "asc" | "desc";
 
@@ -83,12 +84,14 @@ export function ListToolbar({ searchPlaceholder, tags, sortOptions, onApply, sui
         onChange={(e) => setSearchInput(e.target.value)}
       />
       {suites && (
-        <select value={pendingSuiteId} onChange={(e) => setPendingSuiteId(e.target.value)}>
-          <option value="">All Suites</option>
-          {suites.map((suite) => (
-            <option key={suite.id} value={suite.id}>{suite.name}</option>
-          ))}
-        </select>
+        <Select
+          compact
+          value={pendingSuiteId ? { value: pendingSuiteId, label: suites.find((s) => s.id === pendingSuiteId)?.name ?? "" } : null}
+          onChange={(opt) => setPendingSuiteId(opt?.value ?? "")}
+          options={suites.map((suite) => ({ value: suite.id, label: suite.name }))}
+          placeholder="All Suites"
+          isClearable
+        />
       )}
       {statusToggle && (
         <div className="status-toggle">
@@ -104,17 +107,21 @@ export function ListToolbar({ searchPlaceholder, tags, sortOptions, onApply, sui
           ))}
         </div>
       )}
-      <select value={pendingTagId} onChange={(e) => setPendingTagId(e.target.value)}>
-        <option value="">All Tags</option>
-        {tags.map((tag) => (
-          <option key={tag.id} value={tag.id}>{tag.name}</option>
-        ))}
-      </select>
-      <select value={pendingSort} onChange={(e) => setPendingSort(e.target.value)}>
-        {sortOptions.map((opt) => (
-          <option key={`${opt.field}-${opt.dir}`} value={`${opt.field}-${opt.dir}`}>{opt.label}</option>
-        ))}
-      </select>
+      <Select
+        compact
+        value={pendingTagId ? { value: pendingTagId, label: tags.find((t) => t.id === pendingTagId)?.name ?? "" } : null}
+        onChange={(opt) => setPendingTagId(opt?.value ?? "")}
+        options={tags.map((tag) => ({ value: tag.id, label: tag.name }))}
+        placeholder="All Tags"
+        isClearable
+      />
+      <Select
+        compact
+        value={{ value: pendingSort, label: sortOptions.find((o) => `${o.field}-${o.dir}` === pendingSort)?.label ?? "" }}
+        onChange={(opt) => setPendingSort(opt?.value ?? `${sortOptions[0].field}-${sortOptions[0].dir}`)}
+        options={sortOptions.map((opt) => ({ value: `${opt.field}-${opt.dir}`, label: opt.label }))}
+        placeholder="Sort by"
+      />
       <button type="button" className="list-toolbar-apply" onClick={handleApply}>Apply</button>
     </div>
   );

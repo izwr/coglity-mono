@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { Button } from "../components/ui/Button";
 
 export function Login() {
   const { isAuthenticated, isLoading, login } = useAuth();
@@ -26,7 +27,7 @@ export function Login() {
           </div>
         )}
 
-        <button className="btn btn-primary login-btn" onClick={login}>
+        <Button className="login-btn" onClick={login}>
           <svg width="20" height="20" viewBox="0 0 21 21" fill="none">
             <rect x="1" y="1" width="9" height="9" fill="#f25022" />
             <rect x="11" y="1" width="9" height="9" fill="#7fba00" />
@@ -34,7 +35,7 @@ export function Login() {
             <rect x="11" y="11" width="9" height="9" fill="#ffb900" />
           </svg>
           Sign in with Microsoft
-        </button>
+        </Button>
       </div>
     </div>
   );

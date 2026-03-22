@@ -2,7 +2,7 @@ import { pgTable, uuid, varchar, timestamp, primaryKey } from "drizzle-orm/pg-co
 import { tags } from "./tags.js";
 import { users } from "./users.js";
 
-export const entityTagsEntityTypes = ["test_suite", "test_case", "scheduled_test_suite"] as const;
+export const entityTagsEntityTypes = ["test_suite", "test_case", "scheduled_test_suite", "bug"] as const;
 export type EntityTagEntityType = (typeof entityTagsEntityTypes)[number];
 
 export const entityTags = pgTable(

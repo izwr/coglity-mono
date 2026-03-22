@@ -8,6 +8,8 @@ import { testCaseService, type TestCaseWithTags } from "../services/testCaseServ
 import { testSuiteService, type TestSuiteWithTags } from "../services/testSuiteService";
 import { tagService } from "../services/tagService";
 import { ListToolbar, type AppliedFilters } from "../components/ListToolbar";
+import { Button } from "../components/ui/Button";
+import { Select } from "../components/ui/Select";
 
 const createTestCaseSchema = yup.object({
   title: yup.string().required("Title is required").max(255),
@@ -55,6 +57,8 @@ export function TestCases() {
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors, isSubmitting, isValid },
   } = useForm<CreateFormValues>({
     resolver: yupResolver(createTestCaseSchema),
@@ -159,11 +163,11 @@ export function TestCases() {
         <h1>Test Cases</h1>
         {!showForm && (
           <div style={{ display: "flex", gap: "8px" }}>
-            <button className="btn btn-primary" onClick={() => setShowForm(true)}>
+            <Button onClick={() => setShowForm(true)}>
               + Add Test Case
-            </button>
-            <button
-              className="btn btn-primary ai-generate-btn"
+            </Button>
+            <Button
+              className="ai-generate-btn"
               onClick={() => navigate("/test-cases/generate")}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: "6px" }}>
@@ -172,7 +176,7 @@ export function TestCases() {
                 <path d="M2 12l10 5 10-5" />
               </svg>
               Generate with AI
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -196,12 +200,12 @@ export function TestCases() {
             {allSuites.length === 0 ? (
               <p className="ts-form-hint">No test suites available. Create a test suite first.</p>
             ) : (
-              <select id="tc-suite" {...register("testSuiteId")}>
-                <option value="">Select a test suite</option>
-                {allSuites.map((suite) => (
-                  <option key={suite.id} value={suite.id}>{suite.name}</option>
-                ))}
-              </select>
+              <Select
+                value={watch("testSuiteId") ? { value: watch("testSuiteId"), label: allSuites.find((s) => s.id === watch("testSuiteId"))?.name ?? "" } : null}
+                onChange={(opt) => setValue("testSuiteId", opt?.value ?? "", { shouldValidate: true })}
+                options={allSuites.map((suite) => ({ value: suite.id, label: suite.name }))}
+                placeholder="Select a test suite"
+              />
             )}
             {errors.testSuiteId && <span className="ts-form-error">{errors.testSuiteId.message}</span>}
           </div>
@@ -225,12 +229,12 @@ export function TestCases() {
             )}
           </div>
           <div className="ts-form-actions">
-            <button type="button" className="btn btn-ghost" onClick={closeForm}>
+            <Button type="button" variant="ghost" onClick={closeForm}>
               Cancel
-            </button>
-            <button type="submit" className="btn btn-primary" disabled={!isValid || isSubmitting}>
+            </Button>
+            <Button type="submit" disabled={!isValid || isSubmitting}>
               Create
-            </button>
+            </Button>
           </div>
         </form>
       )}
@@ -304,27 +308,29 @@ export function TestCases() {
               <div className="ts-card-actions" onClick={(e) => e.stopPropagation()}>
                 {deleteConfirmId === tc.id ? (
                   <div className="ts-delete-confirm">
-                    <button
-                      className="btn btn-danger-sm"
+                    <Button
+                      variant="danger"
+                      size="sm"
                       onClick={() => handleDelete(tc.id)}
                     >
                       Confirm
-                    </button>
-                    <button
-                      className="btn btn-ghost-sm"
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => setDeleteConfirmId(null)}
                     >
                       Cancel
-                    </button>
+                    </Button>
                   </div>
                 ) : (
-                  <button
-                    className="btn btn-danger"
+                  <Button
+                    variant="danger"
                     title="Delete"
                     onClick={() => setDeleteConfirmId(tc.id)}
                   >
                     Delete
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>

@@ -6,6 +6,7 @@ import type { Tag } from "@coglity/shared";
 import { testSuiteService, type TestSuiteWithTags } from "../services/testSuiteService";
 import { tagService } from "../services/tagService";
 import { ListToolbar, type AppliedFilters } from "../components/ListToolbar";
+import { Button } from "../components/ui/Button";
 
 const testSuiteFormSchema = yup.object({
   name: yup.string().required("Name is required").max(255),
@@ -140,9 +141,9 @@ export function TestSuites() {
       <div className="page-header">
         <h1>Test Suites</h1>
         {!showForm && (
-          <button className="btn btn-primary" onClick={() => setShowForm(true)}>
+          <Button onClick={() => setShowForm(true)}>
             + New Test Suite
-          </button>
+          </Button>
         )}
       </div>
 
@@ -192,12 +193,12 @@ export function TestSuites() {
             )}
           </div>
           <div className="ts-form-actions">
-            <button type="button" className="btn btn-ghost" onClick={closeForm}>
+            <Button type="button" variant="ghost" onClick={closeForm}>
               Cancel
-            </button>
-            <button type="submit" className="btn btn-primary" disabled={!isValid || isSubmitting}>
+            </Button>
+            <Button type="submit" disabled={!isValid || isSubmitting}>
               {editingId ? "Update" : "Create"}
-            </button>
+            </Button>
           </div>
         </form>
       )}
@@ -252,8 +253,8 @@ export function TestSuites() {
                 </div>
               </div>
               <div className="ts-card-actions">
-                <button
-                  className="btn btn-icon"
+                <Button
+                  variant="icon"
                   title="Edit"
                   onClick={() => startEdit(suite)}
                 >
@@ -261,25 +262,27 @@ export function TestSuites() {
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                   </svg>
-                </button>
+                </Button>
                 {deleteConfirmId === suite.id ? (
                   <div className="ts-delete-confirm">
-                    <button
-                      className="btn btn-danger-sm"
+                    <Button
+                      variant="danger"
+                      size="sm"
                       onClick={() => handleDelete(suite.id)}
                     >
                       Confirm
-                    </button>
-                    <button
-                      className="btn btn-ghost-sm"
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => setDeleteConfirmId(null)}
                     >
                       Cancel
-                    </button>
+                    </Button>
                   </div>
                 ) : (
-                  <button
-                    className="btn btn-icon btn-icon-danger"
+                  <Button
+                    variant="icon-danger"
                     title="Delete"
                     onClick={() => setDeleteConfirmId(suite.id)}
                   >
@@ -290,7 +293,7 @@ export function TestSuites() {
                       <path d="M14 11v6" />
                       <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
                     </svg>
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>

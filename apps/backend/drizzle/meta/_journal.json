@@ -50,6 +50,20 @@
       "when": 1774158890818,
       "tag": "0006_past_luckman",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1774185373611,
+      "tag": "0007_simple_vampiro",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1774188236507,
+      "tag": "0008_slimy_the_captain",
+      "breakpoints": true
     }
   ]
 }

@@ -9,9 +9,13 @@ import { TestCases } from "./pages/TestCases";
 import { TestCaseDetail } from "./pages/TestCaseDetail";
 import { TestSuites } from "./pages/TestSuites";
 import { ScheduledTestSuites } from "./pages/ScheduledTestSuites";
+import { ScheduledTestSuiteDetail } from "./pages/ScheduledTestSuiteDetail";
+import { ScheduledTestCaseDetail } from "./pages/ScheduledTestCaseDetail";
 import { Reporting } from "./pages/Reporting";
 import { Tags } from "./pages/Tags";
 import { GenerateTestCases } from "./pages/GenerateTestCases";
+import { Bugs } from "./pages/Bugs";
+import { BugDetail } from "./pages/BugDetail";
 
 export function App() {
   return (
@@ -29,6 +33,10 @@ export function App() {
               <Route path="test-cases/:id" element={<TestCaseDetail />} />
               <Route path="test-suites" element={<TestSuites />} />
               <Route path="scheduled-test-suites" element={<ScheduledTestSuites />} />
+              <Route path="scheduled-test-suites/:id" element={<ScheduledTestSuiteDetail />} />
+              <Route path="scheduled-test-suites/:id/cases/:caseId" element={<ScheduledTestCaseDetail />} />
+              <Route path="bugs" element={<Bugs />} />
+              <Route path="bugs/:id" element={<BugDetail />} />
               <Route path="tags" element={<Tags />} />
               <Route path="reporting" element={<Reporting />} />
             </Route>
