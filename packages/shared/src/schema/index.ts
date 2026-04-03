@@ -4,3 +4,6 @@ export * from "./testCases.js";
 export * from "./tags.js";
 export * from "./entityTags.js";
 export * from "./aiGenerationSessions.js";
+export * from "./bugs.js";
+export * from "./scheduledTestSuites.js";
+export * from "./scheduledTestCases.js";

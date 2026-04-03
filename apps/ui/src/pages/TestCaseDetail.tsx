@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import type { Tag } from "@coglity/shared";
+import { Button } from "../components/ui/Button";
 import { testCaseService, type TestCaseWithTags } from "../services/testCaseService";
 import { tagService } from "../services/tagService";
 
@@ -115,12 +116,12 @@ export function TestCaseDetail() {
       {/* Header */}
       <div className="tc-detail-header">
         <div className="tc-detail-header-left">
-          <button className="btn btn-ghost tc-back-btn" onClick={() => navigate("/test-cases")}>
+          <Button variant="ghost" className="tc-back-btn" onClick={() => navigate("/test-cases")}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6" />
             </svg>
             Back
-          </button>
+          </Button>
           {editing ? (
             <input
               className="tc-detail-title-input"
@@ -140,15 +141,14 @@ export function TestCaseDetail() {
         <div className="tc-detail-header-actions">
           {deleteConfirm ? (
             <div className="ts-delete-confirm">
-              <button className="btn btn-danger-sm" onClick={handleDelete}>Confirm</button>
-              <button className="btn btn-ghost-sm" onClick={() => setDeleteConfirm(false)}>Cancel</button>
+              <Button variant="danger" size="sm" onClick={handleDelete}>Confirm</Button>
+              <Button variant="ghost" size="sm" onClick={() => setDeleteConfirm(false)}>Cancel</Button>
             </div>
           ) : (
-            <button className="btn btn-danger" onClick={() => setDeleteConfirm(true)}>Delete</button>
+            <Button variant="danger" onClick={() => setDeleteConfirm(true)}>Delete</Button>
           )}
           {tc.status === "draft" && !editing && (
-            <button
-              className="btn btn-primary"
+            <Button
               style={{ background: "#059669" }}
               onClick={async () => {
                 if (!id) return;
@@ -165,21 +165,20 @@ export function TestCaseDetail() {
               }}
             >
               Mark Active
-            </button>
+            </Button>
           )}
           {editing ? (
             <>
-              <button className="btn btn-ghost" onClick={cancelEdit}>Cancel</button>
-              <button
-                className="btn btn-primary"
+              <Button variant="ghost" onClick={cancelEdit}>Cancel</Button>
+              <Button
                 onClick={handleSubmit(onSubmit)}
                 disabled={isSubmitting || !isValid}
               >
                 {isSubmitting ? "Saving..." : "Save"}
-              </button>
+              </Button>
             </>
           ) : (
-            <button className="btn btn-primary" onClick={startEdit}>Edit</button>
+            <Button onClick={startEdit}>Edit</Button>
           )}
         </div>
       </div>

@@ -418,11 +418,17 @@ body {
 /* ─── Buttons ─── */
 .btn {
   font-family: inherit;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 500;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
+  padding: 6px 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  line-height: 1.2;
   transition: background-color var(--transition-fast), color var(--transition-fast), opacity var(--transition-fast);
 }
 
@@ -431,10 +437,15 @@ body {
   cursor: not-allowed;
 }
 
+.btn-sm {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 5px;
+}
+
 .btn-primary {
   background: var(--color-accent);
   color: var(--color-accent-text);
-  padding: 9px 16px;
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -444,7 +455,6 @@ body {
 .btn-ghost {
   background: none;
   color: var(--color-text-secondary);
-  padding: 9px 16px;
 }
 
 .btn-ghost:hover {
@@ -452,11 +462,8 @@ body {
 }
 
 .btn-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   padding: 0;
   background: none;
   color: var(--color-text-tertiary);
@@ -469,8 +476,8 @@ body {
 }
 
 .btn-icon svg {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
 }
 
 .btn-icon-danger:hover {
@@ -478,10 +485,11 @@ body {
   color: #dc2626;
 }
 
+/* Legacy aliases — kept for backward-compat during migration */
 .btn-danger-sm {
   background: #dc2626;
   color: #fff;
-  padding: 5px 12px;
+  padding: 4px 10px;
   font-size: 12px;
 }
 
@@ -492,7 +500,7 @@ body {
 .btn-ghost-sm {
   background: none;
   color: var(--color-text-tertiary);
-  padding: 5px 12px;
+  padding: 4px 10px;
   font-size: 12px;
 }
 
@@ -503,7 +511,6 @@ body {
 .btn-danger {
   background: #dc2626;
   color: #fff;
-  padding: 9px 16px;
 }
 
 .btn-danger:hover:not(:disabled) {
@@ -1306,3 +1313,42 @@ body {
   padding: 10px 16px;
   margin-bottom: 16px;
 }
+
+/* ─── Bug Badges ─── */
+.bug-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 10px;
+}
+
+.priority-critical { color: #dc2626; background: rgba(220, 38, 38, 0.1); }
+.priority-high { color: #ea580c; background: rgba(234, 88, 12, 0.1); }
+.priority-medium { color: #d97706; background: rgba(217, 119, 6, 0.1); }
+.priority-low { color: #059669; background: rgba(5, 150, 105, 0.1); }
+
+.severity-blocker { color: #dc2626; background: rgba(220, 38, 38, 0.1); }
+.severity-critical { color: #dc2626; background: rgba(220, 38, 38, 0.1); }
+.severity-major { color: #ea580c; background: rgba(234, 88, 12, 0.1); }
+.severity-minor { color: #d97706; background: rgba(217, 119, 6, 0.1); }
+.severity-trivial { color: #6b7280; background: rgba(107, 114, 128, 0.1); }
+
+.bug-badge.bug-type { color: #7c3aed; background: rgba(124, 58, 237, 0.1); }
+.bug-badge.assigned { color: #2563eb; background: rgba(37, 99, 235, 0.1); }
+
+/* Bug state badges */
+.status-new { color: #2563eb; background: rgba(37, 99, 235, 0.1); }
+.status-open { color: #ea580c; background: rgba(234, 88, 12, 0.1); }
+.status-in_progress { color: #d97706; background: rgba(217, 119, 6, 0.1); }
+.status-resolved { color: #059669; background: rgba(5, 150, 105, 0.1); }
+.status-closed { color: #6b7280; background: rgba(107, 114, 128, 0.1); }
+.status-reopened { color: #dc2626; background: rgba(220, 38, 38, 0.1); }
+
+/* Bug state toggle buttons */
+.state-new-selected { color: #2563eb; background: rgba(37, 99, 235, 0.15); border-color: #2563eb; }
+.state-open-selected { color: #ea580c; background: rgba(234, 88, 12, 0.15); border-color: #ea580c; }
+.state-progress-selected { color: #d97706; background: rgba(217, 119, 6, 0.15); border-color: #d97706; }
+.state-resolved-selected { color: #059669; background: rgba(5, 150, 105, 0.15); border-color: #059669; }
+.state-closed-selected { color: #6b7280; background: rgba(107, 114, 128, 0.15); border-color: #6b7280; }

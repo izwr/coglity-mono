@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { testSuiteService, type TestSuiteWithTags } from "../services/testSuiteService";
 import { aiService, type FollowUpQA, type GeneratedScenario } from "../services/aiService";
+import { Button } from "../components/ui/Button";
+import { Select } from "../components/ui/Select";
 
 type Step = "setup" | "followup" | "scenarios" | "done";
 
@@ -132,11 +134,11 @@ export function GenerateTestCases() {
     <div className="page-test-suites">
       <div className="page-header">
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <button className="btn btn-ghost" onClick={() => navigate("/test-cases")} style={{ padding: "4px 8px" }}>
+          <Button variant="ghost" onClick={() => navigate("/test-cases")} style={{ padding: "4px 8px" }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6" />
             </svg>
-          </button>
+          </Button>
           <h1>Generate Test Cases with AI</h1>
         </div>
       </div>
@@ -173,12 +175,12 @@ export function GenerateTestCases() {
             ) : allSuites.length === 0 ? (
               <p className="ts-form-hint">No test suites available. Create a test suite first.</p>
             ) : (
-              <select id="ai-suite" value={testSuiteId} onChange={(e) => setTestSuiteId(e.target.value)}>
-                <option value="">Select a test suite</option>
-                {allSuites.map((suite) => (
-                  <option key={suite.id} value={suite.id}>{suite.name}</option>
-                ))}
-              </select>
+              <Select
+                value={testSuiteId ? { value: testSuiteId, label: allSuites.find((s) => s.id === testSuiteId)?.name ?? "" } : null}
+                onChange={(opt) => setTestSuiteId(opt?.value ?? "")}
+                options={allSuites.map((suite) => ({ value: suite.id, label: suite.name }))}
+                placeholder="Select a test suite"
+              />
             )}
           </div>
           <div className="ts-form-field">
@@ -193,14 +195,13 @@ export function GenerateTestCases() {
             />
           </div>
           <div className="ts-form-actions">
-            <button className="btn btn-ghost" onClick={() => navigate("/test-cases")}>Cancel</button>
-            <button
-              className="btn btn-primary"
+            <Button variant="ghost" onClick={() => navigate("/test-cases")}>Cancel</Button>
+            <Button
               onClick={handleCreateSession}
               disabled={loading || !testSuiteId || !userStory.trim()}
             >
               {loading ? "Starting..." : "Continue"}
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -229,16 +230,15 @@ export function GenerateTestCases() {
             </div>
           ))}
           <div className="ts-form-actions">
-            <button className="btn btn-ghost" onClick={handleSkipFollowUp} disabled={loading}>
+            <Button variant="ghost" onClick={handleSkipFollowUp} disabled={loading}>
               Skip & Generate
-            </button>
-            <button
-              className="btn btn-primary"
+            </Button>
+            <Button
               onClick={handleSubmitAnswers}
               disabled={loading}
             >
               {loading ? "Generating Scenarios..." : "Submit & Generate"}
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -253,9 +253,9 @@ export function GenerateTestCases() {
               </span>
             </div>
             <div style={{ display: "flex", gap: "8px" }}>
-              <button className="btn btn-ghost" onClick={toggleAll}>
+              <Button variant="ghost" onClick={toggleAll}>
                 {selectedIndices.size === scenarios.length ? "Deselect All" : "Select All"}
-              </button>
+              </Button>
             </div>
           </div>
           <div className="ts-list">
@@ -289,14 +289,13 @@ export function GenerateTestCases() {
             ))}
           </div>
           <div className="ts-form-actions" style={{ marginTop: "20px" }}>
-            <button className="btn btn-ghost" onClick={() => navigate("/test-cases")}>Cancel</button>
-            <button
-              className="btn btn-primary"
+            <Button variant="ghost" onClick={() => navigate("/test-cases")}>Cancel</Button>
+            <Button
               onClick={handleCreateTestCases}
               disabled={loading || selectedIndices.size === 0}
             >
               {loading ? "Creating..." : `Create ${selectedIndices.size} Test Case${selectedIndices.size !== 1 ? "s" : ""} as Draft`}
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -312,9 +311,9 @@ export function GenerateTestCases() {
           </div>
           <p>Test cases created as drafts!</p>
           <span style={{ marginBottom: "20px" }}>Review them in the test cases list and mark them active when ready.</span>
-          <button className="btn btn-primary" onClick={() => navigate("/test-cases")}>
+          <Button onClick={() => navigate("/test-cases")}>
             View Test Cases
-          </button>
+          </Button>
         </div>
       )}
     </div>
