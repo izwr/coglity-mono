@@ -22,6 +22,7 @@ export function App() {
       <Nav theme={theme} onToggleTheme={toggleTheme} />
       <Hero />
       <Features />
+      <TestingCapabilities />
       <HowItWorks />
       <CTA />
       <Footer />
@@ -50,6 +51,7 @@ function Nav({
         <span className="nav-logo">Coglity</span>
         <div className="nav-links">
           <a href="#features">Features</a>
+          <a href="#testing">Testing</a>
           <a href="#how-it-works">How it works</a>
         </div>
         <div className="nav-actions">
@@ -464,6 +466,311 @@ function Features() {
         </div>
       </div>
     </section>
+  );
+}
+
+/* ── Testing Capabilities Section ── */
+const TESTING_TABS = [
+  {
+    id: "web",
+    label: "Web Testing",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+    ),
+    headline: "End-to-end web application testing",
+    description:
+      "Vision-based agents navigate your web app like real users — clicking buttons, filling forms, and verifying UI states across browsers. No selectors to maintain, no flaky locators.",
+    bullets: [
+      "Cross-browser visual validation",
+      "Form flows & multi-page journeys",
+      "Responsive layout verification",
+      "Automatic regression detection on every deploy",
+    ],
+  },
+  {
+    id: "voice",
+    label: "Voice Bot Testing",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+    ),
+    headline: "Test voice bots with real conversations",
+    description:
+      "Simulate real phone calls and voice interactions end-to-end. Coglity speaks to your voice bot, listens to responses, and validates conversation flows, intents, and audio quality.",
+    bullets: [
+      "Speech-to-text & text-to-speech validation",
+      "Intent recognition accuracy testing",
+      "Multi-turn voice conversation flows",
+      "Latency & audio quality metrics",
+    ],
+  },
+  {
+    id: "chatbot",
+    label: "Conversational Bot Testing",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    ),
+    headline: "Validate chatbot intelligence at scale",
+    description:
+      "Automatically test conversational AI bots across thousands of scenarios. Verify intent handling, context retention, fallback behavior, and response quality — all without manual effort.",
+    bullets: [
+      "Multi-turn context & memory testing",
+      "Intent coverage & fallback validation",
+      "Tone, accuracy & hallucination detection",
+      "Regression testing across model updates",
+    ],
+  },
+  {
+    id: "agent",
+    label: "Agent Testing",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z"/></svg>
+    ),
+    headline: "Test autonomous AI agents end-to-end",
+    description:
+      "Validate that your AI agents make the right decisions, use tools correctly, and complete multi-step tasks. Coglity runs your agents through complex scenarios and evaluates every action.",
+    bullets: [
+      "Tool-use & function-call validation",
+      "Multi-step task completion scoring",
+      "Guardrail & safety boundary testing",
+      "Cost & latency benchmarking per run",
+    ],
+  },
+] as const;
+
+function TestingCapabilities() {
+  const [activeTab, setActiveTab] = useState(0);
+  const tab = TESTING_TABS[activeTab];
+
+  return (
+    <section className="testing-capabilities" id="testing">
+      <div className="section-inner">
+        <div className="section-header">
+          <h2 className="section-title">One platform, every type of testing</h2>
+          <p className="section-subtitle">
+            From web UIs to voice bots to autonomous agents — Coglity tests it all with AI-powered precision.
+          </p>
+        </div>
+
+        <div className="tc-tabs">
+          {TESTING_TABS.map((t, i) => (
+            <button
+              key={t.id}
+              className={`tc-tab ${i === activeTab ? "tc-tab-active" : ""}`}
+              onClick={() => setActiveTab(i)}
+            >
+              <span className="tc-tab-icon">{t.icon}</span>
+              <span>{t.label}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="tc-panel" key={tab.id}>
+          <div className="tc-panel-text">
+            <h3 className="tc-headline">{tab.headline}</h3>
+            <p className="tc-description">{tab.description}</p>
+            <ul className="tc-bullets">
+              {tab.bullets.map((b, i) => (
+                <li key={i} className="tc-bullet">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  {b}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="tc-panel-visual">
+            {tab.id === "web" && <VisualWeb />}
+            {tab.id === "voice" && <VisualVoice />}
+            {tab.id === "chatbot" && <VisualChatbot />}
+            {tab.id === "agent" && <VisualAgent />}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function VisualWeb() {
+  const steps = [
+    { action: "Navigate to /signup", status: "pass" },
+    { action: "Fill email & password fields", status: "pass" },
+    { action: "Click 'Create Account' button", status: "pass" },
+    { action: "Verify welcome dashboard loads", status: "pass" },
+    { action: "Check responsive layout at 375px", status: "fail" },
+  ];
+  return (
+    <div className="tv-web">
+      <div className="tv-browser">
+        <div className="tv-browser-bar">
+          <div className="tv-dots"><span /><span /><span /></div>
+          <div className="tv-url">app.example.com/signup</div>
+        </div>
+        <div className="tv-browser-body">
+          <div className="tv-mock-form">
+            <div className="tv-mock-field"><span>Email</span></div>
+            <div className="tv-mock-field"><span>Password</span></div>
+            <div className="tv-mock-submit">Create Account</div>
+          </div>
+          <div className="tv-scan-line" />
+        </div>
+      </div>
+      <div className="tv-results">
+        {steps.map((s, i) => (
+          <div className="tv-result-row anim-slide-in-right" key={i} style={{ animationDelay: `${0.2 + i * 0.15}s` }}>
+            <span className={s.status === "pass" ? "agent-result-pass" : "agent-result-fail"}>
+              {s.status === "pass" ? "PASS" : "FAIL"}
+            </span>
+            <span>{s.action}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function VisualVoice() {
+  const turns = [
+    { role: "agent", text: "Hi, welcome to Acme support. How can I help you today?" },
+    { role: "user", text: "I'd like to check the status of my order." },
+    { role: "agent", text: "Sure! Can you give me your order number?" },
+    { role: "user", text: "It's ORD-7829." },
+    { role: "agent", text: "Your order shipped yesterday and arrives Friday." },
+  ];
+  return (
+    <div className="tv-voice">
+      <div className="tv-voice-header">
+        <div className="tv-voice-wave">
+          {[...Array(12)].map((_, i) => (
+            <div key={i} className="tv-wave-bar" style={{ animationDelay: `${i * 0.08}s` }} />
+          ))}
+        </div>
+        <span className="tv-voice-status">Call in progress</span>
+      </div>
+      <div className="tv-voice-transcript">
+        {turns.map((t, i) => (
+          <div
+            className={`tv-voice-turn tv-voice-${t.role} anim-slide-in-right`}
+            key={i}
+            style={{ animationDelay: `${0.3 + i * 0.25}s` }}
+          >
+            <span className="tv-voice-role">{t.role === "agent" ? "Bot" : "Coglity"}</span>
+            <span className="tv-voice-text">{t.text}</span>
+          </div>
+        ))}
+      </div>
+      <div className="tv-voice-metrics anim-fade-in-long">
+        <div className="tv-metric">
+          <span className="tv-metric-val">98%</span>
+          <span className="tv-metric-label">Intent accuracy</span>
+        </div>
+        <div className="tv-metric">
+          <span className="tv-metric-val">1.2s</span>
+          <span className="tv-metric-label">Avg latency</span>
+        </div>
+        <div className="tv-metric">
+          <span className="tv-metric-val">5/5</span>
+          <span className="tv-metric-label">Turns completed</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function VisualChatbot() {
+  const messages = [
+    { from: "bot", text: "Hi! I'm your AI assistant. How can I help?" },
+    { from: "tester", text: "What's your return policy?" },
+    { from: "bot", text: "You can return items within 30 days of purchase for a full refund." },
+    { from: "tester", text: "What if I lost the receipt?" },
+    { from: "bot", text: "No worries! We can look up your order by email or phone number." },
+  ];
+  const checks = [
+    { label: "Context retained across turns", pass: true },
+    { label: "Accurate policy information", pass: true },
+    { label: "Graceful fallback on edge case", pass: true },
+    { label: "No hallucinated details", pass: false },
+  ];
+  return (
+    <div className="tv-chatbot">
+      <div className="tv-chat-window">
+        <div className="tv-chat-header">
+          <div className="tv-chat-avatar">AI</div>
+          <span>Support Bot</span>
+          <span className="tv-chat-online" />
+        </div>
+        <div className="tv-chat-messages">
+          {messages.map((m, i) => (
+            <div
+              className={`tv-chat-msg tv-chat-${m.from} anim-slide-in-right`}
+              key={i}
+              style={{ animationDelay: `${0.2 + i * 0.2}s` }}
+            >
+              {m.text}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="tv-chat-checks">
+        {checks.map((c, i) => (
+          <div className="tv-chat-check anim-slide-in-right" key={i} style={{ animationDelay: `${0.5 + i * 0.15}s` }}>
+            <span className={c.pass ? "agent-result-pass" : "agent-result-fail"}>
+              {c.pass ? "PASS" : "FAIL"}
+            </span>
+            <span>{c.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function VisualAgent() {
+  const actions = [
+    { step: "1", action: "Parse user request: 'Book a flight to NYC'", status: "done" },
+    { step: "2", action: "Call search_flights(dest='JFK', date='Mar 28')", status: "done" },
+    { step: "3", action: "Select cheapest option: $342 Delta", status: "done" },
+    { step: "4", action: "Call book_flight(id='DL-482')", status: "done" },
+    { step: "5", action: "Confirm booking & send itinerary email", status: "active" },
+  ];
+  const evals = [
+    { label: "Correct tool selection", score: "5/5" },
+    { label: "Parameter accuracy", score: "4/5" },
+    { label: "Task completion", score: "100%" },
+    { label: "Guardrail compliance", score: "PASS" },
+  ];
+  return (
+    <div className="tv-agent">
+      <div className="tv-agent-trace">
+        <div className="tv-agent-trace-header">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+          Agent Execution Trace
+        </div>
+        {actions.map((a, i) => (
+          <div
+            className={`tv-agent-action ${a.status === "active" ? "tv-agent-action-active" : ""} anim-slide-in-right`}
+            key={i}
+            style={{ animationDelay: `${0.2 + i * 0.18}s` }}
+          >
+            <div className={`tv-agent-step-num ${a.status === "done" ? "tv-step-done" : "tv-step-active"}`}>
+              {a.status === "done" ? (
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              ) : (
+                a.step
+              )}
+            </div>
+            <span>{a.action}</span>
+          </div>
+        ))}
+      </div>
+      <div className="tv-agent-evals">
+        <div className="tv-agent-evals-header">Evaluation</div>
+        {evals.map((e, i) => (
+          <div className="tv-agent-eval anim-slide-in-right" key={i} style={{ animationDelay: `${0.6 + i * 0.15}s` }}>
+            <span className="tv-agent-eval-label">{e.label}</span>
+            <span className="tv-agent-eval-score">{e.score}</span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
