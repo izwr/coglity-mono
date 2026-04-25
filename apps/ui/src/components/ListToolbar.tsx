@@ -94,15 +94,22 @@ export function ListToolbar({ searchPlaceholder, tags, sortOptions, onApply, sui
         />
       )}
       {statusToggle && (
-        <div className="status-toggle">
+        <div className="tabs tabs-segmented">
+          <button
+            type="button"
+            className={`tab${pendingStatus === "" ? " active" : ""}`}
+            onClick={() => setPendingStatus("")}
+          >
+            <span className="tab-label">All</span>
+          </button>
           {statusToggle.options.map((opt) => (
             <button
               key={opt.value}
               type="button"
-              className={`status-toggle-btn${pendingStatus === opt.value ? ` ${opt.activeClass}` : ""}`}
+              className={`tab${pendingStatus === opt.value ? " active" : ""}`}
               onClick={() => setPendingStatus(pendingStatus === opt.value ? "" : opt.value)}
             >
-              {opt.label}
+              <span className="tab-label">{opt.label}</span>
             </button>
           ))}
         </div>
