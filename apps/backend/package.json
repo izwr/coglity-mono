@@ -14,11 +14,14 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@azure/identity": "^4.5.0",
+    "@azure/storage-blob": "^12.31.0",
     "@coglity/shared": "workspace:*",
     "connect-pg-simple": "^10.0.0",
     "drizzle-orm": "^0.44.7",
     "express": "^5",
     "express-session": "^1.18.1",
+    "multer": "^2.1.1",
     "openai": "^6.32.0",
     "postgres": "^3.4.8",
     "zod": "^3.25.76"
@@ -27,6 +30,7 @@
     "@types/connect-pg-simple": "^7.0.3",
     "@types/express": "^5",
     "@types/express-session": "^1.18.1",
+    "@types/multer": "^2.1.0",
     "@types/node": "^22",
     "drizzle-kit": "^0.31.10",
     "tsx": "^4",

@@ -1,37 +1,50 @@
 import { type Router as RouterType, Router } from "express";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import OpenAI from "openai";
 import { z } from "zod";
-import { aiGenerationSessions, insertAiGenerationSessionSchema, testCases } from "@coglity/shared/schema";
-import { db } from "../db.js";
+import { aiGenerationSessions, insertAiGenerationSessionSchema, testCases, testSuites } from "@coglity/shared/schema";
+import { db as rootDb } from "../db.js";
 
-const router: RouterType = Router();
+const router: RouterType = Router({ mergeParams: true });
+
+type DbHandle = typeof rootDb;
 
 const openai = new OpenAI({
   baseURL: "https://solly-foundry-resource.services.ai.azure.com/api/projects/solly-foundry/openai/v1/",
 });
 
-// Create a new AI generation session
 router.post("/session", async (req, res) => {
+  const db = (req.db ?? rootDb) as DbHandle;
+  const projectId = req.projectId!;
   const parsed = insertAiGenerationSessionSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten().fieldErrors });
     return;
   }
+  // Verify testSuite belongs to this project
+  const [suite] = await db
+    .select({ id: testSuites.id })
+    .from(testSuites)
+    .where(and(eq(testSuites.id, parsed.data.testSuiteId), eq(testSuites.projectId, projectId)));
+  if (!suite) {
+    res.status(400).json({ error: "testSuiteId does not belong to this project" });
+    return;
+  }
   const userId = req.session.userId;
   const [session] = await db
     .insert(aiGenerationSessions)
-    .values({ ...parsed.data, createdBy: userId })
+    .values({ ...parsed.data, projectId, createdBy: userId })
     .returning();
   res.status(201).json(session);
 });
 
-// Get session by ID
 router.get("/session/:id", async (req, res) => {
+  const db = (req.db ?? rootDb) as DbHandle;
+  const projectId = req.projectId!;
   const [session] = await db
     .select()
     .from(aiGenerationSessions)
-    .where(eq(aiGenerationSessions.id, req.params.id));
+    .where(and(eq(aiGenerationSessions.id, req.params.id as string), eq(aiGenerationSessions.projectId, projectId)));
   if (!session) {
     res.status(404).json({ error: "Session not found" });
     return;
@@ -39,12 +52,13 @@ router.get("/session/:id", async (req, res) => {
   res.json(session);
 });
 
-// Generate follow-up questions based on user story
 router.post("/session/:id/followup", async (req, res) => {
+  const db = (req.db ?? rootDb) as DbHandle;
+  const projectId = req.projectId!;
   const [session] = await db
     .select()
     .from(aiGenerationSessions)
-    .where(eq(aiGenerationSessions.id, req.params.id));
+    .where(and(eq(aiGenerationSessions.id, req.params.id as string), eq(aiGenerationSessions.projectId, projectId)));
   if (!session) {
     res.status(404).json({ error: "Session not found" });
     return;
@@ -64,12 +78,7 @@ router.post("/session/:id/followup", async (req, res) => {
         strict: true,
         schema: {
           type: "object",
-          properties: {
-            questions: {
-              type: "array",
-              items: { type: "string" },
-            },
-          },
+          properties: { questions: { type: "array", items: { type: "string" } } },
           required: ["questions"],
           additionalProperties: false,
         },
@@ -82,45 +91,40 @@ router.post("/session/:id/followup", async (req, res) => {
     res.status(500).json({ error: "Failed to generate follow-up questions" });
     return;
   }
-
   res.json({ questions: result.questions });
 });
 
-// Submit answers to follow-up questions and save them
 const answersSchema = z.object({
-  answers: z.array(z.object({
-    question: z.string(),
-    answer: z.string(),
-  })),
+  answers: z.array(z.object({ question: z.string(), answer: z.string() })),
 });
 
 router.post("/session/:id/answers", async (req, res) => {
+  const db = (req.db ?? rootDb) as DbHandle;
+  const projectId = req.projectId!;
   const parsed = answersSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten().fieldErrors });
     return;
   }
-
   const [updated] = await db
     .update(aiGenerationSessions)
     .set({ followUpQA: parsed.data.answers, updatedAt: new Date() })
-    .where(eq(aiGenerationSessions.id, req.params.id))
+    .where(and(eq(aiGenerationSessions.id, req.params.id as string), eq(aiGenerationSessions.projectId, projectId)))
     .returning();
-
   if (!updated) {
     res.status(404).json({ error: "Session not found" });
     return;
   }
-
   res.json(updated);
 });
 
-// Generate test scenarios based on user story + follow-up Q&A
 router.post("/session/:id/generate-scenarios", async (req, res) => {
+  const db = (req.db ?? rootDb) as DbHandle;
+  const projectId = req.projectId!;
   const [session] = await db
     .select()
     .from(aiGenerationSessions)
-    .where(eq(aiGenerationSessions.id, req.params.id));
+    .where(and(eq(aiGenerationSessions.id, req.params.id as string), eq(aiGenerationSessions.projectId, projectId)));
   if (!session) {
     res.status(404).json({ error: "Session not found" });
     return;
@@ -128,8 +132,7 @@ router.post("/session/:id/generate-scenarios", async (req, res) => {
 
   const followUpQA = session.followUpQA as { question: string; answer: string }[];
   const qaContext = followUpQA.length > 0
-    ? "\n\nAdditional context from Q&A:\n" +
-      followUpQA.map((qa) => `Q: ${qa.question}\nA: ${qa.answer}`).join("\n\n")
+    ? "\n\nAdditional context from Q&A:\n" + followUpQA.map((qa) => `Q: ${qa.question}\nA: ${qa.answer}`).join("\n\n")
     : "";
 
   const completion = await openai.responses.parse({
@@ -151,10 +154,7 @@ router.post("/session/:id/generate-scenarios", async (req, res) => {
               type: "array",
               items: {
                 type: "object",
-                properties: {
-                  title: { type: "string" },
-                  description: { type: "string" },
-                },
+                properties: { title: { type: "string" }, description: { type: "string" } },
                 required: ["title", "description"],
                 additionalProperties: false,
               },
@@ -175,23 +175,18 @@ router.post("/session/:id/generate-scenarios", async (req, res) => {
 
   const [updated] = await db
     .update(aiGenerationSessions)
-    .set({
-      generatedScenarios: result.scenarios,
-      status: "scenarios_generated",
-      updatedAt: new Date(),
-    })
-    .where(eq(aiGenerationSessions.id, req.params.id))
+    .set({ generatedScenarios: result.scenarios, status: "scenarios_generated", updatedAt: new Date() })
+    .where(and(eq(aiGenerationSessions.id, req.params.id as string), eq(aiGenerationSessions.projectId, projectId)))
     .returning();
 
   res.json(updated);
 });
 
-// Create test cases from selected scenarios
-const createTestCasesSchema = z.object({
-  selectedIndices: z.array(z.number()),
-});
+const createTestCasesSchema = z.object({ selectedIndices: z.array(z.number()) });
 
 router.post("/session/:id/create-test-cases", async (req, res) => {
+  const db = (req.db ?? rootDb) as DbHandle;
+  const projectId = req.projectId!;
   const parsed = createTestCasesSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten().fieldErrors });
@@ -201,7 +196,7 @@ router.post("/session/:id/create-test-cases", async (req, res) => {
   const [session] = await db
     .select()
     .from(aiGenerationSessions)
-    .where(eq(aiGenerationSessions.id, req.params.id));
+    .where(and(eq(aiGenerationSessions.id, req.params.id as string), eq(aiGenerationSessions.projectId, projectId)));
   if (!session) {
     res.status(404).json({ error: "Session not found" });
     return;
@@ -223,11 +218,9 @@ router.post("/session/:id/create-test-cases", async (req, res) => {
     return;
   }
 
-  // Generate detailed test case fields for each selected scenario
   const followUpQA = session.followUpQA as { question: string; answer: string }[];
   const qaContext = followUpQA.length > 0
-    ? "\n\nAdditional context from Q&A:\n" +
-      followUpQA.map((qa) => `Q: ${qa.question}\nA: ${qa.answer}`).join("\n\n")
+    ? "\n\nAdditional context from Q&A:\n" + followUpQA.map((qa) => `Q: ${qa.question}\nA: ${qa.answer}`).join("\n\n")
     : "";
 
   const detailCompletion = await openai.responses.parse({
@@ -275,6 +268,7 @@ router.post("/session/:id/create-test-cases", async (req, res) => {
     .insert(testCases)
     .values(
       selectedScenarios.map((scenario, i) => ({
+        projectId,
         testSuiteId: session.testSuiteId,
         title: scenario.title,
         preCondition: details?.testCases[i]?.preCondition ?? "",
@@ -295,7 +289,7 @@ router.post("/session/:id/create-test-cases", async (req, res) => {
       status: "test_cases_created",
       updatedAt: new Date(),
     })
-    .where(eq(aiGenerationSessions.id, req.params.id));
+    .where(and(eq(aiGenerationSessions.id, req.params.id as string), eq(aiGenerationSessions.projectId, projectId)));
 
   res.status(201).json(insertedCases);
 });

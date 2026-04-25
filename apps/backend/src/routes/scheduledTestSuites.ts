@@ -1,22 +1,24 @@
 import { type Router as RouterType, Router } from "express";
-import { eq, desc, asc, sql } from "drizzle-orm";
+import { eq, and, desc, asc, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import {
   scheduledTestSuites, insertScheduledTestSuiteSchema,
   scheduledTestCases, updateScheduledTestCaseSchema,
   testSuites, testCases, users, bugs,
 } from "@coglity/shared/schema";
-import { db } from "../db.js";
+import { db as rootDb } from "../db.js";
 
-const router: RouterType = Router();
+const router: RouterType = Router({ mergeParams: true });
+
+type DbHandle = typeof rootDb;
 
 const createdByUser = alias(users, "createdByUser");
 const assignedToUser = alias(users, "assignedToUser");
 
-// ── DTO builders ────────────────────────────────────────────────
-
-async function buildSuiteDTO(row: typeof scheduledTestSuites.$inferSelect & { testSuiteName: string | null; createdByName: string | null }) {
-  // Count scheduled cases + aggregate states
+async function buildSuiteDTO(
+  db: DbHandle,
+  row: { id: string; testSuiteId: string; startDate: Date; endDate: Date; createdBy: string | null; createdAt: Date; updatedAt: Date; projectId: string; testSuiteName: string | null; createdByName: string | null },
+) {
   const [stats] = await db
     .select({
       total: sql<number>`cast(count(*) as int)`,
@@ -25,12 +27,14 @@ async function buildSuiteDTO(row: typeof scheduledTestSuites.$inferSelect & { te
     })
     .from(scheduledTestCases)
     .where(eq(scheduledTestCases.scheduledTestSuiteId, row.id));
-
   return { ...row, caseCount: stats?.total ?? 0, passedCount: stats?.passed ?? 0, failedCount: stats?.failed ?? 0 };
 }
 
-async function buildCaseDTO(sc: typeof scheduledTestCases.$inferSelect & { assignedToName: string | null }) {
-  // Join test case details
+async function buildCaseDTO(
+  db: DbHandle,
+  projectId: string,
+  sc: { id: string; scheduledTestSuiteId: string; testCaseId: string; assignedTo: string | null; actualResults: string; state: string; linkedBugIds: string[]; createdAt: Date; updatedAt: Date; projectId: string; assignedToName: string | null },
+) {
   const [tc] = await db
     .select({
       title: testCases.title,
@@ -41,23 +45,22 @@ async function buildCaseDTO(sc: typeof scheduledTestCases.$inferSelect & { assig
       status: testCases.status,
     })
     .from(testCases)
-    .where(eq(testCases.id, sc.testCaseId));
+    .where(and(eq(testCases.id, sc.testCaseId), eq(testCases.projectId, projectId)));
 
-  // Resolve linked bug titles
   let linkedBugs: { id: string; title: string }[] = [];
-  if (sc.linkedBugIds && (sc.linkedBugIds as string[]).length > 0) {
+  if (sc.linkedBugIds && sc.linkedBugIds.length > 0) {
     const rows = await db
       .select({ id: bugs.id, title: bugs.title })
-      .from(bugs);
+      .from(bugs)
+      .where(eq(bugs.projectId, projectId));
     const bugMap = new Map(rows.map((b) => [b.id, b.title]));
-    linkedBugs = (sc.linkedBugIds as string[])
+    linkedBugs = sc.linkedBugIds
       .filter((id) => bugMap.has(id))
       .map((id) => ({ id, title: bugMap.get(id)! }));
   }
 
   return {
     ...sc,
-    // Flat-merge test case fields
     title: tc?.title ?? null,
     preCondition: tc?.preCondition ?? null,
     testSteps: tc?.testSteps ?? null,
@@ -68,10 +71,9 @@ async function buildCaseDTO(sc: typeof scheduledTestCases.$inferSelect & { assig
   };
 }
 
-// ── Scheduled Test Suite CRUD ───────────────────────────────────
-
 const suiteColumns = {
   id: scheduledTestSuites.id,
+  projectId: scheduledTestSuites.projectId,
   testSuiteId: scheduledTestSuites.testSuiteId,
   startDate: scheduledTestSuites.startDate,
   endDate: scheduledTestSuites.endDate,
@@ -82,7 +84,7 @@ const suiteColumns = {
   createdByName: createdByUser.displayName,
 } as const;
 
-function suitesBaseQuery() {
+function suitesBaseQuery(db: DbHandle) {
   return db
     .select(suiteColumns)
     .from(scheduledTestSuites)
@@ -90,8 +92,9 @@ function suitesBaseQuery() {
     .leftJoin(createdByUser, eq(scheduledTestSuites.createdBy, createdByUser.id));
 }
 
-// List
 router.get("/", async (req, res) => {
+  const db = (req.db ?? rootDb) as DbHandle;
+  const projectId = req.projectId!;
   const sortBy = typeof req.query.sortBy === "string" ? req.query.sortBy : "createdAt";
   const sortDir = req.query.sortDir === "asc" ? "asc" : "desc";
   const page = Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1);
@@ -102,31 +105,36 @@ router.get("/", async (req, res) => {
 
   const [{ count: total }] = await db
     .select({ count: sql<number>`cast(count(*) as int)` })
-    .from(scheduledTestSuites);
+    .from(scheduledTestSuites)
+    .where(eq(scheduledTestSuites.projectId, projectId));
 
   const offset = (page - 1) * limit;
-  const rows = await suitesBaseQuery()
+  const rows = await suitesBaseQuery(db)
+    .where(eq(scheduledTestSuites.projectId, projectId))
     .orderBy(orderFn(sortColumn))
     .limit(limit)
     .offset(offset);
 
-  const data = await Promise.all(rows.map(buildSuiteDTO));
+  const data = await Promise.all(rows.map((r) => buildSuiteDTO(db, r)));
   res.json({ data, total, page, limit });
 });
 
-// Get by ID (with scheduled cases)
 router.get("/:id", async (req, res) => {
-  const [row] = await suitesBaseQuery().where(eq(scheduledTestSuites.id, req.params.id));
+  const db = (req.db ?? rootDb) as DbHandle;
+  const projectId = req.projectId!;
+  const [row] = await suitesBaseQuery(db).where(
+    and(eq(scheduledTestSuites.id, req.params.id as string), eq(scheduledTestSuites.projectId, projectId)),
+  );
   if (!row) {
     res.status(404).json({ error: "Scheduled test suite not found" });
     return;
   }
-  const suite = await buildSuiteDTO(row);
+  const suite = await buildSuiteDTO(db, row);
 
-  // Get all scheduled cases for this suite
   const caseRows = await db
     .select({
       id: scheduledTestCases.id,
+      projectId: scheduledTestCases.projectId,
       scheduledTestSuiteId: scheduledTestCases.scheduledTestSuiteId,
       testCaseId: scheduledTestCases.testCaseId,
       assignedTo: scheduledTestCases.assignedTo,
@@ -139,15 +147,21 @@ router.get("/:id", async (req, res) => {
     })
     .from(scheduledTestCases)
     .leftJoin(assignedToUser, eq(scheduledTestCases.assignedTo, assignedToUser.id))
-    .where(eq(scheduledTestCases.scheduledTestSuiteId, req.params.id))
+    .where(
+      and(
+        eq(scheduledTestCases.scheduledTestSuiteId, req.params.id as string),
+        eq(scheduledTestCases.projectId, projectId),
+      ),
+    )
     .orderBy(asc(scheduledTestCases.createdAt));
 
-  const cases = await Promise.all(caseRows.map(buildCaseDTO));
+  const cases = await Promise.all(caseRows.map((r) => buildCaseDTO(db, projectId, r)));
   res.json({ ...suite, scheduledCases: cases });
 });
 
-// Create
 router.post("/", async (req, res) => {
+  const db = (req.db ?? rootDb) as DbHandle;
+  const projectId = req.projectId!;
   const parsed = insertScheduledTestSuiteSchema.safeParse({
     ...req.body,
     startDate: req.body.startDate ? new Date(req.body.startDate) : undefined,
@@ -160,31 +174,32 @@ router.post("/", async (req, res) => {
   const userId = req.session.userId;
   const [inserted] = await db
     .insert(scheduledTestSuites)
-    .values({ ...parsed.data, createdBy: userId })
+    .values({ ...parsed.data, projectId, createdBy: userId })
     .returning();
 
-  // Auto-populate scheduled cases from all active test cases in the suite
   const activeCases = await db
     .select({ id: testCases.id })
     .from(testCases)
-    .where(eq(testCases.testSuiteId, parsed.data.testSuiteId));
+    .where(and(eq(testCases.testSuiteId, parsed.data.testSuiteId), eq(testCases.projectId, projectId)));
 
   if (activeCases.length > 0) {
     await db.insert(scheduledTestCases).values(
       activeCases.map((tc) => ({
         scheduledTestSuiteId: inserted.id,
         testCaseId: tc.id,
+        projectId,
       })),
     );
   }
 
-  const [row] = await suitesBaseQuery().where(eq(scheduledTestSuites.id, inserted.id));
-  const suite = await buildSuiteDTO(row);
+  const [row] = await suitesBaseQuery(db).where(eq(scheduledTestSuites.id, inserted.id));
+  const suite = await buildSuiteDTO(db, row);
   res.status(201).json(suite);
 });
 
-// Update suite dates
 router.put("/:id", async (req, res) => {
+  const db = (req.db ?? rootDb) as DbHandle;
+  const projectId = req.projectId!;
   const parsed = insertScheduledTestSuiteSchema.partial().safeParse({
     ...req.body,
     startDate: req.body.startDate ? new Date(req.body.startDate) : undefined,
@@ -197,21 +212,22 @@ router.put("/:id", async (req, res) => {
   const [updated] = await db
     .update(scheduledTestSuites)
     .set({ ...parsed.data, updatedAt: new Date() })
-    .where(eq(scheduledTestSuites.id, req.params.id))
+    .where(and(eq(scheduledTestSuites.id, req.params.id as string), eq(scheduledTestSuites.projectId, projectId)))
     .returning();
   if (!updated) {
     res.status(404).json({ error: "Scheduled test suite not found" });
     return;
   }
-  const [row] = await suitesBaseQuery().where(eq(scheduledTestSuites.id, updated.id));
-  res.json(await buildSuiteDTO(row));
+  const [row] = await suitesBaseQuery(db).where(eq(scheduledTestSuites.id, updated.id));
+  res.json(await buildSuiteDTO(db, row));
 });
 
-// Delete
 router.delete("/:id", async (req, res) => {
+  const db = (req.db ?? rootDb) as DbHandle;
+  const projectId = req.projectId!;
   const [deleted] = await db
     .delete(scheduledTestSuites)
-    .where(eq(scheduledTestSuites.id, req.params.id))
+    .where(and(eq(scheduledTestSuites.id, req.params.id as string), eq(scheduledTestSuites.projectId, projectId)))
     .returning({ id: scheduledTestSuites.id });
   if (!deleted) {
     res.status(404).json({ error: "Scheduled test suite not found" });
@@ -220,13 +236,13 @@ router.delete("/:id", async (req, res) => {
   res.status(204).send();
 });
 
-// ── Scheduled Test Case endpoints ──────────────────────────────
-
-// Get a single scheduled test case (merged DTO)
 router.get("/:suiteId/cases/:caseId", async (req, res) => {
+  const db = (req.db ?? rootDb) as DbHandle;
+  const projectId = req.projectId!;
   const [row] = await db
     .select({
       id: scheduledTestCases.id,
+      projectId: scheduledTestCases.projectId,
       scheduledTestSuiteId: scheduledTestCases.scheduledTestSuiteId,
       testCaseId: scheduledTestCases.testCaseId,
       assignedTo: scheduledTestCases.assignedTo,
@@ -239,16 +255,17 @@ router.get("/:suiteId/cases/:caseId", async (req, res) => {
     })
     .from(scheduledTestCases)
     .leftJoin(assignedToUser, eq(scheduledTestCases.assignedTo, assignedToUser.id))
-    .where(eq(scheduledTestCases.id, req.params.caseId));
+    .where(and(eq(scheduledTestCases.id, req.params.caseId as string), eq(scheduledTestCases.projectId, projectId)));
 
   if (!row) {
     res.status(404).json({ error: "Scheduled test case not found" });
     return;
   }
 
-  // Also include suite info
-  const [suite] = await suitesBaseQuery().where(eq(scheduledTestSuites.id, req.params.suiteId));
-  const caseDTO = await buildCaseDTO(row);
+  const [suite] = await suitesBaseQuery(db).where(
+    and(eq(scheduledTestSuites.id, req.params.suiteId as string), eq(scheduledTestSuites.projectId, projectId)),
+  );
+  const caseDTO = await buildCaseDTO(db, projectId, row);
   res.json({
     ...caseDTO,
     testSuiteName: suite?.testSuiteName ?? null,
@@ -257,8 +274,9 @@ router.get("/:suiteId/cases/:caseId", async (req, res) => {
   });
 });
 
-// Update a scheduled test case (state, assignedTo, actualResults, linkedBugIds)
 router.put("/:suiteId/cases/:caseId", async (req, res) => {
+  const db = (req.db ?? rootDb) as DbHandle;
+  const projectId = req.projectId!;
   const parsed = updateScheduledTestCaseSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten().fieldErrors });
@@ -267,17 +285,17 @@ router.put("/:suiteId/cases/:caseId", async (req, res) => {
   const [updated] = await db
     .update(scheduledTestCases)
     .set({ ...parsed.data, updatedAt: new Date() })
-    .where(eq(scheduledTestCases.id, req.params.caseId))
+    .where(and(eq(scheduledTestCases.id, req.params.caseId as string), eq(scheduledTestCases.projectId, projectId)))
     .returning();
   if (!updated) {
     res.status(404).json({ error: "Scheduled test case not found" });
     return;
   }
 
-  // Return full DTO
   const [row] = await db
     .select({
       id: scheduledTestCases.id,
+      projectId: scheduledTestCases.projectId,
       scheduledTestSuiteId: scheduledTestCases.scheduledTestSuiteId,
       testCaseId: scheduledTestCases.testCaseId,
       assignedTo: scheduledTestCases.assignedTo,
@@ -292,7 +310,7 @@ router.put("/:suiteId/cases/:caseId", async (req, res) => {
     .leftJoin(assignedToUser, eq(scheduledTestCases.assignedTo, assignedToUser.id))
     .where(eq(scheduledTestCases.id, updated.id));
 
-  res.json(await buildCaseDTO(row));
+  res.json(await buildCaseDTO(db, projectId, row));
 });
 
 export default router;
