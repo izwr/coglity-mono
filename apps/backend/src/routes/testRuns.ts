@@ -1,6 +1,8 @@
 import { type Router as RouterType, Router } from "express";
 import { eq, and, desc } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import { ServiceBusClient } from "@azure/service-bus";
+import { DefaultAzureCredential } from "@azure/identity";
 import {
   testRuns,
   testCases,
@@ -131,8 +133,8 @@ router.post("/", async (req, res) => {
     })
     .returning();
 
-  // Fire-and-forget dispatch to executor; DON'T block the response.
-  dispatchToExecutor(inserted.id, {
+  // Fire-and-forget dispatch to executor via Service Bus queue.
+  sendToQueue(inserted.id, {
     runId: inserted.id,
     testCase: {
       id: tc.id,
@@ -154,33 +156,27 @@ router.post("/", async (req, res) => {
   res.status(201).json(row);
 });
 
-async function dispatchToExecutor(
+async function sendToQueue(
   runId: string,
   payload: Record<string, unknown>,
 ): Promise<void> {
-  const url = process.env.EXECUTOR_URL;
-  const secret = process.env.EXECUTOR_WEBHOOK_SECRET ?? "";
-  if (!url) {
-    console.warn(`[test-runs] EXECUTOR_URL not set; run ${runId} will stay queued`);
+  const namespace = process.env.AZURE_SERVICE_BUS_NAMESPACE;
+  const queueName = process.env.AZURE_SERVICE_BUS_QUEUE_NAME;
+  if (!namespace || !queueName) {
+    console.warn(`[test-runs] AZURE_SERVICE_BUS_NAMESPACE or AZURE_SERVICE_BUS_QUEUE_NAME not set; run ${runId} will stay queued`);
     return;
   }
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 5000);
+  const client = new ServiceBusClient(namespace, new DefaultAzureCredential());
+  const sender = client.createSender(queueName);
   try {
-    const res = await fetch(`${url.replace(/\/$/, "")}/api/run-test-case`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-webhook-secret": secret,
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
+    await sender.sendMessages({
+      body: payload,
+      messageId: runId,
+      contentType: "application/json",
     });
-    if (!res.ok) {
-      console.error(`[test-runs] executor responded ${res.status} for run ${runId}`);
-    }
   } finally {
-    clearTimeout(timer);
+    await sender.close();
+    await client.close();
   }
 }
 
