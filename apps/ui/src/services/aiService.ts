@@ -12,6 +12,7 @@ export interface FollowUpQA {
 
 export interface AiGenerationSession {
   id: string;
+  projectId?: string;
   testSuiteId: string;
   userStory: string;
   followUpQA: FollowUpQA[];
@@ -23,34 +24,36 @@ export interface AiGenerationSession {
   updatedAt: string;
 }
 
+const base = (orgId: string, projectId: string) => `/organizations/${orgId}/projects/${projectId}/ai`;
+
 export const aiService = {
-  async createSession(testSuiteId: string, userStory: string): Promise<AiGenerationSession> {
-    const { data } = await api.post<AiGenerationSession>("/ai/session", { testSuiteId, userStory });
+  async createSession(orgId: string, projectId: string, testSuiteId: string, userStory: string): Promise<AiGenerationSession> {
+    const { data } = await api.post<AiGenerationSession>(`${base(orgId, projectId)}/session`, { testSuiteId, userStory });
     return data;
   },
 
-  async getSession(id: string): Promise<AiGenerationSession> {
-    const { data } = await api.get<AiGenerationSession>(`/ai/session/${id}`);
+  async getSession(orgId: string, projectId: string, id: string): Promise<AiGenerationSession> {
+    const { data } = await api.get<AiGenerationSession>(`${base(orgId, projectId)}/session/${id}`);
     return data;
   },
 
-  async getFollowUpQuestions(sessionId: string): Promise<string[]> {
-    const { data } = await api.post<{ questions: string[] }>(`/ai/session/${sessionId}/followup`);
+  async getFollowUpQuestions(orgId: string, projectId: string, sessionId: string): Promise<string[]> {
+    const { data } = await api.post<{ questions: string[] }>(`${base(orgId, projectId)}/session/${sessionId}/followup`);
     return data.questions;
   },
 
-  async submitAnswers(sessionId: string, answers: FollowUpQA[]): Promise<AiGenerationSession> {
-    const { data } = await api.post<AiGenerationSession>(`/ai/session/${sessionId}/answers`, { answers });
+  async submitAnswers(orgId: string, projectId: string, sessionId: string, answers: FollowUpQA[]): Promise<AiGenerationSession> {
+    const { data } = await api.post<AiGenerationSession>(`${base(orgId, projectId)}/session/${sessionId}/answers`, { answers });
     return data;
   },
 
-  async generateScenarios(sessionId: string): Promise<AiGenerationSession> {
-    const { data } = await api.post<AiGenerationSession>(`/ai/session/${sessionId}/generate-scenarios`);
+  async generateScenarios(orgId: string, projectId: string, sessionId: string): Promise<AiGenerationSession> {
+    const { data } = await api.post<AiGenerationSession>(`${base(orgId, projectId)}/session/${sessionId}/generate-scenarios`);
     return data;
   },
 
-  async createTestCases(sessionId: string, selectedIndices: number[]): Promise<unknown[]> {
-    const { data } = await api.post<unknown[]>(`/ai/session/${sessionId}/create-test-cases`, { selectedIndices });
+  async createTestCases(orgId: string, projectId: string, sessionId: string, selectedIndices: number[]): Promise<unknown[]> {
+    const { data } = await api.post<unknown[]>(`${base(orgId, projectId)}/session/${sessionId}/create-test-cases`, { selectedIndices });
     return data;
   },
 };

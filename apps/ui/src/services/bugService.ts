@@ -2,7 +2,8 @@ import type { Bug, Tag, BugComment, BugAttachment } from "@coglity/shared";
 import { api } from "./api";
 
 export interface BugWithDetails extends Omit<Bug, "comments" | "attachments"> {
-  tags: Tag[];
+  projectName?: string | null;
+  tags?: Tag[];
   comments: BugComment[];
   attachments: BugAttachment[];
   createdByName: string | null;
@@ -49,7 +50,6 @@ export interface BugListParams {
   severity?: string;
   bugType?: string;
   assignedTo?: string;
-  tagId?: string;
   sortBy?: string;
   sortDir?: string;
   page?: number;
@@ -57,32 +57,36 @@ export interface BugListParams {
 }
 
 export const bugService = {
-  async getAll(params?: BugListParams): Promise<PaginatedResponse<BugWithDetails>> {
-    const { data } = await api.get<PaginatedResponse<BugWithDetails>>("/bugs", { params });
+  async getAll(orgId: string, projectIds: string[], params?: BugListParams): Promise<PaginatedResponse<BugWithDetails>> {
+    if (!orgId || projectIds.length === 0) return { data: [], total: 0, page: 1, limit: params?.limit ?? 10 };
+    const { data } = await api.get<PaginatedResponse<BugWithDetails>>(
+      `/organizations/${orgId}/bugs`,
+      { params: { ...params, projectIds: projectIds.join(",") } },
+    );
     return data;
   },
 
-  async getById(id: string): Promise<BugWithDetails> {
-    const { data } = await api.get<BugWithDetails>(`/bugs/${id}`);
+  async getById(orgId: string, projectId: string, id: string): Promise<BugWithDetails> {
+    const { data } = await api.get<BugWithDetails>(`/organizations/${orgId}/projects/${projectId}/bugs/${id}`);
     return data;
   },
 
-  async create(payload: CreateBugPayload): Promise<BugWithDetails> {
-    const { data } = await api.post<BugWithDetails>("/bugs", payload);
+  async create(orgId: string, projectId: string, payload: CreateBugPayload): Promise<BugWithDetails> {
+    const { data } = await api.post<BugWithDetails>(`/organizations/${orgId}/projects/${projectId}/bugs`, payload);
     return data;
   },
 
-  async update(id: string, payload: UpdateBugPayload): Promise<BugWithDetails> {
-    const { data } = await api.put<BugWithDetails>(`/bugs/${id}`, payload);
+  async update(orgId: string, projectId: string, id: string, payload: UpdateBugPayload): Promise<BugWithDetails> {
+    const { data } = await api.put<BugWithDetails>(`/organizations/${orgId}/projects/${projectId}/bugs/${id}`, payload);
     return data;
   },
 
-  async addComment(id: string, text: string): Promise<BugWithDetails> {
-    const { data } = await api.post<BugWithDetails>(`/bugs/${id}/comments`, { text });
+  async addComment(orgId: string, projectId: string, id: string, text: string): Promise<BugWithDetails> {
+    const { data } = await api.post<BugWithDetails>(`/organizations/${orgId}/projects/${projectId}/bugs/${id}/comments`, { text });
     return data;
   },
 
-  async remove(id: string): Promise<void> {
-    await api.delete(`/bugs/${id}`);
+  async remove(orgId: string, projectId: string, id: string): Promise<void> {
+    await api.delete(`/organizations/${orgId}/projects/${projectId}/bugs/${id}`);
   },
 };

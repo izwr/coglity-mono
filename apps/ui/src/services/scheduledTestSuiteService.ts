@@ -2,6 +2,8 @@ import { api } from "./api";
 
 export interface ScheduledTestSuiteListItem {
   id: string;
+  projectId: string;
+  projectName: string | null;
   testSuiteId: string;
   testSuiteName: string | null;
   startDate: string;
@@ -15,7 +17,6 @@ export interface ScheduledTestSuiteListItem {
   failedCount: number;
 }
 
-// Flat merged DTO: scheduled test case fields + test case fields at top level
 export interface ScheduledTestCaseDTO {
   id: string;
   scheduledTestSuiteId: string;
@@ -28,7 +29,6 @@ export interface ScheduledTestCaseDTO {
   linkedBugs: { id: string; title: string }[];
   createdAt: string;
   updatedAt: string;
-  // Merged from test case
   title: string | null;
   preCondition: string | null;
   testSteps: string | null;
@@ -37,7 +37,6 @@ export interface ScheduledTestCaseDTO {
   testCaseStatus: string | null;
 }
 
-// Single case GET also includes suite context
 export interface ScheduledTestCaseDetailDTO extends ScheduledTestCaseDTO {
   testSuiteName: string | null;
   startDate: string | null;
@@ -69,37 +68,74 @@ export interface UpdateScheduledTestCasePayload {
 }
 
 export const scheduledTestSuiteService = {
-  async getAll(params?: { page?: number; limit?: number; sortBy?: string; sortDir?: string }): Promise<PaginatedResponse<ScheduledTestSuiteListItem>> {
-    const { data } = await api.get<PaginatedResponse<ScheduledTestSuiteListItem>>("/scheduled-test-suites", { params });
+  async getAll(
+    orgId: string,
+    projectIds: string[],
+    params?: { page?: number; limit?: number; sortBy?: string; sortDir?: string },
+  ): Promise<PaginatedResponse<ScheduledTestSuiteListItem>> {
+    if (!orgId || projectIds.length === 0) return { data: [], total: 0, page: 1, limit: params?.limit ?? 10 };
+    const { data } = await api.get<PaginatedResponse<ScheduledTestSuiteListItem>>(
+      `/organizations/${orgId}/scheduled-test-suites`,
+      { params: { ...params, projectIds: projectIds.join(",") } },
+    );
     return data;
   },
 
-  async getById(id: string): Promise<ScheduledTestSuiteDetail> {
-    const { data } = await api.get<ScheduledTestSuiteDetail>(`/scheduled-test-suites/${id}`);
+  async getById(orgId: string, projectId: string, id: string): Promise<ScheduledTestSuiteDetail> {
+    const { data } = await api.get<ScheduledTestSuiteDetail>(
+      `/organizations/${orgId}/projects/${projectId}/scheduled-test-suites/${id}`,
+    );
     return data;
   },
 
-  async create(payload: CreateScheduledTestSuitePayload): Promise<ScheduledTestSuiteListItem> {
-    const { data } = await api.post<ScheduledTestSuiteListItem>("/scheduled-test-suites", payload);
+  async create(orgId: string, projectId: string, payload: CreateScheduledTestSuitePayload): Promise<ScheduledTestSuiteListItem> {
+    const { data } = await api.post<ScheduledTestSuiteListItem>(
+      `/organizations/${orgId}/projects/${projectId}/scheduled-test-suites`,
+      payload,
+    );
     return data;
   },
 
-  async update(id: string, payload: Partial<CreateScheduledTestSuitePayload>): Promise<ScheduledTestSuiteListItem> {
-    const { data } = await api.put<ScheduledTestSuiteListItem>(`/scheduled-test-suites/${id}`, payload);
+  async update(
+    orgId: string,
+    projectId: string,
+    id: string,
+    payload: Partial<CreateScheduledTestSuitePayload>,
+  ): Promise<ScheduledTestSuiteListItem> {
+    const { data } = await api.put<ScheduledTestSuiteListItem>(
+      `/organizations/${orgId}/projects/${projectId}/scheduled-test-suites/${id}`,
+      payload,
+    );
     return data;
   },
 
-  async getCase(suiteId: string, caseId: string): Promise<ScheduledTestCaseDetailDTO> {
-    const { data } = await api.get<ScheduledTestCaseDetailDTO>(`/scheduled-test-suites/${suiteId}/cases/${caseId}`);
+  async getCase(
+    orgId: string,
+    projectId: string,
+    suiteId: string,
+    caseId: string,
+  ): Promise<ScheduledTestCaseDetailDTO> {
+    const { data } = await api.get<ScheduledTestCaseDetailDTO>(
+      `/organizations/${orgId}/projects/${projectId}/scheduled-test-suites/${suiteId}/cases/${caseId}`,
+    );
     return data;
   },
 
-  async updateCase(suiteId: string, caseId: string, payload: UpdateScheduledTestCasePayload): Promise<ScheduledTestCaseDTO> {
-    const { data } = await api.put<ScheduledTestCaseDTO>(`/scheduled-test-suites/${suiteId}/cases/${caseId}`, payload);
+  async updateCase(
+    orgId: string,
+    projectId: string,
+    suiteId: string,
+    caseId: string,
+    payload: UpdateScheduledTestCasePayload,
+  ): Promise<ScheduledTestCaseDTO> {
+    const { data } = await api.put<ScheduledTestCaseDTO>(
+      `/organizations/${orgId}/projects/${projectId}/scheduled-test-suites/${suiteId}/cases/${caseId}`,
+      payload,
+    );
     return data;
   },
 
-  async remove(id: string): Promise<void> {
-    await api.delete(`/scheduled-test-suites/${id}`);
+  async remove(orgId: string, projectId: string, id: string): Promise<void> {
+    await api.delete(`/organizations/${orgId}/projects/${projectId}/scheduled-test-suites/${id}`);
   },
 };

@@ -9,6 +9,8 @@ import { tagService } from "../services/tagService";
 import { userService, type UserOption } from "../services/userService";
 import { Button } from "../components/ui/Button";
 import { Select } from "../components/ui/Select";
+import { useSetBreadcrumbs } from "../context/BreadcrumbsContext";
+import { useCurrentOrg } from "../context/OrgContext";
 
 const bugFormSchema = yup.object({
   title: yup.string().required("Title is required").max(255),
@@ -31,8 +33,10 @@ const RESOLUTION_LABELS: Record<string, string> = { unresolved: "Unresolved", fi
 const REPRODUCIBILITY_LABELS: Record<string, string> = { always: "Always", sometimes: "Sometimes", rare: "Rare", unable: "Unable" };
 
 export function BugDetail() {
-  const { id } = useParams<{ id: string }>();
+  const { id, projectId } = useParams<{ id: string; projectId: string }>();
   const navigate = useNavigate();
+  const { org } = useCurrentOrg();
+  useSetBreadcrumbs([{ label: "Bugs", to: "/bugs" }, { label: "Bug detail" }]);
 
   const [bug, setBug] = useState<BugWithDetails | null>(null);
   const [allTags, setAllTags] = useState<Tag[]>([]);
@@ -58,11 +62,11 @@ export function BugDetail() {
   });
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || !projectId || !org) return;
     Promise.all([
-      bugService.getById(id),
-      tagService.getAll(),
-      userService.getAll(),
+      bugService.getById(org.organizationId, projectId, id),
+      tagService.getAll(org.organizationId, [projectId]),
+      userService.getAll(org.organizationId, projectId),
     ]).then(([bugData, tagsData, usersData]) => {
       setBug(bugData);
       setAllTags(Array.isArray(tagsData) ? tagsData : []);
@@ -73,7 +77,7 @@ export function BugDetail() {
     }).finally(() => {
       setLoading(false);
     });
-  }, [id]);
+  }, [id, projectId, org]);
 
   const populateFields = (d: BugWithDetails) => {
     reset({
@@ -86,7 +90,7 @@ export function BugDetail() {
       resolution: d.resolution,
       reproducibility: d.reproducibility,
     });
-    setSelectedTagIds(d.tags.map((t) => t.id));
+    setSelectedTagIds((d.tags ?? []).map((t) => t.id));
     setAssignedTo(d.assignedTo ?? "");
   };
 
@@ -102,7 +106,8 @@ export function BugDetail() {
 
   const onSubmit = async (formData: FormValues) => {
     if (!id) return;
-    const updated = await bugService.update(id, {
+    if (!projectId || !org) return;
+    const updated = await bugService.update(org.organizationId, projectId, id, {
       ...formData,
       assignedTo: assignedTo || null,
       tagIds: selectedTagIds,
@@ -113,7 +118,8 @@ export function BugDetail() {
 
   const handleDelete = async () => {
     if (!id) return;
-    await bugService.remove(id);
+    if (!projectId || !org) return;
+    await bugService.remove(org.organizationId, projectId, id);
     navigate("/bugs");
   };
 
@@ -121,7 +127,8 @@ export function BugDetail() {
     if (!id || !commentText.trim()) return;
     setAddingComment(true);
     try {
-      const updated = await bugService.addComment(id, commentText.trim());
+      if (!projectId || !org) return;
+      const updated = await bugService.addComment(org.organizationId, projectId, id, commentText.trim());
       setBug(updated);
       setCommentText("");
     } finally {
@@ -203,9 +210,9 @@ export function BugDetail() {
             )}
           </div>
         ) : (
-          bug.tags.length > 0 && (
+          (bug.tags?.length ?? 0) > 0 && (
             <div className="ts-card-tags">
-              {bug.tags.map((tag) => (
+              {(bug.tags ?? []).map((tag) => (
                 <span key={tag.id} className="tag-badge">{tag.name}</span>
               ))}
             </div>

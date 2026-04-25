@@ -4,11 +4,21 @@ import { testSuiteService, type TestSuiteWithTags } from "../services/testSuiteS
 import { aiService, type FollowUpQA, type GeneratedScenario } from "../services/aiService";
 import { Button } from "../components/ui/Button";
 import { Select } from "../components/ui/Select";
+import { PageHead } from "../components/ui/PageHead";
+import { useSetBreadcrumbs } from "../context/BreadcrumbsContext";
+import { useCurrentOrg } from "../context/OrgContext";
+import { useSelectedProjectIds } from "../components/ProjectFilter";
+import { ProjectPickerField, useWritableProjects } from "../components/ProjectPickerField";
 
 type Step = "setup" | "followup" | "scenarios" | "done";
 
 export function GenerateTestCases() {
+  useSetBreadcrumbs([{ label: "Test cases", to: "/test-cases" }, { label: "Generate with AI" }]);
   const navigate = useNavigate();
+  const { org } = useCurrentOrg();
+  const writable = useWritableProjects();
+  const [formProjectId, setFormProjectId] = useState<string>("");
+  const projectIds = useSelectedProjectIds();
 
   // Step tracking
   const [step, setStep] = useState<Step>("setup");
@@ -33,20 +43,40 @@ export function GenerateTestCases() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    testSuiteService.getAll({ limit: 100 }).then((res) => {
+    if (!org) return;
+    // If the form has a project picked, load suites from there;
+    // otherwise default to projects in the filter (for the initial "pick a project" state).
+    const ids = formProjectId ? [formProjectId] : projectIds;
+    if (ids.length === 0) {
+      setAllSuites([]);
+      setLoadingSuites(false);
+      return;
+    }
+    testSuiteService.getAll(org.organizationId, ids, { limit: 100 }).then((res) => {
       setAllSuites(Array.isArray(res.data) ? res.data : []);
       setLoadingSuites(false);
     }).catch(() => setLoadingSuites(false));
-  }, []);
+  }, [org, formProjectId, projectIds]);
+
+  // Default form project on first render.
+  useEffect(() => {
+    if (!formProjectId && writable.length > 0) {
+      setFormProjectId(writable[0].projectId);
+    }
+  }, [writable, formProjectId]);
 
   const handleCreateSession = async () => {
+    if (!org || !formProjectId) {
+      setError("Pick a project first.");
+      return;
+    }
     if (!testSuiteId || !userStory.trim()) return;
     setLoading(true);
     setError("");
     try {
-      const session = await aiService.createSession(testSuiteId, userStory);
+      const session = await aiService.createSession(org.organizationId, formProjectId, testSuiteId, userStory);
       setSessionId(session.id);
-      const qs = await aiService.getFollowUpQuestions(session.id);
+      const qs = await aiService.getFollowUpQuestions(org.organizationId, formProjectId, session.id);
       setQuestions(qs);
       setAnswers(new Array(qs.length).fill(""));
       setStep("followup");
@@ -58,7 +88,7 @@ export function GenerateTestCases() {
   };
 
   const handleSubmitAnswers = async () => {
-    if (!sessionId) return;
+    if (!sessionId || !org || !formProjectId) return;
     setLoading(true);
     setError("");
     try {
@@ -66,10 +96,9 @@ export function GenerateTestCases() {
         question: q,
         answer: answers[i] || "Not provided",
       }));
-      await aiService.submitAnswers(sessionId, qa);
-      const updated = await aiService.generateScenarios(sessionId);
+      await aiService.submitAnswers(org.organizationId, formProjectId, sessionId, qa);
+      const updated = await aiService.generateScenarios(org.organizationId, formProjectId, sessionId);
       setScenarios(updated.generatedScenarios);
-      // Select all by default
       setSelectedIndices(new Set(updated.generatedScenarios.map((_, i) => i)));
       setStep("scenarios");
     } catch {
@@ -80,11 +109,11 @@ export function GenerateTestCases() {
   };
 
   const handleSkipFollowUp = async () => {
-    if (!sessionId) return;
+    if (!sessionId || !org || !formProjectId) return;
     setLoading(true);
     setError("");
     try {
-      const updated = await aiService.generateScenarios(sessionId);
+      const updated = await aiService.generateScenarios(org.organizationId, formProjectId, sessionId);
       setScenarios(updated.generatedScenarios);
       setSelectedIndices(new Set(updated.generatedScenarios.map((_, i) => i)));
       setStep("scenarios");
@@ -113,11 +142,11 @@ export function GenerateTestCases() {
   };
 
   const handleCreateTestCases = async () => {
-    if (!sessionId || selectedIndices.size === 0) return;
+    if (!sessionId || !org || !formProjectId || selectedIndices.size === 0) return;
     setLoading(true);
     setError("");
     try {
-      await aiService.createTestCases(sessionId, Array.from(selectedIndices));
+      await aiService.createTestCases(org.organizationId, formProjectId, sessionId, Array.from(selectedIndices));
       setStep("done");
     } catch {
       setError("Failed to create test cases. Please try again.");
@@ -131,17 +160,15 @@ export function GenerateTestCases() {
   const currentStepIndex = stepKeys.indexOf(step);
 
   return (
-    <div className="page-test-suites">
-      <div className="page-header">
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <Button variant="ghost" onClick={() => navigate("/test-cases")} style={{ padding: "4px 8px" }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-          </Button>
-          <h1>Generate Test Cases with AI</h1>
-        </div>
-      </div>
+    <div className="page narrow">
+      <Button variant="ghost" size="sm" onClick={() => navigate("/test-cases")} style={{ marginBottom: 12, padding: "4px 8px" }}>
+        <svg className="ico" width="14" height="14" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6" /></svg>
+        Back to cases
+      </Button>
+      <PageHead
+        title={<>Generate <em className="italic-teal">cases</em> from a story</>}
+        subtitle="Coglity will ask a few questions, propose scenarios, and draft full cases."
+      />
 
       {/* Stepper */}
       <div className="ai-stepper">
@@ -168,6 +195,10 @@ export function GenerateTestCases() {
       {step === "setup" && (
         <div className="ts-form">
           <div className="ts-form-title">Describe the Feature</div>
+          <div className="ts-form-field">
+            <label htmlFor="ai-project">Project</label>
+            <ProjectPickerField id="ai-project" value={formProjectId} onChange={setFormProjectId} required />
+          </div>
           <div className="ts-form-field">
             <label htmlFor="ai-suite">Test Suite</label>
             {loadingSuites ? (
@@ -198,7 +229,7 @@ export function GenerateTestCases() {
             <Button variant="ghost" onClick={() => navigate("/test-cases")}>Cancel</Button>
             <Button
               onClick={handleCreateSession}
-              disabled={loading || !testSuiteId || !userStory.trim()}
+              disabled={loading || !testSuiteId || !userStory.trim() || !formProjectId}
             >
               {loading ? "Starting..." : "Continue"}
             </Button>

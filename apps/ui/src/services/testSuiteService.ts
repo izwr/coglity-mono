@@ -2,7 +2,8 @@ import type { TestSuite, Tag } from "@coglity/shared";
 import { api } from "./api";
 
 export interface TestSuiteWithTags extends TestSuite {
-  tags: Tag[];
+  projectName: string | null;
+  tags?: Tag[];
   createdByName: string | null;
   updatedByName: string | null;
 }
@@ -24,7 +25,6 @@ export interface PaginatedResponse<T> {
 
 export interface ListQueryParams {
   search?: string;
-  tagId?: string;
   sortBy?: string;
   sortDir?: string;
   page?: number;
@@ -32,27 +32,31 @@ export interface ListQueryParams {
 }
 
 export const testSuiteService = {
-  async getAll(params?: ListQueryParams): Promise<PaginatedResponse<TestSuiteWithTags>> {
-    const { data } = await api.get<PaginatedResponse<TestSuiteWithTags>>("/test-suites", { params });
+  async getAll(orgId: string, projectIds: string[], params?: ListQueryParams): Promise<PaginatedResponse<TestSuiteWithTags>> {
+    if (!orgId || projectIds.length === 0) return { data: [], total: 0, page: 1, limit: params?.limit ?? 10 };
+    const { data } = await api.get<PaginatedResponse<TestSuiteWithTags>>(
+      `/organizations/${orgId}/test-suites`,
+      { params: { ...params, projectIds: projectIds.join(",") } },
+    );
     return data;
   },
 
-  async getById(id: string): Promise<TestSuiteWithTags> {
-    const { data } = await api.get<TestSuiteWithTags>(`/test-suites/${id}`);
+  async getById(orgId: string, projectId: string, id: string): Promise<TestSuiteWithTags> {
+    const { data } = await api.get<TestSuiteWithTags>(`/organizations/${orgId}/projects/${projectId}/test-suites/${id}`);
     return data;
   },
 
-  async create(payload: CreateTestSuitePayload): Promise<TestSuiteWithTags> {
-    const { data } = await api.post<TestSuiteWithTags>("/test-suites", payload);
+  async create(orgId: string, projectId: string, payload: CreateTestSuitePayload): Promise<TestSuiteWithTags> {
+    const { data } = await api.post<TestSuiteWithTags>(`/organizations/${orgId}/projects/${projectId}/test-suites`, payload);
     return data;
   },
 
-  async update(id: string, payload: UpdateTestSuitePayload): Promise<TestSuiteWithTags> {
-    const { data } = await api.put<TestSuiteWithTags>(`/test-suites/${id}`, payload);
+  async update(orgId: string, projectId: string, id: string, payload: UpdateTestSuitePayload): Promise<TestSuiteWithTags> {
+    const { data } = await api.put<TestSuiteWithTags>(`/organizations/${orgId}/projects/${projectId}/test-suites/${id}`, payload);
     return data;
   },
 
-  async remove(id: string): Promise<void> {
-    await api.delete(`/test-suites/${id}`);
+  async remove(orgId: string, projectId: string, id: string): Promise<void> {
+    await api.delete(`/organizations/${orgId}/projects/${projectId}/test-suites/${id}`);
   },
 };

@@ -6,6 +6,8 @@ import { bugService, type BugWithDetails } from "../services/bugService";
 import { userService, type UserOption } from "../services/userService";
 import { Button } from "../components/ui/Button";
 import { Select } from "../components/ui/Select";
+import { useSetBreadcrumbs } from "../context/BreadcrumbsContext";
+import { useCurrentOrg } from "../context/OrgContext";
 
 const STATE_LABELS: Record<string, string> = {
   not_started: "Not Started",
@@ -52,8 +54,14 @@ const bugSelectStyles = {
 };
 
 export function ScheduledTestCaseDetail() {
-  const { id: suiteId, caseId } = useParams<{ id: string; caseId: string }>();
+  const { id: suiteId, caseId, projectId } = useParams<{ id: string; caseId: string; projectId: string }>();
   const navigate = useNavigate();
+  const { org } = useCurrentOrg();
+  useSetBreadcrumbs([
+    { label: "Runs", to: "/scheduled-test-suites" },
+    { label: "Run", to: suiteId && projectId ? `/scheduled-test-suites/${projectId}/${suiteId}` : undefined },
+    { label: "Case" },
+  ]);
 
   const [sc, setSc] = useState<ScheduledTestCaseDetailDTO | null>(null);
   const [loading, setLoading] = useState(true);
@@ -69,19 +77,19 @@ export function ScheduledTestCaseDetail() {
   const [editLinkedBugIds, setEditLinkedBugIds] = useState<string[]>([]);
 
   useEffect(() => {
-    if (!suiteId || !caseId) return;
+    if (!suiteId || !caseId || !projectId || !org) return;
     Promise.all([
-      scheduledTestSuiteService.getCase(suiteId, caseId),
-      userService.getAll(),
-      bugService.getAll({ limit: 100 }),
+      scheduledTestSuiteService.getCase(org.organizationId, projectId, suiteId, caseId),
+      userService.getAll(org.organizationId, projectId),
+      bugService.getAll(org.organizationId, [projectId], { limit: 100 }),
     ]).then(([caseData, usersData, bugsRes]) => {
       setSc(caseData);
       setAllUsers(Array.isArray(usersData) ? usersData : []);
       setAllBugs((bugsRes.data ?? []).map((b: BugWithDetails) => ({ id: b.id, title: b.title })));
     }).catch(() => {
-      navigate(`/scheduled-test-suites/${suiteId}`);
+      navigate(`/scheduled-test-suites/${projectId}/${suiteId}`);
     }).finally(() => setLoading(false));
-  }, [suiteId, caseId]);
+  }, [suiteId, caseId, projectId, org]);
 
   const populateEditFields = (data: ScheduledTestCaseDetailDTO) => {
     setEditState(data.state);
@@ -101,10 +109,10 @@ export function ScheduledTestCaseDetail() {
   };
 
   const handleSave = async () => {
-    if (!suiteId || !caseId) return;
+    if (!suiteId || !caseId || !projectId || !org) return;
     setSaving(true);
     try {
-      const updated = await scheduledTestSuiteService.updateCase(suiteId, caseId, {
+      const updated = await scheduledTestSuiteService.updateCase(org.organizationId, projectId, suiteId, caseId, {
         state: editState,
         assignedTo: editAssignedTo,
         actualResults: editActualResults,
@@ -229,7 +237,7 @@ export function ScheduledTestCaseDetail() {
         </div>
       </div>
 
-      {/* Test case details — read only */}
+      {/* Test case details read only */}
       <div className="tc-detail-section" style={{ marginBottom: "16px" }}>
         <label className="tc-detail-label">Pre Condition</label>
         <div className="tc-detail-content">

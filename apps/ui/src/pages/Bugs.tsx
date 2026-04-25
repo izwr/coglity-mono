@@ -7,9 +7,14 @@ import type { Tag } from "@coglity/shared";
 import { bugService, type BugWithDetails } from "../services/bugService";
 import { tagService } from "../services/tagService";
 import { userService, type UserOption } from "../services/userService";
+import { ProjectFilter, useSelectedProjectIds } from "../components/ProjectFilter";
+import { ProjectPickerField, useWritableProjects } from "../components/ProjectPickerField";
+import { useCurrentOrg } from "../context/OrgContext";
 import { ListToolbar, type AppliedFilters } from "../components/ListToolbar";
 import { Button } from "../components/ui/Button";
 import { Select } from "../components/ui/Select";
+import { PageHead } from "../components/ui/PageHead";
+import { useSetBreadcrumbs } from "../context/BreadcrumbsContext";
 
 const createBugSchema = yup.object({
   title: yup.string().required("Title is required").max(255),
@@ -77,7 +82,12 @@ const STATE_LABELS: Record<string, string> = {
 };
 
 export function Bugs() {
+  useSetBreadcrumbs([{ label: "Bugs" }]);
   const navigate = useNavigate();
+  const { org } = useCurrentOrg();
+  const projectIds = useSelectedProjectIds();
+  const writable = useWritableProjects();
+  const [formProjectId, setFormProjectId] = useState<string>("");
   const [bugsList, setBugsList] = useState<BugWithDetails[]>([]);
   const [total, setTotal] = useState(0);
   const [allTags, setAllTags] = useState<Tag[]>([]);
@@ -108,12 +118,12 @@ export function Bugs() {
   });
 
   const fetchBugs = useCallback(async () => {
+    if (!org) return;
     setLoading(true);
     try {
-      const res = await bugService.getAll({
+      const res = await bugService.getAll(org.organizationId, projectIds, {
         search: filters.search || undefined,
         state: filters.status || undefined,
-        tagId: filters.tagId || undefined,
         sortBy: filters.sortBy,
         sortDir: filters.sortDir,
         page,
@@ -128,12 +138,17 @@ export function Bugs() {
       setLoading(false);
       setInitialLoad(false);
     }
-  }, [filters, page]);
+  }, [org, projectIds, filters, page]);
 
   useEffect(() => {
-    tagService.getAll().then((data) => setAllTags(Array.isArray(data) ? data : [])).catch(() => setAllTags([]));
-    userService.getAll().then((data) => setAllUsers(Array.isArray(data) ? data : [])).catch(() => setAllUsers([]));
-  }, []);
+    if (!org) return;
+    tagService.getAll(org.organizationId, projectIds).then((data) => setAllTags(Array.isArray(data) ? data : [])).catch(() => setAllTags([]));
+    if (formProjectId) {
+      userService.getAll(org.organizationId, formProjectId).then((data) => setAllUsers(Array.isArray(data) ? data : [])).catch(() => setAllUsers([]));
+    } else {
+      setAllUsers([]);
+    }
+  }, [org, projectIds, formProjectId]);
 
   useEffect(() => {
     fetchBugs();
@@ -148,11 +163,21 @@ export function Bugs() {
     reset({ title: "", bugType: "functional", priority: "medium", severity: "major" });
     setSelectedTagIds([]);
     setAssignedTo("");
+    setFormProjectId("");
     setShowForm(false);
   };
 
+  const openCreate = () => {
+    reset({ title: "", bugType: "functional", priority: "medium", severity: "major" });
+    setSelectedTagIds([]);
+    setAssignedTo("");
+    setFormProjectId(writable[0]?.projectId ?? "");
+    setShowForm(true);
+  };
+
   const onSubmit = async (data: CreateFormValues) => {
-    const created = await bugService.create({
+    if (!org || !formProjectId) return;
+    const created = await bugService.create(org.organizationId, formProjectId, {
       title: data.title,
       bugType: data.bugType,
       priority: data.priority,
@@ -161,11 +186,12 @@ export function Bugs() {
       tagIds: selectedTagIds,
     });
     closeForm();
-    navigate(`/bugs/${created.id}`);
+    navigate(`/bugs/${formProjectId}/${created.id}`);
   };
 
-  const handleDelete = async (id: string) => {
-    await bugService.remove(id);
+  const handleDelete = async (bug: BugWithDetails) => {
+    if (!org) return;
+    await bugService.remove(org.organizationId, bug.projectId, bug.id);
     setDeleteConfirmId(null);
     fetchBugs();
   };
@@ -180,19 +206,34 @@ export function Bugs() {
   const hasFilters = !!(filters.search || filters.tagId || filters.status);
 
   return (
-    <div className="page-test-suites">
-      <div className="page-header">
-        <h1>Bugs</h1>
-        {!showForm && (
-          <Button onClick={() => setShowForm(true)}>
-            + Report Bug
+    <div className="page wide">
+      <PageHead
+        title={<>Bug <em className="italic-teal">tracker</em></>}
+        subtitle={<>{total} bug{total !== 1 ? "s" : ""} · triage, assign and close</>}
+        actions={!showForm && (
+          <Button
+            variant="primary"
+            disabled={writable.length === 0}
+            title={writable.length === 0 ? "You don't have write access to any project in this organization" : undefined}
+            onClick={openCreate}
+          >
+            <svg className="ico" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>
+            Report bug
           </Button>
         )}
+      />
+
+      <div style={{ marginBottom: 16 }}>
+        <ProjectFilter placeholder="Filter by project pick one or more…" />
       </div>
 
       {showForm && (
         <form className="ts-form" onSubmit={handleSubmit(onSubmit)}>
           <div className="ts-form-title">Report Bug</div>
+          <div className="ts-form-field">
+            <label htmlFor="bug-project">Project</label>
+            <ProjectPickerField id="bug-project" value={formProjectId} onChange={setFormProjectId} required />
+          </div>
           <div className="ts-form-field">
             <label htmlFor="bug-title">Title</label>
             <input id="bug-title" type="text" placeholder="Enter bug title" autoFocus {...register("title")} />
@@ -247,7 +288,7 @@ export function Bugs() {
                   <button
                     key={tag.id}
                     type="button"
-                    className={`tag-chip${selectedTagIds.includes(tag.id) ? " selected" : ""}`}
+                    className={`chip-btn${selectedTagIds.includes(tag.id) ? " selected" : ""}`}
                     onClick={() => toggleTag(tag.id)}
                   >
                     {tag.name}
@@ -258,24 +299,18 @@ export function Bugs() {
           </div>
           <div className="ts-form-actions">
             <Button type="button" variant="ghost" onClick={closeForm}>Cancel</Button>
-            <Button type="submit" disabled={!isValid || isSubmitting}>Create</Button>
+            <Button type="submit" disabled={!isValid || isSubmitting || !formProjectId}>Create</Button>
           </div>
         </form>
       )}
 
       {initialLoad ? (
-        <p className="ts-empty">Loading...</p>
+        <p className="ts-empty">Loading…</p>
       ) : total === 0 && !hasFilters && !showForm ? (
-        <div className="ts-empty-state">
-          <div className="ts-empty-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-          </div>
-          <p>No bugs reported yet</p>
-          <span>Report your first bug to get started</span>
+        <div className="empty">
+          <div className="title">No bugs reported <em className="italic-teal">yet</em>.</div>
+          <div className="sub">File bugs as you triage failing test runs to keep work moving.</div>
+          <Button variant="primary" onClick={() => setShowForm(true)}>Report bug</Button>
         </div>
       ) : (
         <>
@@ -298,7 +333,7 @@ export function Bugs() {
                   key={bug.id}
                   className="ts-card"
                   style={{ cursor: "pointer" }}
-                  onClick={() => navigate(`/bugs/${bug.id}`)}
+                  onClick={() => navigate(`/bugs/${bug.projectId}/${bug.id}`)}
                 >
                   <div className="ts-card-body">
                     <div className="ts-card-name">
@@ -311,9 +346,9 @@ export function Bugs() {
                       <span className="bug-badge bug-type">{BUG_TYPE_LABELS[bug.bugType] ?? bug.bugType}</span>
                       {bug.assignedToName && <span className="bug-badge assigned">Assigned: {bug.assignedToName}</span>}
                     </div>
-                    {bug.tags.length > 0 && (
+                    {(bug.tags?.length ?? 0) > 0 && (
                       <div className="ts-card-tags">
-                        {bug.tags.map((tag) => (
+                        {(bug.tags ?? []).map((tag) => (
                           <span key={tag.id} className="tag-badge">{tag.name}</span>
                         ))}
                       </div>
@@ -326,7 +361,7 @@ export function Bugs() {
                   <div className="ts-card-actions" onClick={(e) => e.stopPropagation()}>
                     {deleteConfirmId === bug.id ? (
                       <div className="ts-delete-confirm">
-                        <Button variant="danger" size="sm" onClick={() => handleDelete(bug.id)}>Confirm</Button>
+                        <Button variant="danger" size="sm" onClick={() => handleDelete(bug)}>Confirm</Button>
                         <Button variant="ghost" size="sm" onClick={() => setDeleteConfirmId(null)}>Cancel</Button>
                       </div>
                     ) : (
