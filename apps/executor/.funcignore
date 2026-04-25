@@ -1,0 +1,10 @@
+*.js.map
+*.ts
+.git*
+.vscode
+.turbo
+local.settings.json
+local.settings.json.example
+tsconfig.json
+src
+node_modules/@types

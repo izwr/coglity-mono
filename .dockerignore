@@ -1,0 +1,15 @@
+**/node_modules
+**/dist
+**/.turbo
+**/.next
+**/coverage
+**/.vite
+.git
+.idea
+.vscode
+*.log
+.DS_Store
+.env
+.env.*
+!.env.example
+apps/iac

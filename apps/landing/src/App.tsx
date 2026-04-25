@@ -122,7 +122,7 @@ function Hero() {
           Your team ships features with AI coding assistants. Coglity
           deploys vision-based AI agents that see your application like a
           real user, generate test cases from every deployment, and
-          execute them autonomously — no scripts, no selectors, no maintenance.
+          execute them autonomously no scripts, no selectors, no maintenance.
         </p>
         <div className="hero-actions">
           <a href="/app" className="btn-hero-primary">
@@ -401,7 +401,7 @@ function Features() {
       ),
       title: "Vision-Based Agent Execution",
       description:
-        "AI agents see your application through screenshots — clicking, typing, and navigating exactly like a real user. No brittle selectors, no DOM coupling, no test maintenance.",
+        "AI agents see your application through screenshots clicking, typing, and navigating exactly like a real user. No brittle selectors, no DOM coupling, no test maintenance.",
     },
     {
       icon: (
@@ -417,7 +417,7 @@ function Features() {
       ),
       title: "Built for Vibe Coding Workflows",
       description:
-        "Works seamlessly with Claude Code, GitHub Copilot, Cursor, and Codex. Your team ships features with AI — Coglity ensures they actually work.",
+        "Works seamlessly with Claude Code, GitHub Copilot, Cursor, and Codex. Your team ships features with AI Coglity ensures they actually work.",
     },
     {
       icon: (
@@ -425,7 +425,7 @@ function Features() {
       ),
       title: "Deploy-Triggered Testing",
       description:
-        "Every deployment automatically triggers test generation and agent execution. Catch regressions before your customers do — without anyone writing a single test.",
+        "Every deployment automatically triggers test generation and agent execution. Catch regressions before your customers do without anyone writing a single test.",
     },
     {
       icon: (
@@ -441,7 +441,7 @@ function Features() {
       ),
       title: "Zero Test Maintenance",
       description:
-        "Traditional end-to-end tests break when the UI changes. Vision-based agents adapt automatically — your tests evolve with your product, not against it.",
+        "Traditional end-to-end tests break when the UI changes. Vision-based agents adapt automatically your tests evolve with your product, not against it.",
     },
   ];
 
@@ -479,7 +479,7 @@ const TESTING_TABS = [
     ),
     headline: "End-to-end web application testing",
     description:
-      "Vision-based agents navigate your web app like real users — clicking buttons, filling forms, and verifying UI states across browsers. No selectors to maintain, no flaky locators.",
+      "Vision-based agents navigate your web app like real users clicking buttons, filling forms, and verifying UI states across browsers. No selectors to maintain, no flaky locators.",
     bullets: [
       "Cross-browser visual validation",
       "Form flows & multi-page journeys",
@@ -511,7 +511,7 @@ const TESTING_TABS = [
     ),
     headline: "Validate chatbot intelligence at scale",
     description:
-      "Automatically test conversational AI bots across thousands of scenarios. Verify intent handling, context retention, fallback behavior, and response quality — all without manual effort.",
+      "Automatically test conversational AI bots across thousands of scenarios. Verify intent handling, context retention, fallback behavior, and response quality all without manual effort.",
     bullets: [
       "Multi-turn context & memory testing",
       "Intent coverage & fallback validation",
@@ -547,7 +547,7 @@ function TestingCapabilities() {
         <div className="section-header">
           <h2 className="section-title">One platform, every type of testing</h2>
           <p className="section-subtitle">
-            From web UIs to voice bots to autonomous agents — Coglity tests it all with AI-powered precision.
+            From web UIs to voice bots to autonomous agents Coglity tests it all with AI-powered precision.
           </p>
         </div>
 
@@ -792,7 +792,7 @@ function HowItWorks() {
       number: "03",
       title: "Vision agents verify it works",
       description:
-        "AI agents open your application, see the UI through screenshots, and interact with it like a real user — clicking, typing, and validating every flow.",
+        "AI agents open your application, see the UI through screenshots, and interact with it like a real user clicking, typing, and validating every flow.",
     },
     {
       number: "04",

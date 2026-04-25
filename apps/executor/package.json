@@ -1,0 +1,28 @@
+{
+  "name": "@coglity/executor",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "dist/src/index.js",
+  "scripts": {
+    "dev": "tsc && func start",
+    "build": "tsc",
+    "start": "func start",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.12.0",
+    "@azure/identity": "^4.5.0",
+    "@azure/storage-blob": "^12.31.0",
+    "@coglity/shared": "workspace:*",
+    "microsoft-cognitiveservices-speech-sdk": "^1.49.0",
+    "openai": "^4.73.0",
+    "ws": "^8.20.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "@types/ws": "^8",
+    "typescript": "^5"
+  }
+}
