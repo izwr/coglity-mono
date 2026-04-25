@@ -2,6 +2,7 @@ import { pgTable, uuid, varchar, text, timestamp, pgEnum, jsonb } from "drizzle-
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { users } from "./users.js";
+import { projects } from "./projects.js";
 
 export const bugTypeEnum = pgEnum("bug_type", [
   "functional",
@@ -55,6 +56,7 @@ export const bugReproducibilityEnum = pgEnum("bug_reproducibility", [
 
 export const bugs = pgTable("bugs", {
   id: uuid("id").defaultRandom().primaryKey(),
+  projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description").default("").notNull(),
   comments: jsonb("comments").$type<BugComment[]>().default([]).notNull(),
@@ -90,7 +92,7 @@ export interface BugAttachment {
 export const insertBugSchema = createInsertSchema(bugs, {
   title: (schema) => schema.min(1, "Title is required").max(255),
   description: (schema) => schema.max(50000).optional().default(""),
-}).omit({ id: true, createdBy: true, comments: true, attachments: true, createdAt: true, updatedAt: true });
+}).omit({ id: true, projectId: true, createdBy: true, comments: true, attachments: true, createdAt: true, updatedAt: true });
 
 export const selectBugSchema = createSelectSchema(bugs);
 

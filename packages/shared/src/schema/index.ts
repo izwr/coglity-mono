@@ -1,4 +1,8 @@
 export * from "./users.js";
+export * from "./organizations.js";
+export * from "./projects.js";
+export * from "./invites.js";
+export * from "./rbacAuditLog.js";
 export * from "./testSuites.js";
 export * from "./testCases.js";
 export * from "./tags.js";
@@ -7,3 +11,8 @@ export * from "./aiGenerationSessions.js";
 export * from "./bugs.js";
 export * from "./scheduledTestSuites.js";
 export * from "./scheduledTestCases.js";
+export * from "./billing.js";
+export * from "./botConnections.js";
+export * from "./knowledgeSources.js";
+export * from "./sessions.js";
+export * from "./testRuns.js";

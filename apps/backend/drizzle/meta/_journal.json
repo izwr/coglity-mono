@@ -64,6 +64,48 @@
       "when": 1774188236507,
       "tag": "0008_slimy_the_captain",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1776429670000,
+      "tag": "0009_lovely_venom",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1776429670001,
+      "tag": "0010_rbac_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1776429670002,
+      "tag": "0011_rbac_backfill",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1776429670003,
+      "tag": "0012_rls_policies",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1776690000000,
+      "tag": "0013_disable_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1777001816627,
+      "tag": "0014_slow_gwen_stacy",
+      "breakpoints": true
     }
   ]
 }

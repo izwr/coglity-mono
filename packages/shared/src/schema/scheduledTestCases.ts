@@ -4,6 +4,7 @@ import { z } from "zod/v4";
 import { users } from "./users.js";
 import { testCases } from "./testCases.js";
 import { scheduledTestSuites } from "./scheduledTestSuites.js";
+import { projects } from "./projects.js";
 
 export const scheduledTestCaseStateEnum = pgEnum("scheduled_test_case_state", [
   "not_started",
@@ -16,6 +17,7 @@ export const scheduledTestCaseStateEnum = pgEnum("scheduled_test_case_state", [
 
 export const scheduledTestCases = pgTable("scheduled_test_cases", {
   id: uuid("id").defaultRandom().primaryKey(),
+  projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
   scheduledTestSuiteId: uuid("scheduled_test_suite_id").notNull().references(() => scheduledTestSuites.id, { onDelete: "cascade" }),
   testCaseId: uuid("test_case_id").notNull().references(() => testCases.id, { onDelete: "cascade" }),
   assignedTo: uuid("assigned_to").references(() => users.id),
@@ -28,7 +30,7 @@ export const scheduledTestCases = pgTable("scheduled_test_cases", {
 
 export const insertScheduledTestCaseSchema = createInsertSchema(scheduledTestCases, {
   actualResults: (schema) => schema.max(50000).optional().default(""),
-}).omit({ id: true, createdAt: true, updatedAt: true });
+}).omit({ id: true, projectId: true, createdAt: true, updatedAt: true });
 
 export const updateScheduledTestCaseSchema = z.object({
   assignedTo: z.string().uuid().nullable().optional(),

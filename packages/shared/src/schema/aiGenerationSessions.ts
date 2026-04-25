@@ -3,6 +3,7 @@ import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { users } from "./users.js";
 import { testSuites } from "./testSuites.js";
+import { projects } from "./projects.js";
 
 export const aiSessionStatusEnum = pgEnum("ai_session_status", [
   "gathering_info",
@@ -12,6 +13,7 @@ export const aiSessionStatusEnum = pgEnum("ai_session_status", [
 
 export const aiGenerationSessions = pgTable("ai_generation_sessions", {
   id: uuid("id").defaultRandom().primaryKey(),
+  projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
   testSuiteId: uuid("test_suite_id").notNull().references(() => testSuites.id, { onDelete: "cascade" }),
   userStory: text("user_story").notNull(),
   followUpQA: jsonb("follow_up_qa").default([]).notNull().$type<{ question: string; answer: string }[]>(),
@@ -25,7 +27,7 @@ export const aiGenerationSessions = pgTable("ai_generation_sessions", {
 
 export const insertAiGenerationSessionSchema = createInsertSchema(aiGenerationSessions, {
   userStory: (schema) => schema.min(1, "User story is required").max(5000),
-}).omit({ id: true, createdBy: true, createdAt: true, updatedAt: true, followUpQA: true, generatedScenarios: true, selectedScenarioIndices: true, status: true });
+}).omit({ id: true, projectId: true, createdBy: true, createdAt: true, updatedAt: true, followUpQA: true, generatedScenarios: true, selectedScenarioIndices: true, status: true });
 
 export const selectAiGenerationSessionSchema = createSelectSchema(aiGenerationSessions);
 
