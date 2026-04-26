@@ -1,4 +1,5 @@
 import { ArrowRight } from "./icons";
+import { CoglityLogo } from "./CoglityLogo";
 
 export default function LandingPage() {
   return (
@@ -24,7 +25,7 @@ function Nav() {
     <nav className="top">
       <div className="wrap inner">
         <a href="/" className="brand">
-          <img className="brand-mark" src="/logo.svg" alt="Coglity" />
+          <CoglityLogo className="brand-mark" size={26} />
           <div className="brand-name" style={{ fontFamily: "var(--font-serif)" }}>
             Cog<em>lity</em>
           </div>
@@ -478,7 +479,7 @@ function Footer() {
         <div className="foot-grid">
           <div className="col">
             <div className="brand">
-              <img className="brand-mark" src="/logo.svg" alt="Coglity" />
+              <CoglityLogo className="brand-mark" size={26} />
               <div className="brand-name" style={{ fontFamily: "var(--font-serif)" }}>
                 Cog<em>lity</em>
               </div>

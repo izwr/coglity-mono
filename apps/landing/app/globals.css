@@ -81,8 +81,8 @@ nav.top .inner {
 .brand-mark {
   width: 26px;
   height: 26px;
-  border-radius: 5px;
-  object-fit: contain;
+  color: var(--teal);
+  flex-shrink: 0;
 }
 
 .brand-name {

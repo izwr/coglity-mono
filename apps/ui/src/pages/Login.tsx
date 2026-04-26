@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { CoglityLogo } from "../components/CoglityLogo";
 
 export function Login() {
   const { isAuthenticated, isLoading, login, loginWithGoogle } = useAuth();
@@ -26,7 +27,7 @@ export function Login() {
     <div className="auth-split">
       <section className="auth-editorial">
         <div className="sidebar-brand" style={{ padding: 0 }}>
-          <img className="sidebar-mark" src="/logo.svg" alt="Coglity" />
+          <CoglityLogo className="sidebar-mark" size={22} />
           <div className="sidebar-wordmark">Cog<em>lity</em></div>
         </div>
 

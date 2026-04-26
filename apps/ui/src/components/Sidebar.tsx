@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { useCurrentOrg } from "../context/OrgContext";
 import { useCanAdminAnyProject } from "../context/permissions";
 import { Select } from "./ui/Select";
+import { CoglityLogo } from "./CoglityLogo";
 
 type NavItemDef = {
   to: string;
@@ -233,7 +234,7 @@ export function Sidebar({
   return (
     <aside className={`sidebar${open ? " open" : ""}`} onClick={() => onClose?.()}>
       <div className="sidebar-brand">
-        <img className="sidebar-mark" src="/logo.svg" alt="Coglity" />
+        <CoglityLogo className="sidebar-mark" size={22} />
         <div className="sidebar-wordmark">Cog<em>lity</em></div>
       </div>
 

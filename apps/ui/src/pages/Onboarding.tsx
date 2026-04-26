@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { organizationService } from "../services/organizationService";
 import { inviteService } from "../services/inviteService";
 import { Button } from "../components/ui/Button";
+import { CoglityLogo } from "../components/CoglityLogo";
 
 type Mode = "pick" | "create" | "invite";
 
@@ -75,7 +76,7 @@ export function Onboarding() {
     <div className="onboarding-page">
       <div className="onboarding-card">
         <div className="sidebar-brand" style={{ padding: 0, marginBottom: 20 }}>
-          <img className="sidebar-mark" src="/logo.svg" alt="Coglity" />
+          <CoglityLogo className="sidebar-mark" size={22} />
           <div className="sidebar-wordmark">Cog<em>lity</em></div>
         </div>
         <h1>Welcome to Coglity</h1>

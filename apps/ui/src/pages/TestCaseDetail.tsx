@@ -460,20 +460,20 @@ export function TestCaseDetail() {
         {errors.preCondition && <span className="ts-form-error">{errors.preCondition.message}</span>}
       </div>
 
-      {/* Content grid: Test Steps (left tall), Expected Results + Data (right stacked) */}
+      {/* Content grid: Instructions (left tall), Expected Results + Data (right stacked) */}
       <div className="tc-detail-grid">
         <div className="tc-detail-left">
           <div className="tc-detail-section">
-            <label className="tc-detail-label">Test Steps</label>
+            <label className="tc-detail-label">Instructions</label>
             {editing ? (
               <textarea
                 className="tc-detail-textarea tc-detail-textarea-tall"
-                placeholder="Enter test steps..."
+                placeholder="Enter instructions..."
                 {...register("testSteps")}
               />
             ) : (
               <div className="tc-detail-content tc-detail-content-tall">
-                {tc.testSteps || <span className="tc-detail-placeholder">No test steps defined.</span>}
+                {tc.testSteps || <span className="tc-detail-placeholder">No instructions defined.</span>}
               </div>
             )}
             {errors.testSteps && <span className="ts-form-error">{errors.testSteps.message}</span>}

@@ -248,9 +248,9 @@ export function ScheduledTestCaseDetail() {
       <div className="tc-detail-grid">
         <div className="tc-detail-left">
           <div className="tc-detail-section">
-            <label className="tc-detail-label">Test Steps</label>
+            <label className="tc-detail-label">Instructions</label>
             <div className="tc-detail-content tc-detail-content-tall">
-              {sc.testSteps || <span className="tc-detail-placeholder">No test steps defined.</span>}
+              {sc.testSteps || <span className="tc-detail-placeholder">No instructions defined.</span>}
             </div>
           </div>
         </div>
