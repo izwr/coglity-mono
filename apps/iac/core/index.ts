@@ -69,14 +69,14 @@ createCnameRecord({
   zoneId: cfZoneId,
   namePrefix: "ui",
   hostname: "studio.coglity.com",
-  originFqdn: environment.defaultDomain,
+  originFqdn: pulumi.interpolate`coglity-ui.${environment.defaultDomain}`,
 });
 
 createLandingCnameRecords({
   provider: cfProvider,
   zoneId: cfZoneId,
   namePrefix: "landing",
-  originFqdn: environment.defaultDomain,
+  originFqdn: pulumi.interpolate`coglity-landing.${environment.defaultDomain}`,
 });
 
 createAsuidTxtRecord({
