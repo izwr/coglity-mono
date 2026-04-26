@@ -33,6 +33,43 @@ export function createUiCnameRecord(args: UiCnameArgs): cloudflare.DnsRecord {
   );
 }
 
+export interface LandingCnameArgs {
+  provider: cloudflare.Provider;
+  zoneId: pulumi.Input<string>;
+  /** Origin FQDN for the landing container app */
+  originFqdn: pulumi.Input<string>;
+}
+
+export function createLandingCnameRecords(args: LandingCnameArgs) {
+  const root = new cloudflare.DnsRecord(
+    "landing-cname-root",
+    {
+      zoneId: args.zoneId,
+      name: "@",
+      type: "CNAME",
+      content: args.originFqdn,
+      ttl: 1,
+      proxied: true,
+    },
+    { provider: args.provider },
+  );
+
+  const www = new cloudflare.DnsRecord(
+    "landing-cname-www",
+    {
+      zoneId: args.zoneId,
+      name: "www",
+      type: "CNAME",
+      content: args.originFqdn,
+      ttl: 1,
+      proxied: true,
+    },
+    { provider: args.provider },
+  );
+
+  return { root, www };
+}
+
 export interface AsuidTxtArgs {
   provider: cloudflare.Provider;
   zoneId: pulumi.Input<string>;
