@@ -9,24 +9,23 @@ export function createCloudflareProvider(
   return new cloudflare.Provider("cf", { apiToken });
 }
 
-export interface UiCnameArgs {
+export interface CnameArgs {
   provider: cloudflare.Provider;
   zoneId: pulumi.Input<string>;
-  /** Full hostname, e.g. "studio.coglity.com" */
+  namePrefix: string;
   hostname: string;
-  /** Origin FQDN that Cloudflare proxies to, e.g. <ui-app>.<env>.azurecontainerapps.io */
   originFqdn: pulumi.Input<string>;
 }
 
-export function createUiCnameRecord(args: UiCnameArgs): cloudflare.DnsRecord {
-  return new cloudflare.DnsRecord(
-    "ui-cname",
+export function createCnameRecord(args: CnameArgs): cloudflare.Record {
+  return new cloudflare.Record(
+    `${args.namePrefix}-cname`,
     {
       zoneId: args.zoneId,
       name: args.hostname,
       type: "CNAME",
       content: args.originFqdn,
-      ttl: 1, // 1 = automatic (required when proxied)
+      ttl: 1,
       proxied: true,
     },
     { provider: args.provider },
@@ -36,13 +35,13 @@ export function createUiCnameRecord(args: UiCnameArgs): cloudflare.DnsRecord {
 export interface LandingCnameArgs {
   provider: cloudflare.Provider;
   zoneId: pulumi.Input<string>;
-  /** Origin FQDN for the landing container app */
+  namePrefix: string;
   originFqdn: pulumi.Input<string>;
 }
 
 export function createLandingCnameRecords(args: LandingCnameArgs) {
-  const root = new cloudflare.DnsRecord(
-    "landing-cname-root",
+  const root = new cloudflare.Record(
+    `${args.namePrefix}-cname-root`,
     {
       zoneId: args.zoneId,
       name: "@",
@@ -54,8 +53,8 @@ export function createLandingCnameRecords(args: LandingCnameArgs) {
     { provider: args.provider },
   );
 
-  const www = new cloudflare.DnsRecord(
-    "landing-cname-www",
+  const www = new cloudflare.Record(
+    `${args.namePrefix}-cname-www`,
     {
       zoneId: args.zoneId,
       name: "www",
@@ -73,26 +72,21 @@ export function createLandingCnameRecords(args: LandingCnameArgs) {
 export interface AsuidTxtArgs {
   provider: cloudflare.Provider;
   zoneId: pulumi.Input<string>;
-  /** Full hostname, e.g. "studio.coglity.com" TXT will be created at asuid.<hostname> */
+  namePrefix: string;
   hostname: string;
-  /** Subscription-level customDomainVerificationId from azure.app.getCustomDomainVerificationId */
   verificationId: pulumi.Input<string>;
 }
 
-/**
- * Cloudflare TXT record at `asuid.<hostname>` for Container Apps custom hostname
- * ownership verification. Required before binding a custom domain to a Container App.
- */
-export function createAsuidTxtRecord(args: AsuidTxtArgs): cloudflare.DnsRecord {
-  return new cloudflare.DnsRecord(
-    "ui-asuid-txt",
+export function createAsuidTxtRecord(args: AsuidTxtArgs): cloudflare.Record {
+  return new cloudflare.Record(
+    `${args.namePrefix}-asuid-txt`,
     {
       zoneId: args.zoneId,
       name: `asuid.${args.hostname}`,
       type: "TXT",
       content: args.verificationId,
-      ttl: 1, // automatic
-      proxied: false, // TXT records cannot be proxied
+      ttl: 1,
+      proxied: false,
     },
     { provider: args.provider },
   );
@@ -100,36 +94,20 @@ export function createAsuidTxtRecord(args: AsuidTxtArgs): cloudflare.DnsRecord {
 
 export interface OriginCertArgs {
   provider: cloudflare.Provider;
-  /** Full hostname for the cert, e.g. "studio.coglity.com" */
+  namePrefix: string;
   hostname: string;
-  /** Container Apps environment to upload the cert into */
   resourceGroupName: pulumi.Input<string>;
   location: pulumi.Input<string>;
   environmentName: pulumi.Input<string>;
 }
 
-/**
- * Provisions a Cloudflare Origin CA certificate for the given hostname and
- * uploads it to the Container Apps environment as a regular Certificate (not
- * a managed cert no chicken-and-egg with hostname binding).
- *
- * Cloudflare Origin CA certs are free, valid for 15 years, and only trusted by
- * Cloudflare itself perfect for terminating TLS on the origin when Cloudflare
- * is the only client.
- *
- * NOTE: the Cloudflare API token must include the "SSL and Certificates: Edit"
- * permission scoped to the zone (or "User: API Tokens: Edit" if using a
- * legacy origin CA key).
- */
 export function createOriginCertificate(args: OriginCertArgs) {
-  // 1. Private key for the cert
-  const privateKey = new tls.PrivateKey("ui-origin-key", {
+  const privateKey = new tls.PrivateKey(`${args.namePrefix}-origin-key`, {
     algorithm: "RSA",
     rsaBits: 2048,
   });
 
-  // 2. Certificate Signing Request
-  const csr = new tls.CertRequest("ui-origin-csr", {
+  const csr = new tls.CertRequest(`${args.namePrefix}-origin-csr`, {
     privateKeyPem: privateKey.privateKeyPem,
     subject: {
       commonName: args.hostname,
@@ -137,27 +115,24 @@ export function createOriginCertificate(args: OriginCertArgs) {
     dnsNames: [args.hostname],
   });
 
-  // 3. Submit CSR to Cloudflare → receive signed cert
   const cfCert = new cloudflare.OriginCaCertificate(
-    "ui-origin-cert",
+    `${args.namePrefix}-origin-cert`,
     {
       csr: csr.certRequestPem,
       hostnames: [args.hostname],
       requestType: "origin-rsa",
-      requestedValidity: 5475, // 15 years (max)
+      requestedValidity: 5475,
     },
     { provider: args.provider },
   );
 
-  // 4. Concatenate cert + private key into a PEM bundle, base64-encode it
   const pemBundle = pulumi
     .all([cfCert.certificate, privateKey.privateKeyPem])
     .apply(([cert, key]) =>
       Buffer.from(`${cert.trim()}\n${key.trim()}\n`).toString("base64"),
     );
 
-  // 5. Upload to Container Apps environment as a regular Certificate
-  const containerAppCert = new azure.app.Certificate("ui-origin-cert-upload", {
+  const containerAppCert = new azure.app.Certificate(`${args.namePrefix}-origin-cert-upload`, {
     resourceGroupName: args.resourceGroupName,
     location: args.location,
     environmentName: args.environmentName,

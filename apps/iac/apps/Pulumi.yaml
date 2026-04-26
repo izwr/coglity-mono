@@ -1,0 +1,6 @@
+name: coglity-apps
+runtime:
+  name: nodejs
+  options:
+    typescript: true
+description: Application services for Coglity (Container Apps, Function App)
