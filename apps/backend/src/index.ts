@@ -97,5 +97,5 @@ app.use(
 app.use("/api/organizations/:orgId", requireAuth, resolveOrg, orgScoped);
 
 app.listen(port, () => {
-  console.log(`Backend running on http://localhost:${port}`);
+  console.log(`Backend running on port ${port}`);
 });
