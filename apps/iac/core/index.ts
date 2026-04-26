@@ -221,6 +221,12 @@ new azure.storage.BlobContainer("knowledge-sources", {
   containerName: "knowledge-sources",
 });
 
+new azure.storage.BlobContainer("pulumi-state", {
+  resourceGroupName: resourceGroup.name,
+  accountName: storageAccount.name,
+  containerName: "pulumi-state",
+});
+
 const storageKeys = pulumi
   .all([resourceGroup.name, storageAccount.name])
   .apply(([rgName, saName]) =>
