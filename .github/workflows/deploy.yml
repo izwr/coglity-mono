@@ -8,6 +8,7 @@ on:
       - "apps/ui/**"
       - "apps/landing/**"
       - "apps/executor/**"
+      - "apps/iac/**"
       - "packages/shared/**"
       - "pnpm-lock.yaml"
 
@@ -28,6 +29,8 @@ jobs:
       ui: ${{ steps.filter.outputs.ui }}
       landing: ${{ steps.filter.outputs.landing }}
       executor: ${{ steps.filter.outputs.executor }}
+      iac-core: ${{ steps.filter.outputs.iac-core }}
+      iac-apps: ${{ steps.filter.outputs.iac-apps }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -49,6 +52,13 @@ jobs:
               - "apps/executor/**"
               - "packages/shared/**"
               - "pnpm-lock.yaml"
+            iac-core:
+              - "apps/iac/core/**"
+              - "apps/iac/apps/src/**"
+              - "apps/iac/package.json"
+            iac-apps:
+              - "apps/iac/apps/**"
+              - "apps/iac/package.json"
 
   backend:
     needs: changes
@@ -194,3 +204,85 @@ jobs:
         with:
           app-name: ${{ env.FUNCTION_APP_NAME }}
           package: apps/executor/deploy.zip
+
+  iac-core:
+    needs: changes
+    if: needs.changes.outputs.iac-core == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: cd apps/iac && pnpm install --frozen-lockfile
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Pulumi up (core)
+        uses: pulumi/actions@v6
+        with:
+          command: up
+          stack-name: ${{ secrets.PULUMI_ORG }}/coglity-core/dev
+          work-dir: apps/iac/core
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: "true"
+
+  iac-apps:
+    needs: [changes, iac-core]
+    if: always() && needs.changes.outputs.iac-apps == 'true' && (needs.iac-core.result == 'success' || needs.iac-core.result == 'skipped')
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: cd apps/iac && pnpm install --frozen-lockfile
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Pulumi up (apps)
+        uses: pulumi/actions@v6
+        with:
+          command: up
+          stack-name: ${{ secrets.PULUMI_ORG }}/coglity-apps/dev
+          work-dir: apps/iac/apps
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: "true"
