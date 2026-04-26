@@ -33,11 +33,9 @@ function Nav() {
           <li><a href="#product">Product</a></li>
           <li><a href="#workflow">How it works</a></li>
           <li><a href="#pricing">Pricing</a></li>
-          <li><a href="/contact">Contact</a></li>
         </ul>
         <div className="right">
-          <a href="/signin" className="btn ghost">Sign in</a>
-          <a href="/signup" className="btn primary">
+          <a href="https://studio.coglity.com" className="btn primary">
             Get started
             <ArrowRight />
           </a>
@@ -64,11 +62,10 @@ function Hero() {
           do.
         </p>
         <div className="hero-cta">
-          <a href="/signup" className="btn teal lg">
+          <a href="https://studio.coglity.com" className="btn teal lg">
             Get started free
             <ArrowRight />
           </a>
-          <a href="/contact" className="btn lg">Book a demo</a>
           <span className="micro">5,000 CU free · no card required · SOC 2 Type II</span>
         </div>
 
@@ -130,7 +127,7 @@ function ProblemSection() {
           </h2>
           <p className="sub">
             Traditional QA tooling was built for deterministic APIs. Conversational AI is stochastic,
-            multi-turn, and tool-using — and your test suite is a spreadsheet and a Slack thread.
+            multi-turn, and tool-using,and your test suite is a spreadsheet and a Slack thread.
           </p>
         </div>
         <div className="problem-grid">
@@ -142,7 +139,7 @@ function ProblemSection() {
             <ul className="prob-list">
               <li><span className="ic">&times;</span>Prompts change on Tuesday; Thursday&apos;s release ships a regression no one caught.</li>
               <li><span className="ic">&times;</span>Your &quot;test suite&quot; is 40 rows of example inputs a PM wrote once.</li>
-              <li><span className="ic">&times;</span>Tool calls and handoffs are untested — you find bugs in Sentry, not CI.</li>
+              <li><span className="ic">&times;</span>Tool calls and handoffs are untested,you find bugs in Sentry, not CI.</li>
               <li><span className="ic">&times;</span>Nobody can tell you the pass rate of last night&apos;s build in under an hour.</li>
             </ul>
           </div>
@@ -152,9 +149,9 @@ function ProblemSection() {
               QA that actually <em>understands conversation</em>.
             </h3>
             <ul className="prob-list">
-              <li><span className="ic">✓</span>Every merge triggers 200+ adversarial test cases — voice, chat, and agent.</li>
+              <li><span className="ic">✓</span>Every merge triggers 200+ adversarial test cases,voice, chat, and agent.</li>
               <li><span className="ic">✓</span>AI-authored variants expand coverage faster than humans can type.</li>
-              <li><span className="ic">✓</span>Tool-call and handoff validation baked in — not an afterthought.</li>
+              <li><span className="ic">✓</span>Tool-call and handoff validation baked in,not an afterthought.</li>
               <li><span className="ic">✓</span>Pass rate, flaky cases, and root cause land in Slack by 7am.</li>
             </ul>
           </div>
@@ -224,11 +221,11 @@ function WorkflowSection() {
             </h3>
             <p>Start with one intent. Coglity drafts Given/When/Then, generates adversarial variants, and proposes the tool-call contract. You stay in charge.</p>
             <ul className="bullets">
-              <li><span className="tick-mark">✓</span><span><b>Inline refinement</b> — &quot;make it ruder&quot;, &quot;add a PII leak attempt&quot;</span></li>
-              <li><span className="tick-mark">✓</span><span><b>Variant fan-out</b> — one case spawns 8 stress tests</span></li>
-              <li><span className="tick-mark">✓</span><span><b>Keyboard-first</b> — Cmd+K runs everything</span></li>
+              <li><span className="tick-mark">✓</span><span><b>Inline refinement</b>,&quot;make it ruder&quot;, &quot;add a PII leak attempt&quot;</span></li>
+              <li><span className="tick-mark">✓</span><span><b>Variant fan-out</b>,one case spawns 8 stress tests</span></li>
+              <li><span className="tick-mark">✓</span><span><b>Keyboard-first</b>,Cmd+K runs everything</span></li>
             </ul>
-            <a href="/signup" className="btn teal">Try the authoring copilot <ArrowRight /></a>
+            <a href="https://studio.coglity.com" className="btn teal">Try the authoring copilot <ArrowRight /></a>
           </div>
           <div className="shot">
             <div className="screenshot"><MockAuthor /></div>
@@ -243,15 +240,15 @@ function WorkflowSection() {
           <div className="copy">
             <div className="chip">Live runs</div>
             <h3 style={{ fontFamily: "var(--font-serif)" }}>
-              See every case tick green <em>— or know why it didn&apos;t</em>.
+              See every case tick green <em>or know why it didn&apos;t</em>.
             </h3>
             <p>Runs stream in real time. When a case fails, Coglity opens a triage pane with a transcript diff, the tool-call inspector, and an inferred root cause.</p>
             <ul className="bullets">
               <li><span className="tick-mark">✓</span><span><b>Transcript diff</b> vs. the last green run</span></li>
-              <li><span className="tick-mark">✓</span><span><b>Tool-call inspector</b> — JSON request, response, timing</span></li>
+              <li><span className="tick-mark">✓</span><span><b>Tool-call inspector</b>,JSON request, response, timing</span></li>
               <li><span className="tick-mark">✓</span><span><b>One-click</b> to Jira, Linear, or GitHub</span></li>
             </ul>
-            <a href="/signup" className="btn">Explore live triage <ArrowRight /></a>
+            <a href="https://studio.coglity.com" className="btn">Explore live triage <ArrowRight /></a>
           </div>
         </div>
 
@@ -265,10 +262,10 @@ function WorkflowSection() {
             <p>Pass-rate trends, flakiness leaderboards, failure heatmaps by intent and environment. Scheduled to Slack, email, or your CI.</p>
             <ul className="bullets">
               <li><span className="tick-mark">✓</span><span><b>Trend lines</b> for 30 / 60 / 90 days</span></li>
-              <li><span className="tick-mark">✓</span><span><b>Flakiness score</b> per case — stop chasing ghosts</span></li>
-              <li><span className="tick-mark">✓</span><span><b>Intent × env heatmap</b> — spot the weak corners fast</span></li>
+              <li><span className="tick-mark">✓</span><span><b>Flakiness score</b> per case,stop chasing ghosts</span></li>
+              <li><span className="tick-mark">✓</span><span><b>Intent × env heatmap</b>,spot the weak corners fast</span></li>
             </ul>
-            <a href="/signup" className="btn">See the report format <ArrowRight /></a>
+            <a href="https://studio.coglity.com" className="btn">See the report format <ArrowRight /></a>
           </div>
           <div className="shot">
             <div className="screenshot"><MockReports /></div>
@@ -315,7 +312,7 @@ function MetricsRow() {
     { value: "12×", label: "More test coverage\nper engineer-week" },
     { value: "4m", label: "Median wall-clock for\na 200-case suite" },
     { value: "94%", label: "Regressions caught\nbefore customer reports" },
-    { value: "18", label: "Integrations — CI,\nticketing, observability" },
+    { value: "18", label: "Integrations,CI,\nticketing, observability" },
   ];
   return (
     <section style={{ padding: 0 }}>
@@ -365,7 +362,7 @@ function PricingSection() {
               <li><span className="tick-mark">✓</span>Community support</li>
               <li><span className="tick-mark">✓</span>7-day run retention</li>
             </ul>
-            <a href="/signup" className="btn">Get started free</a>
+            <a href="https://studio.coglity.com" className="btn">Get started free</a>
           </div>
           {/* Team (featured) */}
           <div className="tier featured">
@@ -388,7 +385,7 @@ function PricingSection() {
               <li><span className="tick-mark">✓</span>90-day retention · RBAC</li>
               <li><span className="tick-mark">✓</span>Priority support · 4h response</li>
             </ul>
-            <a href="/signup" className="btn">Start 14-day trial</a>
+            <a href="https://studio.coglity.com" className="btn">Start 14-day trial</a>
           </div>
           {/* Enterprise */}
           <div className="tier">
@@ -405,7 +402,7 @@ function PricingSection() {
               <li><span className="tick-mark">✓</span>SOC 2 Type II · HIPAA · GDPR</li>
               <li><span className="tick-mark">✓</span>Custom adversarial suite authoring</li>
             </ul>
-            <a href="/contact" className="btn">Talk to sales</a>
+            <a href="https://studio.coglity.com" className="btn">Get started</a>
           </div>
         </div>
       </div>
@@ -418,9 +415,9 @@ function FAQSection() {
   const items = [
     { q: "What's a Conversation Unit?", a: "One CU is one complete test case run against a connected bot, regardless of turn count. A 3-turn chat case and a 20-turn voice case both burn 1 CU. Adversarial variants inside a case are free." },
     { q: "Do you support voice bots?", a: "Yes. We capture audio, ASR confidence, latency per turn, and barge-in behavior. We integrate with Twilio, Vonage, LiveKit, and bring-your-own-SIP." },
-    { q: "How does adversarial testing work?", a: "We maintain a curated library of attack patterns — prompt injection, PII extraction, refusal bypasses, jailbreaks, indirect injection from retrieved documents. You enable the suites that matter; they run on your schedule and we update them weekly." },
+    { q: "How does adversarial testing work?", a: "We maintain a curated library of attack patterns,prompt injection, PII extraction, refusal bypasses, jailbreaks, indirect injection from retrieved documents. You enable the suites that matter; they run on your schedule and we update them weekly." },
     { q: "Can we self-host?", a: "Enterprise customers can deploy Coglity in a customer-managed VPC on AWS, GCP, or Azure. The control plane stays with us; all test data, transcripts, and artifacts live in your environment." },
-    { q: "Which models and providers do you work with?", a: "Anything behind an HTTP endpoint. Native integrations for OpenAI, Anthropic, AWS Bedrock, Azure OpenAI, Google Vertex, and common voice stacks. Custom endpoints with any auth — including mTLS and signed requests — via the connector SDK." },
+    { q: "Which models and providers do you work with?", a: "Anything behind an HTTP endpoint. Native integrations for OpenAI, Anthropic, AWS Bedrock, Azure OpenAI, Google Vertex, and common voice stacks. Custom endpoints with any auth,including mTLS and signed requests,via the connector SDK." },
     { q: "Is it secure?", a: "SOC 2 Type II, GDPR-compliant, HIPAA-ready with a signed BAA. Secrets stay in your secrets manager; we never store production credentials. Full audit log, SAML SSO, and SCIM on Enterprise." },
   ];
   return (
@@ -432,12 +429,6 @@ function FAQSection() {
             <h2 className="disp" style={{ fontFamily: "var(--font-serif)", fontSize: 44 }}>
               Questions we <em>usually</em> get.
             </h2>
-            <p style={{ fontSize: 15, color: "var(--muted)", marginTop: 20, maxWidth: 320 }}>
-              Something else?{" "}
-              <a href="/contact" style={{ color: "var(--teal)", fontWeight: 500 }}>
-                Ask the team &rarr;
-              </a>
-            </p>
           </div>
           <div>
             {items.map((item, i) => (
@@ -469,11 +460,10 @@ function BigCTA() {
           that&apos;s already in main.
         </p>
         <div className="cta-row">
-          <a href="/signup" className="btn-white">
+          <a href="https://studio.coglity.com" className="btn-white">
             Get started free
             <ArrowRight />
           </a>
-          <a href="/contact" className="btn-ghost-light">Talk to sales</a>
         </div>
       </div>
     </div>
@@ -494,7 +484,7 @@ function Footer() {
               </div>
             </div>
             <p>
-              QA for conversational AI. Author, run, triage, and ship bots you can trust — voice,
+              QA for conversational AI. Author, run, triage, and ship bots you can trust,voice,
               chat, and agent.
             </p>
           </div>
@@ -519,7 +509,6 @@ function Footer() {
           <div className="col">
             <h5>Company</h5>
             <ul>
-              <li><a href="/contact">Contact</a></li>
               <li><a href="#">Security</a></li>
               <li><a href="#">Careers</a></li>
               <li><a href="#">Privacy</a></li>
@@ -529,12 +518,10 @@ function Footer() {
             <h5>Get started</h5>
             <ul>
               <li>
-                <a href="/signup" style={{ color: "var(--teal)", fontWeight: 500 }}>
+                <a href="https://studio.coglity.com" style={{ color: "var(--teal)", fontWeight: 500 }}>
                   Create account &rarr;
                 </a>
               </li>
-              <li><a href="/signin">Sign in</a></li>
-              <li><a href="/contact">Book demo</a></li>
             </ul>
           </div>
         </div>

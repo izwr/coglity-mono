@@ -9,7 +9,8 @@
     "isolatedModules": true,
     "esModuleInterop": true,
     "declaration": true,
-    "noEmit": true
+    "outDir": "dist",
+    "rootDir": "src"
   },
   "include": ["src"]
 }
