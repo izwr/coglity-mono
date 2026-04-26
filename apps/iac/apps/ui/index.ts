@@ -10,6 +10,7 @@ export interface UiArgs {
   customDomainVerificationId: pulumi.Input<string>;
   acrLoginServer: pulumi.Input<string>;
   acrIdentityId: pulumi.Input<string>;
+  backendFqdn: pulumi.Input<string>;
   imageTag: string;
 }
 
@@ -46,6 +47,12 @@ export function createUi(args: UiArgs) {
           name: "ui",
           image: pulumi.interpolate`${args.acrLoginServer}/coglity-ui:${args.imageTag}`,
           resources: { cpu: 0.25, memory: "0.5Gi" },
+          env: [
+            {
+              name: "BACKEND_URL",
+              value: pulumi.interpolate`https://${args.backendFqdn}`,
+            },
+          ],
         },
       ],
       scale: { minReplicas: 0, maxReplicas: 2 },

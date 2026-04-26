@@ -107,6 +107,7 @@ const ui = createUi({
   customDomainVerificationId: coreOut.customDomainVerificationId,
   acrLoginServer,
   acrIdentityId: acrIdentity.id,
+  backendFqdn: backend.fqdn,
   imageTag: uiImageTag,
 });
 
