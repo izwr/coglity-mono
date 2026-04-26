@@ -90,7 +90,7 @@ export function createBackend(args: BackendArgs) {
           ],
         },
       ],
-      scale: { minReplicas: 0, maxReplicas: 2 },
+      scale: { minReplicas: 1, maxReplicas: 2 },
     },
     identity: {
       type: "SystemAssigned,UserAssigned",

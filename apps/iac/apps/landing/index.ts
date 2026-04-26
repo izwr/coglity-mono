@@ -54,7 +54,7 @@ export function createLanding(args: LandingArgs) {
           resources: { cpu: 0.25, memory: "0.5Gi" },
         },
       ],
-      scale: { minReplicas: 0, maxReplicas: 2 },
+      scale: { minReplicas: 1, maxReplicas: 2 },
     },
     identity: {
       type: "UserAssigned",
