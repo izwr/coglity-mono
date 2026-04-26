@@ -46,7 +46,7 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 app.get("/api/debug-session", (req, res) => {
-  req.session.test = Date.now();
+  (req.session as any).test = Date.now();
   req.session.save((err) => {
     res.json({
       error: err?.message || null,
