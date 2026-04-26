@@ -1197,6 +1197,52 @@ kbd {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── Onboarding ───────────────────────────────────────────── */
+.onboarding-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+  padding: 40px 20px;
+}
+.onboarding-card {
+  width: 100%;
+  max-width: 460px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 44px 36px;
+  box-shadow: var(--shadow-md);
+}
+.onboarding-card h1 {
+  font-family: var(--serif);
+  font-size: 32px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  font-weight: 400;
+  margin-bottom: 6px;
+}
+.onboarding-sub {
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 28px;
+}
+.onboarding-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.onboarding-card .ts-form {
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  margin-bottom: 0;
+  box-shadow: none;
+}
+
 /* ── Dashboard ─────────────────────────────────────────────── */
 .dash-hero { margin-bottom: 28px; }
 .dash-hero h1 {
@@ -1804,6 +1850,8 @@ kbd {
   .dash-hero h1 { font-size: 36px; }
   .auth-headline { font-size: 38px; }
   .auth-editorial, .auth-panel { padding: 28px 20px; }
+  .onboarding-card { padding: 32px 20px; }
+  .onboarding-card h1 { font-size: 26px; }
   .page-head h1 { font-size: 28px; }
   .tc-detail { padding: 16px; }
   .tc-detail-title { font-size: 22px; }
