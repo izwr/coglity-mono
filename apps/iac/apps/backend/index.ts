@@ -52,6 +52,7 @@ export function createBackend(args: BackendArgs) {
         external: false,
         targetPort: 3001,
         transport: "auto",
+        allowInsecure: true,
       },
       secrets,
       registries: [
