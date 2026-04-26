@@ -24,8 +24,7 @@ export interface BackendArgs {
   googleClientSecret: pulumi.Input<string>;
   executorWebhookSecret: pulumi.Input<string>;
   acrLoginServer: pulumi.Input<string>;
-  acrUsername: pulumi.Input<string>;
-  acrPassword: pulumi.Input<string>;
+  acrIdentityId: pulumi.Input<string>;
   imageTag: string;
 }
 
@@ -40,7 +39,6 @@ export function createBackend(args: BackendArgs) {
     { name: "google-client-secret", value: args.googleClientSecret },
     { name: "openai-api-key", value: args.aiServicesApiKey },
     { name: "executor-webhook-secret", value: args.executorWebhookSecret },
-    { name: "acr-password", value: args.acrPassword },
   ];
 
   const app = new azure.app.ContainerApp("backend", {
@@ -59,8 +57,7 @@ export function createBackend(args: BackendArgs) {
       registries: [
         {
           server: args.acrLoginServer,
-          username: args.acrUsername,
-          passwordSecretRef: "acr-password",
+          identity: args.acrIdentityId,
         },
       ],
     },
@@ -96,7 +93,8 @@ export function createBackend(args: BackendArgs) {
       scale: { minReplicas: 0, maxReplicas: 2 },
     },
     identity: {
-      type: "SystemAssigned",
+      type: "SystemAssigned,UserAssigned",
+      userAssignedIdentities: [args.acrIdentityId],
     },
   });
 

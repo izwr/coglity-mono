@@ -1,4 +1,5 @@
 import * as pulumi from "@pulumi/pulumi";
+import * as azure from "@pulumi/azure-native";
 import { createBackend } from "./backend/index.js";
 import { createUi } from "./ui/index.js";
 import { createLanding } from "./landing/index.js";
@@ -37,8 +38,22 @@ const coreOut = {
 };
 
 const acrLoginServer = config.require("acrLoginServer");
-const acrUsername = config.require("acrUsername");
-const acrPassword = config.requireSecret("acrPassword");
+const acrResourceId = config.require("acrResourceId");
+
+// Shared user-assigned managed identity for ACR pull (avoids circular dependency with system-assigned)
+const acrIdentity = new azure.managedidentity.UserAssignedIdentity("acr-pull-identity", {
+  resourceGroupName: coreOut.resourceGroupName,
+  location: coreOut.location,
+  resourceName: "coglity-acr-pull",
+});
+
+const acrPullRoleId = "7f951dda-4ed3-4680-a7ca-43fe172d538d";
+new azure.authorization.RoleAssignment("acr-pull-role", {
+  principalId: acrIdentity.principalId,
+  principalType: "ServicePrincipal",
+  roleDefinitionId: pulumi.interpolate`/subscriptions/${azure.authorization.getClientConfigOutput().apply((c) => c.subscriptionId)}/providers/Microsoft.Authorization/roleDefinitions/${acrPullRoleId}`,
+  scope: acrResourceId,
+});
 
 const backendImageTag = config.get("backendImageTag") ?? "latest";
 const uiImageTag = config.get("uiImageTag") ?? "latest";
@@ -77,8 +92,7 @@ const backend = createBackend({
   googleClientSecret,
   executorWebhookSecret,
   acrLoginServer,
-  acrUsername,
-  acrPassword,
+  acrIdentityId: acrIdentity.id,
   imageTag: backendImageTag,
 });
 
@@ -92,8 +106,7 @@ const ui = createUi({
   uiCertificateId: coreOut.uiCertificateId,
   customDomainVerificationId: coreOut.customDomainVerificationId,
   acrLoginServer,
-  acrUsername,
-  acrPassword,
+  acrIdentityId: acrIdentity.id,
   imageTag: uiImageTag,
 });
 
@@ -108,8 +121,7 @@ const landing = createLanding({
   landingWwwCertificateId: coreOut.landingWwwCertificateId,
   customDomainVerificationId: coreOut.customDomainVerificationId,
   acrLoginServer,
-  acrUsername,
-  acrPassword,
+  acrIdentityId: acrIdentity.id,
   imageTag: landingImageTag,
 });
 

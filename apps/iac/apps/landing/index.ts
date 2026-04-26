@@ -10,8 +10,7 @@ export interface LandingArgs {
   landingWwwCertificateId: pulumi.Input<string>;
   customDomainVerificationId: pulumi.Input<string>;
   acrLoginServer: pulumi.Input<string>;
-  acrUsername: pulumi.Input<string>;
-  acrPassword: pulumi.Input<string>;
+  acrIdentityId: pulumi.Input<string>;
   imageTag: string;
 }
 
@@ -40,12 +39,10 @@ export function createLanding(args: LandingArgs) {
           },
         ],
       },
-      secrets: [{ name: "acr-password", value: args.acrPassword }],
       registries: [
         {
           server: args.acrLoginServer,
-          username: args.acrUsername,
-          passwordSecretRef: "acr-password",
+          identity: args.acrIdentityId,
         },
       ],
     },
@@ -58,6 +55,10 @@ export function createLanding(args: LandingArgs) {
         },
       ],
       scale: { minReplicas: 0, maxReplicas: 2 },
+    },
+    identity: {
+      type: "UserAssigned",
+      userAssignedIdentities: [args.acrIdentityId],
     },
   });
 
