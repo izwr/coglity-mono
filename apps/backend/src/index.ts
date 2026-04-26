@@ -39,29 +39,11 @@ const port = process.env.PORT || 3001;
 app.set("trust proxy", 1);
 
 app.use(express.json());
-app.use((req, _res, next) => {
-  if (req.path.startsWith("/api/auth") || req.path === "/api/debug-session") {
-    console.log(`[${req.method} ${req.path}] Cookie header: ${req.headers.cookie || "NONE"}`);
-  }
-  next();
-});
 app.use(sessionMiddleware);
 
 // ── Public / top-level ─────────────────────────────────────────
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
-});
-app.get("/api/debug-session", (req, res) => {
-  (req.session as any).test = Date.now();
-  req.session.save((err) => {
-    res.json({
-      error: err?.message || null,
-      sessionID: req.sessionID,
-      oauthState: (req.session as any).oauthState || null,
-      cookie: req.session.cookie,
-      headers: { host: req.headers.host, xForwardedProto: req.headers["x-forwarded-proto"], xForwardedHost: req.headers["x-forwarded-host"] },
-    });
-  });
 });
 app.use("/api/auth", authRouter);
 
