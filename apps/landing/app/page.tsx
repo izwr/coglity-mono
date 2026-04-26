@@ -24,7 +24,7 @@ function Nav() {
     <nav className="top">
       <div className="wrap inner">
         <a href="/" className="brand">
-          <div className="brand-mark" style={{ fontFamily: "var(--font-serif)" }}>C</div>
+          <img className="brand-mark" src="/logo.svg" alt="Coglity" />
           <div className="brand-name" style={{ fontFamily: "var(--font-serif)" }}>
             Cog<em>lity</em>
           </div>
@@ -478,7 +478,7 @@ function Footer() {
         <div className="foot-grid">
           <div className="col">
             <div className="brand">
-              <div className="brand-mark" style={{ fontFamily: "var(--font-serif)" }}>C</div>
+              <img className="brand-mark" src="/logo.svg" alt="Coglity" />
               <div className="brand-name" style={{ fontFamily: "var(--font-serif)" }}>
                 Cog<em>lity</em>
               </div>

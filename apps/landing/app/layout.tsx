@@ -26,6 +26,12 @@ export const metadata: Metadata = {
   title: "Coglity · QA for conversational AI",
   description:
     "Coglity is the testing platform for voice bots, chatbots, and agents. Author cases with an AI copilot, run them at scale across environments, and catch regressions before your users do.",
+  icons: {
+    icon: [
+      { url: "/logo.svg", type: "image/svg+xml" },
+      { url: "/logo.png", type: "image/png" },
+    ],
+  },
 };
 
 export default function RootLayout({

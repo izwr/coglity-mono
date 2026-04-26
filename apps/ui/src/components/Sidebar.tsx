@@ -233,7 +233,7 @@ export function Sidebar({
   return (
     <aside className={`sidebar${open ? " open" : ""}`} onClick={() => onClose?.()}>
       <div className="sidebar-brand">
-        <div className="sidebar-mark">C</div>
+        <img className="sidebar-mark" src="/logo.svg" alt="Coglity" />
         <div className="sidebar-wordmark">Cog<em>lity</em></div>
       </div>
 

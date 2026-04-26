@@ -26,7 +26,7 @@ export function Login() {
     <div className="auth-split">
       <section className="auth-editorial">
         <div className="sidebar-brand" style={{ padding: 0 }}>
-          <div className="sidebar-mark">C</div>
+          <img className="sidebar-mark" src="/logo.svg" alt="Coglity" />
           <div className="sidebar-wordmark">Cog<em>lity</em></div>
         </div>
 

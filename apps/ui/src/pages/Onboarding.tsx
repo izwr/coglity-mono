@@ -74,6 +74,10 @@ export function Onboarding() {
   return (
     <div className="onboarding-page">
       <div className="onboarding-card">
+        <div className="sidebar-brand" style={{ padding: 0, marginBottom: 20 }}>
+          <img className="sidebar-mark" src="/logo.svg" alt="Coglity" />
+          <div className="sidebar-wordmark">Cog<em>lity</em></div>
+        </div>
         <h1>Welcome to Coglity</h1>
         <p className="onboarding-sub">Let's get you set up.</p>
         {mode === "pick" && (
