@@ -11,6 +11,7 @@ on:
       - "apps/iac/**"
       - "packages/shared/**"
       - "pnpm-lock.yaml"
+      - ".github/workflows/deploy.yml"
 
 permissions:
   id-token: write
