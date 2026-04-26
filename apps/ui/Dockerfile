@@ -24,3 +24,4 @@ COPY apps/ui/nginx.conf /etc/nginx/templates/default.conf.template
 ENV BACKEND_URL=http://backend:3001
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
+

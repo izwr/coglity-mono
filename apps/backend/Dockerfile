@@ -35,3 +35,4 @@ COPY --from=build /app/package.json package.json
 USER app
 EXPOSE 3001
 CMD ["node", "apps/backend/dist/index.js"]
+
