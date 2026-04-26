@@ -237,7 +237,7 @@ jobs:
         uses: pulumi/actions@v6
         with:
           command: up
-          stack-name: ${{ secrets.PULUMI_ORG }}/coglity-core/dev
+          stack-name: ${{ secrets.PULUMI_ORG }}/coglity-core/core-prod
           work-dir: apps/iac/core
         env:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
@@ -278,7 +278,7 @@ jobs:
         uses: pulumi/actions@v6
         with:
           command: up
-          stack-name: ${{ secrets.PULUMI_ORG }}/coglity-apps/dev
+          stack-name: ${{ secrets.PULUMI_ORG }}/coglity-apps/apps-prod
           work-dir: apps/iac/apps
         env:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
