@@ -88,6 +88,7 @@ export function createBackend(args: BackendArgs) {
             { name: "AZURE_STORAGE_RECORDINGS_CONTAINER", value: args.recordingsContainerName },
             { name: "AZURE_SERVICE_BUS_NAMESPACE", value: args.serviceBusNamespaceFqdn },
             { name: "AZURE_SERVICE_BUS_QUEUE_NAME", value: args.serviceBusQueueName },
+            { name: "COOKIE_DOMAIN", value: "studio.coglity.com" },
           ],
         },
       ],
