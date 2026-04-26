@@ -86,7 +86,7 @@ jobs:
           docker push $ACR_LOGIN_SERVER/coglity-backend:latest
 
       - name: Deploy to Container App
-        uses: azure/container-apps-deploy-action@v2
+        uses: azure/container-apps-deploy-action@v1
         with:
           resourceGroup: ${{ env.AZURE_RESOURCE_GROUP }}
           containerAppName: coglity-backend
@@ -118,7 +118,7 @@ jobs:
           docker push $ACR_LOGIN_SERVER/coglity-ui:latest
 
       - name: Deploy to Container App
-        uses: azure/container-apps-deploy-action@v2
+        uses: azure/container-apps-deploy-action@v1
         with:
           resourceGroup: ${{ env.AZURE_RESOURCE_GROUP }}
           containerAppName: coglity-ui
@@ -150,7 +150,7 @@ jobs:
           docker push $ACR_LOGIN_SERVER/coglity-landing:latest
 
       - name: Deploy to Container App
-        uses: azure/container-apps-deploy-action@v2
+        uses: azure/container-apps-deploy-action@v1
         with:
           resourceGroup: ${{ env.AZURE_RESOURCE_GROUP }}
           containerAppName: coglity-landing
