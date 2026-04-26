@@ -7,14 +7,9 @@ const PgStore = connectPgSimple(session);
 const connectionString =
   process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5432/coglity";
 
-const isAzure = connectionString.includes("azure");
-
 export const sessionMiddleware: RequestHandler = session({
   store: new PgStore({
-    conObject: {
-      connectionString,
-      ssl: isAzure ? { rejectUnauthorized: false } : undefined,
-    },
+    conString: connectionString,
     createTableIfMissing: true,
   }),
   secret: process.env.SESSION_SECRET || "coglity-dev-secret-change-in-production",
