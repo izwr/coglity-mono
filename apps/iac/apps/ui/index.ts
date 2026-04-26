@@ -50,7 +50,7 @@ export function createUi(args: UiArgs) {
           env: [
             {
               name: "BACKEND_URL",
-              value: pulumi.interpolate`https://${args.backendFqdn}`,
+              value: "http://coglity-backend",
             },
           ],
         },
