@@ -221,19 +221,9 @@ new azure.storage.BlobContainer("knowledge-sources", {
   containerName: "knowledge-sources",
 });
 
-// ── Pulumi State Storage (dedicated account) ──────────────────────
-
-const pulumiStorageAccount = new azure.storage.StorageAccount("coglitypulumi", {
-  resourceGroupName: resourceGroup.name,
-  location,
-  accountName: "coglitypulumi",
-  kind: azure.storage.Kind.StorageV2,
-  sku: { name: azure.storage.SkuName.Standard_LRS },
-});
-
 new azure.storage.BlobContainer("pulumi-state", {
   resourceGroupName: resourceGroup.name,
-  accountName: pulumiStorageAccount.name,
+  accountName: storageAccount.name,
   containerName: "pulumi-state",
 });
 
@@ -384,5 +374,3 @@ export const keyVaultId = keyVault.id;
 export const storageAccountId = storageAccount.id;
 export const serviceBusNamespaceId = serviceBusNamespace.id;
 export { storageConnectionString };
-
-export const pulumiStorageAccountName = pulumiStorageAccount.name;
