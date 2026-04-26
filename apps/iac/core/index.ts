@@ -170,7 +170,7 @@ const databaseUrl = pulumi
   .all([pgServer.fullyQualifiedDomainName, postgresAdminPassword])
   .apply(
     ([fqdn, pw]) =>
-      `postgres://pgadmin:${encodeURIComponent(pw)}@${fqdn}:5432/coglity?sslmode=require&uselibpqcompat=true`,
+      `postgres://pgadmin:${encodeURIComponent(pw)}@${fqdn}:5432/coglity?sslmode=require`,
   );
 
 // ── 7. Service Bus Namespace + Queue ───────────────────────────────
