@@ -45,6 +45,17 @@ app.use(sessionMiddleware);
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
 });
+app.get("/api/debug-session", (req, res) => {
+  req.session.test = Date.now();
+  req.session.save((err) => {
+    res.json({
+      error: err?.message || null,
+      sessionID: req.sessionID,
+      cookie: req.session.cookie,
+      headers: { host: req.headers.host, xForwardedProto: req.headers["x-forwarded-proto"], xForwardedHost: req.headers["x-forwarded-host"] },
+    });
+  });
+});
 app.use("/api/auth", authRouter);
 
 // ── Internal webhooks (no session, shared-secret auth inside) ─
