@@ -1,0 +1,6 @@
+config:
+  coglity-core:postgresAdminPassword:
+    secure: AAABAA+Onzi2LZzIj8eR18jk79t53gxCe5G+KXch53unhmHrTUgdFF3zjXBNIPyBO5HU9Uf7fH0=
+  cloudflare:apiToken:
+    secure: AAABAGNdjs2OZAfSPwUMQd78RVvaF2N8Trbbd8m7w/A+nprrlpiUm+aW64A6wILhKMK5ydF5NpeKRKN8kTQfAfQ9p77wxdCihT/kPjXIN09BlI4jZw==
+  coglity-core:cfZoneId: b90a989b7c1a8c043abaae66b00c83ec

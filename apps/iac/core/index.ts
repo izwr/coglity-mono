@@ -6,12 +6,13 @@ import {
   createLandingCnameRecords,
   createAsuidTxtRecord,
   createOriginCertificate,
-} from "../apps/src/cloudflare-dns.js";
+} from "../apps/src/cloudflare-dns.ts";
 
 const config = new pulumi.Config();
 const cfConfig = new pulumi.Config("cloudflare");
 
-const location = "southindia";
+const location = "centralindia";
+const aiLocation = "southindia";
 const cfZoneId = config.require("cfZoneId");
 const cfApiToken = cfConfig.requireSecret("apiToken");
 const postgresAdminPassword = config.requireSecret("postgresAdminPassword");
@@ -28,8 +29,8 @@ const resourceGroup = new azure.resources.ResourceGroup("coglity-rg", {
 const logAnalytics = new azure.operationalinsights.Workspace("coglity-logs", {
   resourceGroupName: resourceGroup.name,
   location,
-  sku: { name: "Free" },
-  retentionInDays: 7,
+  sku: { name: "PerGB2018" },
+  retentionInDays: 30,
 });
 
 // ── 3. Container Apps Environment ──────────────────────────────────
@@ -177,7 +178,7 @@ const databaseUrl = pulumi
 const serviceBusNamespace = new azure.servicebus.Namespace("coglity-sb", {
   resourceGroupName: resourceGroup.name,
   location,
-  namespaceName: "coglity-sb",
+  namespaceName: "coglity-servicebus",
   sku: { name: "Basic", tier: "Basic" },
 });
 
@@ -263,7 +264,7 @@ const keyVault = new azure.keyvault.Vault("coglity-kv", {
 
 const aiServices = new azure.cognitiveservices.Account("coglity-ai", {
   resourceGroupName: resourceGroup.name,
-  location,
+  location: aiLocation,
   accountName: "coglity-ai",
   kind: "AIServices",
   sku: { name: "S0" },
@@ -289,43 +290,36 @@ new azure.cognitiveservices.Deployment("gpt-5-mini", {
     model: {
       format: "OpenAI",
       name: "gpt-5-mini",
-      version: "2025-01-31",
+      version: "2025-08-07",
     },
     versionUpgradeOption: "OnceCurrentVersionExpired",
   },
   sku: { name: "GlobalStandard", capacity: 10 },
 });
 
-new azure.cognitiveservices.Deployment(
-  "gpt-realtime",
-  {
-    resourceGroupName: resourceGroup.name,
-    accountName: aiServices.name,
-    deploymentName: "gpt-realtime",
-    properties: {
-      model: {
-        format: "OpenAI",
-        name: "gpt-4o-realtime-preview",
-        version: "2024-12-17",
-      },
-      versionUpgradeOption: "OnceCurrentVersionExpired",
-    },
-    sku: { name: "GlobalStandard", capacity: 6 },
-  },
-);
+// ── 12. AI Foundry Hub + Project ──────���───────────────────────────
 
-// ── 12. AI Foundry Project ─────────────────────────────────────────
+const aiHub = new azure.machinelearningservices.Workspace("coglity-ai-hub", {
+  resourceGroupName: resourceGroup.name,
+  location: aiLocation,
+  workspaceName: "coglity-ai-hub",
+  kind: "Hub",
+  sku: { name: "Basic", tier: "Basic" },
+  identity: { type: "SystemAssigned" },
+  friendlyName: "Coglity AI Hub",
+  keyVault: keyVault.id,
+  storageAccount: storageAccount.id,
+});
 
 const aiProject = new azure.machinelearningservices.Workspace("coglity-foundry", {
   resourceGroupName: resourceGroup.name,
-  location,
+  location: aiLocation,
   workspaceName: "coglity-foundry",
   kind: "Project",
   sku: { name: "Basic", tier: "Basic" },
   identity: { type: "SystemAssigned" },
   friendlyName: "Coglity Foundry",
-  keyVault: keyVault.id,
-  storageAccount: storageAccount.id,
+  hubResourceId: aiHub.id,
 });
 
 const aiFoundryProjectEndpoint = pulumi
@@ -368,7 +362,7 @@ export const aiServicesEndpoint = aiServices.properties.apply((p) => p.endpoint!
 export { aiFoundryProjectEndpoint };
 export const aiServicesAccountId = aiServices.id;
 export const aiServicesApiKey = pulumi.secret(aiServicesKeys.apply((k) => k.key1!));
-export const aiServicesLocation = location;
+export const aiServicesLocation = aiLocation;
 
 export const keyVaultId = keyVault.id;
 export const storageAccountId = storageAccount.id;

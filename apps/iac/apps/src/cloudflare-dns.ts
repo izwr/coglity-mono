@@ -82,7 +82,7 @@ export function createAsuidTxtRecord(args: AsuidTxtArgs): cloudflare.Record {
     `${args.namePrefix}-asuid-txt`,
     {
       zoneId: args.zoneId,
-      name: `asuid.${args.hostname}`,
+      name: args.hostname === "@" ? "asuid" : `asuid.${args.hostname}`,
       type: "TXT",
       content: args.verificationId,
       ttl: 1,
