@@ -152,3 +152,4 @@ export const uiFqdn = ui.fqdn;
 export const landingFqdn = landing.fqdn;
 export const functionAppName = executor.name;
 export const functionAppDefaultHostName = executor.defaultHostName;
+
