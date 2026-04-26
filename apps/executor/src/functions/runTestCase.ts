@@ -11,7 +11,7 @@ app.serviceBusQueue("runTestCase", {
       return;
     }
 
-    ctx.log(`[runTestCase ${payload.runId}] picked up from queue`);
+    ctx.log(`[runTestCase] processing run ${payload.runId}`);
     await runVoiceTest(payload);
   },
 });
