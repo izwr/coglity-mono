@@ -1,0 +1,6 @@
+name: coglity-core
+runtime:
+  name: nodejs
+  options:
+    typescript: true
+description: Core infrastructure for Coglity (resource group, database, storage, AI, DNS)
