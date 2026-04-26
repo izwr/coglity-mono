@@ -103,6 +103,7 @@ const ui = createUi({
   location: coreOut.location,
   environmentId: coreOut.environmentId,
   environmentName: coreOut.environmentName,
+  environmentDefaultDomain: coreOut.environmentDefaultDomain,
   uiCertificateId: coreOut.uiCertificateId,
   customDomainVerificationId: coreOut.customDomainVerificationId,
   acrLoginServer,

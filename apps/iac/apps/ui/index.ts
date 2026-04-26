@@ -6,6 +6,7 @@ export interface UiArgs {
   location: pulumi.Input<string>;
   environmentId: pulumi.Input<string>;
   environmentName: pulumi.Input<string>;
+  environmentDefaultDomain: pulumi.Input<string>;
   uiCertificateId: pulumi.Input<string>;
   customDomainVerificationId: pulumi.Input<string>;
   acrLoginServer: pulumi.Input<string>;
@@ -50,7 +51,7 @@ export function createUi(args: UiArgs) {
           env: [
             {
               name: "BACKEND_URL",
-              value: "http://coglity-backend",
+              value: pulumi.interpolate`http://coglity-backend.internal.${args.environmentDefaultDomain}`,
             },
           ],
         },

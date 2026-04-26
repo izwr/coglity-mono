@@ -49,7 +49,7 @@ export function createBackend(args: BackendArgs) {
     configuration: {
       activeRevisionsMode: "Single",
       ingress: {
-        external: true,
+        external: false,
         targetPort: 3001,
         transport: "auto",
       },
