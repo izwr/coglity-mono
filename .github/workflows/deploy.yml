@@ -1,0 +1,189 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/backend/**"
+      - "apps/ui/**"
+      - "apps/landing/**"
+      - "apps/executor/**"
+      - "packages/shared/**"
+      - "pnpm-lock.yaml"
+
+env:
+  ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
+  AZURE_RESOURCE_GROUP: coglity-rg
+  FUNCTION_APP_NAME: coglity-executor
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      ui: ${{ steps.filter.outputs.ui }}
+      landing: ${{ steps.filter.outputs.landing }}
+      executor: ${{ steps.filter.outputs.executor }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - "apps/backend/**"
+              - "packages/shared/**"
+              - "pnpm-lock.yaml"
+            ui:
+              - "apps/ui/**"
+              - "packages/shared/**"
+              - "pnpm-lock.yaml"
+            landing:
+              - "apps/landing/**"
+              - "pnpm-lock.yaml"
+            executor:
+              - "apps/executor/**"
+              - "packages/shared/**"
+              - "pnpm-lock.yaml"
+
+  backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: azure/docker-login@v2
+        with:
+          login-server: ${{ env.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.AZURE_CLIENT_ID }}
+          password: ${{ secrets.AZURE_CLIENT_SECRET }}
+
+      - name: Build and push
+        run: |
+          docker build -f apps/backend/Dockerfile -t $ACR_LOGIN_SERVER/coglity-backend:${{ github.sha }} -t $ACR_LOGIN_SERVER/coglity-backend:latest .
+          docker push $ACR_LOGIN_SERVER/coglity-backend:${{ github.sha }}
+          docker push $ACR_LOGIN_SERVER/coglity-backend:latest
+
+      - name: Deploy to Container App
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          resourceGroup: ${{ env.AZURE_RESOURCE_GROUP }}
+          containerAppName: coglity-backend
+          imageToDeploy: ${{ env.ACR_LOGIN_SERVER }}/coglity-backend:${{ github.sha }}
+
+  ui:
+    needs: changes
+    if: needs.changes.outputs.ui == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: azure/docker-login@v2
+        with:
+          login-server: ${{ env.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.AZURE_CLIENT_ID }}
+          password: ${{ secrets.AZURE_CLIENT_SECRET }}
+
+      - name: Build and push
+        run: |
+          docker build -f apps/ui/Dockerfile -t $ACR_LOGIN_SERVER/coglity-ui:${{ github.sha }} -t $ACR_LOGIN_SERVER/coglity-ui:latest .
+          docker push $ACR_LOGIN_SERVER/coglity-ui:${{ github.sha }}
+          docker push $ACR_LOGIN_SERVER/coglity-ui:latest
+
+      - name: Deploy to Container App
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          resourceGroup: ${{ env.AZURE_RESOURCE_GROUP }}
+          containerAppName: coglity-ui
+          imageToDeploy: ${{ env.ACR_LOGIN_SERVER }}/coglity-ui:${{ github.sha }}
+
+  landing:
+    needs: changes
+    if: needs.changes.outputs.landing == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: azure/docker-login@v2
+        with:
+          login-server: ${{ env.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.AZURE_CLIENT_ID }}
+          password: ${{ secrets.AZURE_CLIENT_SECRET }}
+
+      - name: Build and push
+        run: |
+          docker build -f apps/landing/Dockerfile -t $ACR_LOGIN_SERVER/coglity-landing:${{ github.sha }} -t $ACR_LOGIN_SERVER/coglity-landing:latest .
+          docker push $ACR_LOGIN_SERVER/coglity-landing:${{ github.sha }}
+          docker push $ACR_LOGIN_SERVER/coglity-landing:latest
+
+      - name: Deploy to Container App
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          resourceGroup: ${{ env.AZURE_RESOURCE_GROUP }}
+          containerAppName: coglity-landing
+          imageToDeploy: ${{ env.ACR_LOGIN_SERVER }}/coglity-landing:${{ github.sha }}
+
+  executor:
+    needs: changes
+    if: needs.changes.outputs.executor == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared + executor
+        run: |
+          pnpm --filter @coglity/shared build
+          pnpm --filter @coglity/executor build
+
+      - name: Prepare deployment package
+        run: |
+          cd apps/executor
+          mkdir -p deploy
+          cp -r dist deploy/
+          cp -r node_modules deploy/
+          cp host.json deploy/
+          cp package.json deploy/
+          cd deploy && zip -r ../deploy.zip .
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy to Function App
+        uses: azure/functions-action@v2
+        with:
+          app-name: ${{ env.FUNCTION_APP_NAME }}
+          package: apps/executor/deploy.zip
