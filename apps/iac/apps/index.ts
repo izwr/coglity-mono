@@ -153,3 +153,4 @@ export const landingFqdn = landing.fqdn;
 export const functionAppName = executor.name;
 export const functionAppDefaultHostName = executor.defaultHostName;
 
+
