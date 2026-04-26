@@ -24,7 +24,7 @@ export function createLanding(args: LandingArgs) {
       activeRevisionsMode: "Single",
       ingress: {
         external: true,
-        targetPort: 3000,
+        targetPort: 80,
         transport: "auto",
         customDomains: [
           {
