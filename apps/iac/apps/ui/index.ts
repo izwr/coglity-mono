@@ -51,7 +51,7 @@ export function createUi(args: UiArgs) {
           env: [
             {
               name: "BACKEND_URL",
-              value: pulumi.interpolate`http://coglity-backend.internal.${args.environmentDefaultDomain}`,
+              value: pulumi.interpolate`http://${args.backendFqdn}`,
             },
           ],
         },
