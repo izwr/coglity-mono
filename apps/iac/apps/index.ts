@@ -1,9 +1,9 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as azure from "@pulumi/azure-native";
-import { createBackend } from "./backend/index.js";
-import { createUi } from "./ui/index.js";
-import { createLanding } from "./landing/index.js";
-import { createFunctionApp } from "./function-app/index.js";
+import { createBackend } from "./backend/index.ts";
+import { createUi } from "./ui/index.ts";
+import { createLanding } from "./landing/index.ts";
+import { createFunctionApp } from "./function-app/index.ts";
 
 const config = new pulumi.Config();
 

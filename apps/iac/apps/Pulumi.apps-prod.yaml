@@ -1,0 +1,25 @@
+config:
+  # ── Stack reference ──
+  coglity-apps:coreStack: izwr/coglity-core/core-prod
+  # ── ACR ──
+  coglity-apps:acrLoginServer: acrcogilty.azurecr.io
+  coglity-apps:acrResourceId: /subscriptions/79249110-4d71-4a00-ab89-9dc4132618fe/resourceGroups/coglity/providers/Microsoft.ContainerRegistry/registries/acrcogilty
+  # ── Image tags (optional, defaults to "latest") ──
+  coglity-apps:backendImageTag: latest
+  coglity-apps:uiImageTag: latest
+  coglity-apps:landingImageTag: latest
+  # ── Secrets (set via: pulumi config set --secret <key> <value>) ──
+  coglity-apps:sessionSecret:
+    secure: AAABANffIwV0v0Gko5oSOazp2Ss34We9ECLm33f9QjhVkd37vz/8jcRW4eWX1ybevy9GIO39gjeYtpAMRjraDdT+m7yQanDXGHHre2LvivzYY1/xZFSDpFuP7aKNkmf4
+  coglity-apps:azureClientId:
+    secure: AAABAPQNsdMyhT6fNHEwtNDvUCRYK07mK5gkN7jZ1G3ype/Dk1pANvqCLTVXNRalj//nyYD3j+Pjk9r1deSdjwLCzlo=
+  coglity-apps:azureClientSecret:
+    secure: AAABAAZp/GRbF5VuSm4xd/hDudhuOsbElI05+UNsNvxwMPYQ+omU5SA15l9r2qxLMUTEobREoIpZGEqiG0qmtlBikbiC9BKF
+  coglity-apps:azureTenantId:
+    secure: AAABAFLeHn7nOH4OQGgUqmU0pRaYNl1hf7ocYFe//Nne0PsNCnmso6nh7jxuV9EX8TVkMy7JZj5kEoucf645d0uM65s=
+  coglity-apps:googleClientId:
+    secure: AAABANZsHf+F6NMe2OxozyTYydASvynuM1nJw+d4nDxV3a43vYeeU5ToiNADdID/MTVRxXY8mAo0oaiLkYkRT0IGIT59z1wayrdr4vTF4rrXYrhcQMAJXOSra3J1no7mRURj4o2/eWw=
+  coglity-apps:googleClientSecret:
+    secure: AAABAAEvk07W+uysGp4BjK4rfPrWVhQye1nOZMY7SfTEn6KNrtP+3rLUAqZMs+3cNOVmTuAiyUD/q2L95m0m4CUdGA==
+  coglity-apps:executorWebhookSecret:
+    secure: AAABADo8vMbEbZL0hFlbXLQQI8O6I/ombBm9ctjjWjGG1ZgH2CaMAj3F2KzX/1zJ

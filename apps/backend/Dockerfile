@@ -36,3 +36,4 @@ USER app
 EXPOSE 3001
 CMD ["node", "apps/backend/dist/index.js"]
 
+
