@@ -128,8 +128,13 @@ export function TestCases() {
   useEffect(() => {
     if (!org) return;
     tagService.getAll(org.organizationId, projectIds).then(setAllTags).catch(() => setAllTags([]));
-    testSuiteService.getAll(org.organizationId, projectIds, { limit: 100 }).then((d) => setAllSuites(d.data)).catch(() => setAllSuites([]));
   }, [org, projectIds]);
+
+  useEffect(() => {
+    if (!org || writable.length === 0) { setAllSuites([]); return; }
+    const writableIds = writable.map((p) => p.projectId);
+    testSuiteService.getAll(org.organizationId, writableIds, { limit: 100 }).then((d) => setAllSuites(d.data)).catch(() => setAllSuites([]));
+  }, [org, writable]);
 
   useEffect(() => {
     if (!org || writable.length === 0) {
@@ -198,7 +203,7 @@ export function TestCases() {
     <div className="page wide">
       <PageHead
         title={<>Test case <em className="italic-teal">library</em></>}
-        subtitle={<>{total} cases across {allSuites.length} suites</>}
+        subtitle={<>{total} cases across {(projectIds.length > 0 ? allSuites.filter((s) => projectIds.includes(s.projectId)) : allSuites).length} suites</>}
         actions={
           !showForm && (
             <>
@@ -234,6 +239,7 @@ export function TestCases() {
               value={formProjectId}
               onChange={(id) => {
                 setFormProjectId(id);
+                setValue("testSuiteId", "", { shouldValidate: true });
                 setValue("botConnectionId", "", { shouldValidate: true });
               }}
               required
@@ -246,16 +252,19 @@ export function TestCases() {
           </div>
           <div className="ts-form-field">
             <label htmlFor="tc-suite">Test suite</label>
-            {allSuites.length === 0 ? (
-              <p className="ts-form-hint">No test suites available. Create a suite first.</p>
-            ) : (
-              <Select
-                value={watch("testSuiteId") ? { value: watch("testSuiteId"), label: allSuites.find((s) => s.id === watch("testSuiteId"))?.name ?? "" } : null}
-                onChange={(opt) => setValue("testSuiteId", opt?.value ?? "", { shouldValidate: true })}
-                options={allSuites.map((suite) => ({ value: suite.id, label: suite.name }))}
-                placeholder="Select a test suite"
-              />
-            )}
+            {(() => {
+              const suites = formProjectId ? allSuites.filter((s) => s.projectId === formProjectId) : allSuites;
+              return suites.length === 0 ? (
+                <p className="ts-form-hint">No test suites available. Create a suite first.</p>
+              ) : (
+                <Select
+                  value={watch("testSuiteId") ? { value: watch("testSuiteId"), label: suites.find((s) => s.id === watch("testSuiteId"))?.name ?? "" } : null}
+                  onChange={(opt) => setValue("testSuiteId", opt?.value ?? "", { shouldValidate: true })}
+                  options={suites.map((suite) => ({ value: suite.id, label: suite.name }))}
+                  placeholder="Select a test suite"
+                />
+              );
+            })()}
             {errors.testSuiteId && <span className="ts-form-error">{errors.testSuiteId.message}</span>}
           </div>
           <div className="ts-form-field">
@@ -337,7 +346,7 @@ export function TestCases() {
             tags={allTags}
             sortOptions={SORT_OPTIONS}
             onApply={handleApplyFilters}
-            suites={allSuites}
+            suites={projectIds.length > 0 ? allSuites.filter((s) => projectIds.includes(s.projectId)) : allSuites}
             statusToggle={STATUS_TOGGLE}
           />
 
