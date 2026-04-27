@@ -109,7 +109,7 @@ export function BotConnections() {
   const selectedProvider = watch("provider");
   const selectedBotType = watch("botType");
   const providerOptions = selectedBotType === "voice" ? VOICE_PROVIDERS : selectedBotType === "chat" ? CHAT_PROVIDERS : [];
-  const showAuthHeaders = selectedBotType === "chat";
+  const showAuthHeaders = selectedBotType === "chat" || selectedBotType === "voice";
 
   const fetchConnections = useCallback(async () => {
     if (!org) return;
@@ -173,7 +173,7 @@ export function BotConnections() {
 
   const onSubmit = async (data: FormValues) => {
     const config: Record<string, unknown> = { ...configValues };
-    if (data.botType === "chat") {
+    if (data.botType === "chat" || data.botType === "voice") {
       const validHeaders = authHeaders.filter((h) => h.key.trim());
       if (validHeaders.length > 0) {
         config.authHeaders = validHeaders;

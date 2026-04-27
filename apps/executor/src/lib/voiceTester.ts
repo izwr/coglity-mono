@@ -20,6 +20,7 @@ type BotConnectionConfig = {
   encoding?: "pcm16" | "mulaw" | "alaw";
   sampleRate?: string | number;
   channels?: string | number;
+  authHeaders?: { key: string; value: string }[];
 };
 
 export type RunPayload = {
@@ -112,10 +113,14 @@ export async function runVoiceTest(payload: RunPayload): Promise<void> {
     return;
   }
   console.log(`${TAG} connecting to SUT: ${sutUrl}`);
+  const sutHeaders = cfg.authHeaders?.reduce<Record<string, string>>((acc, h) => {
+    if (h.key.trim()) acc[h.key] = h.value;
+    return acc;
+  }, {});
 
   let sut: WebSocket;
   try {
-    sut = await connectWs(sutUrl);
+    sut = await connectWs(sutUrl, sutHeaders);
   } catch (err) {
     await finish("errored", { error: `sut connect failed: ${err instanceof Error ? err.message : String(err)}` });
     return;
@@ -428,9 +433,9 @@ function synthesizeSpeech(config: speechSdk.SpeechConfig, text: string): Promise
 
 // ── WS helper ─────────────────────────────────────────────────────
 
-function connectWs(url: string): Promise<WebSocket> {
+function connectWs(url: string, headers?: Record<string, string>): Promise<WebSocket> {
   return new Promise((resolve, reject) => {
-    const ws = new WebSocket(url);
+    const ws = new WebSocket(url, headers ? { headers } : undefined);
     ws.once("open", () => resolve(ws));
     ws.once("error", reject);
   });
