@@ -189,10 +189,10 @@ jobs:
           cd apps/executor
           mkdir -p deploy
           cp -r dist deploy/
-          cp -rL node_modules deploy/
           cp host.json deploy/
-          cp package.json deploy/
-          cd deploy && zip -r -y ../deploy.zip .
+          node -e "const p=require('./package.json'); delete p.devDependencies; delete p.dependencies['@coglity/shared']; require('fs').writeFileSync('deploy/package.json', JSON.stringify(p, null, 2));"
+          cd deploy && npm install --omit=dev --legacy-peer-deps
+          zip -r ../deploy.zip .
 
       - uses: azure/login@v2
         with:
