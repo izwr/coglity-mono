@@ -158,8 +158,8 @@ jobs:
           imageToDeploy: ${{ env.ACR_LOGIN_SERVER }}/coglity-landing:${{ github.sha }}
 
   executor:
-    needs: changes
-    if: needs.changes.outputs.executor == 'true'
+    needs: [changes, iac-apps]
+    if: always() && needs.changes.outputs.executor == 'true' && (needs.iac-apps.result == 'success' || needs.iac-apps.result == 'skipped')
     runs-on: ubuntu-latest
     permissions:
       id-token: write
