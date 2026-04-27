@@ -388,6 +388,7 @@ function transcribeAudio(config: speechSdk.SpeechConfig, pcmAudio: Buffer, sampl
     };
 
     recognizer.canceled = (_s, e) => {
+      clearTimeout(timeout);
       recognizer.close();
       if (e.reason === speechSdk.CancellationReason.Error) {
         reject(new Error(`STT error: ${e.errorDetails}`));
@@ -397,13 +398,19 @@ function transcribeAudio(config: speechSdk.SpeechConfig, pcmAudio: Buffer, sampl
     };
 
     recognizer.sessionStopped = () => {
+      clearTimeout(timeout);
       recognizer.close();
       resolve(fullText);
     };
 
+    const timeout = setTimeout(() => {
+      recognizer.close();
+      resolve(fullText || "(STT timeout)");
+    }, 30_000);
+
     recognizer.startContinuousRecognitionAsync(
       () => {},
-      (err) => { recognizer.close(); reject(new Error(`STT start failed: ${err}`)); },
+      (err) => { clearTimeout(timeout); recognizer.close(); reject(new Error(`STT start failed: ${err}`)); },
     );
   });
 }
