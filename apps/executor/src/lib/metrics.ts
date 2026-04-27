@@ -113,7 +113,6 @@ export async function evaluateWithLlm(
         ].join("\n"),
       },
     ],
-    temperature: 0.2,
   });
 
   const raw = response.choices[0]?.message?.content ?? "{}";
