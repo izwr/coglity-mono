@@ -76,14 +76,8 @@ export function createFunctionApp(args: FunctionAppArgs) {
     scope: args.aiServicesAccountId,
   });
 
-  // Cognitive Services Speech User role (STT + TTS)
-  const speechUserRoleId = "f2dc8367-1007-4938-bd23-fe263f013447";
-  new azure.authorization.RoleAssignment("executor-speech-user", {
-    principalId: functionApp.identity.apply((id) => id!.principalId!),
-    principalType: "ServicePrincipal",
-    roleDefinitionId: pulumi.interpolate`/subscriptions/${azure.authorization.getClientConfigOutput().apply((c) => c.subscriptionId)}/providers/Microsoft.Authorization/roleDefinitions/${speechUserRoleId}`,
-    scope: args.aiServicesAccountId,
-  });
+  // NOTE: Cognitive Services OpenAI User + Speech User roles are assigned
+  // manually via az CLI (CI SP lacks roleAssignments/write on this scope).
 
   // Storage Blob Data Contributor role
   const storageBlobRoleId = "ba92f5b4-2d11-453d-a403-e96b0029c9fe";
