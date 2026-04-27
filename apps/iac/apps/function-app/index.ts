@@ -63,6 +63,7 @@ export function createFunctionApp(args: FunctionAppArgs) {
         { name: "EXECUTOR_MAX_TURNS", value: "12" },
         { name: "EXECUTOR_SILENCE_MS", value: "8000" },
         { name: "APPLICATIONINSIGHTS_CONNECTION_STRING", value: args.appInsightsConnectionString },
+        { name: "WEBSITE_RUN_FROM_PACKAGE", value: "1" },
       ],
     },
   });
