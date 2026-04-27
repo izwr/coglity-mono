@@ -35,6 +35,7 @@ const coreOut = {
   aiServicesAccountId: coreStack.requireOutput("aiServicesAccountId") as pulumi.Output<string>,
   aiServicesApiKey: coreStack.requireOutput("aiServicesApiKey") as pulumi.Output<string>,
   aiServicesLocation: coreStack.requireOutput("aiServicesLocation") as pulumi.Output<string>,
+  appInsightsConnectionString: coreStack.requireOutput("appInsightsConnectionString") as pulumi.Output<string>,
 };
 
 const acrLoginServer = config.require("acrLoginServer");
@@ -143,6 +144,7 @@ const executor = createFunctionApp({
   aiServicesLocation: coreOut.aiServicesLocation,
   backendFqdn: backend.fqdn,
   executorWebhookSecret,
+  appInsightsConnectionString: coreOut.appInsightsConnectionString,
 });
 
 // ── Exports ────────────────────────────────────────────────────────

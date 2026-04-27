@@ -15,6 +15,7 @@ export interface FunctionAppArgs {
   aiServicesLocation: pulumi.Input<string>;
   backendFqdn: pulumi.Input<string>;
   executorWebhookSecret: pulumi.Input<string>;
+  appInsightsConnectionString: pulumi.Input<string>;
 }
 
 export function createFunctionApp(args: FunctionAppArgs) {
@@ -61,6 +62,7 @@ export function createFunctionApp(args: FunctionAppArgs) {
         { name: "EXECUTOR_MAX_DURATION_MS", value: "180000" },
         { name: "EXECUTOR_MAX_TURNS", value: "12" },
         { name: "EXECUTOR_SILENCE_MS", value: "8000" },
+        { name: "APPLICATIONINSIGHTS_CONNECTION_STRING", value: args.appInsightsConnectionString },
       ],
     },
   });

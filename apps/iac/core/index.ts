@@ -33,6 +33,15 @@ const logAnalytics = new azure.operationalinsights.Workspace("coglity-logs", {
   retentionInDays: 30,
 });
 
+const appInsights = new azure.applicationinsights.Component("coglity-appinsights", {
+  resourceGroupName: resourceGroup.name,
+  location,
+  resourceName: "coglity-appinsights",
+  kind: "web",
+  applicationType: "web",
+  workspaceResourceId: logAnalytics.id,
+});
+
 // ── 3. Container Apps Environment ──────────────────────────────────
 
 const environment = new azure.app.ManagedEnvironment("coglity-env", {
@@ -368,3 +377,4 @@ export const keyVaultId = keyVault.id;
 export const storageAccountId = storageAccount.id;
 export const serviceBusNamespaceId = serviceBusNamespace.id;
 export { storageConnectionString };
+export const appInsightsConnectionString = appInsights.connectionString;
