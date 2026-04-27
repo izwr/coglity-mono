@@ -2,7 +2,7 @@ import { type Router as RouterType, Router } from "express";
 import { eq, and, desc } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { ServiceBusClient } from "@azure/service-bus";
-import { DefaultAzureCredential } from "@azure/identity";
+import { ManagedIdentityCredential } from "@azure/identity";
 import {
   testRuns,
   testCases,
@@ -166,7 +166,7 @@ async function sendToQueue(
     console.warn(`[test-runs] AZURE_SERVICE_BUS_NAMESPACE or AZURE_SERVICE_BUS_QUEUE_NAME not set; run ${runId} will stay queued`);
     return;
   }
-  const client = new ServiceBusClient(namespace, new DefaultAzureCredential());
+  const client = new ServiceBusClient(namespace, new ManagedIdentityCredential());
   const sender = client.createSender(queueName);
   try {
     await sender.sendMessages({
