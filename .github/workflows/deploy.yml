@@ -189,10 +189,10 @@ jobs:
           cd apps/executor
           mkdir -p deploy
           cp -r dist deploy/
-          cp -r node_modules deploy/
+          cp -rL node_modules deploy/
           cp host.json deploy/
           cp package.json deploy/
-          cd deploy && zip -r ../deploy.zip .
+          cd deploy && zip -r -y ../deploy.zip .
 
       - uses: azure/login@v2
         with:
