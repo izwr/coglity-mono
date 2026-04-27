@@ -49,7 +49,7 @@ export function createFunctionApp(args: FunctionAppArgs) {
         { name: "AzureWebJobsStorage", value: args.storageConnectionString },
         { name: "ServiceBusConnection", value: args.serviceBusConnectionString },
         { name: "EXECUTOR_WEBHOOK_SECRET", value: args.executorWebhookSecret },
-        { name: "BACKEND_INTERNAL_URL", value: pulumi.interpolate`https://${args.backendFqdn}` },
+        { name: "BACKEND_INTERNAL_URL", value: "https://studio.coglity.com" },
         { name: "AZURE_OPENAI_ENDPOINT", value: args.aiServicesEndpoint },
         { name: "AZURE_OPENAI_CHAT_DEPLOYMENT", value: "gpt-5-mini" },
         { name: "AZURE_OPENAI_REALTIME_ENDPOINT", value: realtimeEndpoint },
