@@ -277,7 +277,9 @@ const aiServices = new azure.cognitiveservices.Account("coglity-ai", {
   accountName: "coglity-ai",
   kind: "AIServices",
   sku: { name: "S0" },
-  properties: {},
+  properties: {
+    customSubDomainName: "coglity-ai",
+  },
 });
 
 const aiServicesKeys = pulumi
