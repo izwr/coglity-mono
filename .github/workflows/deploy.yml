@@ -189,6 +189,7 @@ jobs:
           cd apps/executor
           mkdir -p deploy
           cp -r dist deploy/
+          cp -r assets deploy/
           cp host.json deploy/
           node -e "const p=require('./package.json'); delete p.devDependencies; delete p.dependencies['@coglity/shared']; require('fs').writeFileSync('deploy/package.json', JSON.stringify(p, null, 2));"
           cd deploy && npm install --omit=dev --legacy-peer-deps

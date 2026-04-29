@@ -1,5 +1,3 @@
-import { SUPPORTED_LANGUAGES } from "@coglity/shared";
-
 type PromptInput = {
   preCondition: string;
   testSteps: string;
@@ -10,10 +8,15 @@ type PromptInput = {
   language?: string;
 };
 
+const LANGUAGE_LABELS: Record<string, string> = {
+  "hi-IN": "Hindi", "bn-IN": "Bengali", "te-IN": "Telugu", "mr-IN": "Marathi",
+  "ta-IN": "Tamil", "gu-IN": "Gujarati", "kn-IN": "Kannada", "ml-IN": "Malayalam",
+  "or-IN": "Odia", "pa-IN": "Punjabi",
+};
+
 function buildLanguageInstruction(language?: string): string | null {
   if (!language || language === "en-US") return null;
-  const langConfig = SUPPORTED_LANGUAGES.find((l) => l.code === language);
-  const label = langConfig?.label ?? language;
+  const label = LANGUAGE_LABELS[language] ?? language;
   return `IMPORTANT: You are testing a ${label}-speaking voice bot. Speak ONLY in ${label}. All your utterances must be in ${label}. If test steps contain English terms (names, IDs, technical terms), use those exact values but frame sentences in ${label}.`;
 }
 
