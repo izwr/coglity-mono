@@ -1,3 +1,5 @@
+import { SUPPORTED_LANGUAGES } from "@coglity/shared";
+
 type PromptInput = {
   preCondition: string;
   testSteps: string;
@@ -5,12 +7,22 @@ type PromptInput = {
   expectedResults: string;
   maxTurns: number;
   silenceMs: number;
+  language?: string;
 };
 
+function buildLanguageInstruction(language?: string): string | null {
+  if (!language || language === "en-US") return null;
+  const langConfig = SUPPORTED_LANGUAGES.find((l) => l.code === language);
+  const label = langConfig?.label ?? language;
+  return `IMPORTANT: You are testing a ${label}-speaking voice bot. Speak ONLY in ${label}. All your utterances must be in ${label}. If test steps contain English terms (names, IDs, technical terms), use those exact values but frame sentences in ${label}.`;
+}
+
 export function buildTesterInstructions(input: PromptInput): string {
-  const { preCondition, testSteps, data, expectedResults, maxTurns, silenceMs } = input;
+  const { preCondition, testSteps, data, expectedResults, maxTurns, silenceMs, language } = input;
   const silenceSeconds = Math.round(silenceMs / 1000);
+  const langInstruction = buildLanguageInstruction(language);
   return [
+    ...(langInstruction ? [langInstruction, ""] : []),
     "You are a QA tester on a voice call with a system-under-test (SUT). Your job is to execute ONE test case end-to-end and then decide pass or fail.",
     "",
     `Pre-conditions (assume already met): ${preCondition || "(none specified)"}`,
@@ -31,9 +43,11 @@ export function buildTesterInstructions(input: PromptInput): string {
 }
 
 export function buildTesterSystemPrompt(input: PromptInput): string {
-  const { preCondition, testSteps, data, expectedResults, maxTurns, silenceMs } = input;
+  const { preCondition, testSteps, data, expectedResults, maxTurns, silenceMs, language } = input;
   const silenceSeconds = Math.round(silenceMs / 1000);
+  const langInstruction = buildLanguageInstruction(language);
   return [
+    ...(langInstruction ? [langInstruction, ""] : []),
     "You are a QA tester calling a voice bot (SUT). Each user message is what the bot said (transcribed). You reply with what you should say next — plain text, one short utterance.",
     "",
     `Pre-conditions (assume already met): ${preCondition || "(none)"}`,

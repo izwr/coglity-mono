@@ -30,6 +30,32 @@ export const testRunService = {
     return data;
   },
 
+  async createBatch(
+    orgId: string,
+    projectId: string,
+    testCaseId: string,
+    config: {
+      languages?: string[];
+      environments?: string[];
+      crossProduct?: boolean;
+      combinations?: Array<{ language: string; environment: string }>;
+    },
+  ): Promise<{ data: TestRunWithUser[]; batchId: string }> {
+    const { data } = await api.post<{ data: TestRunWithUser[]; batchId: string }>(
+      `/organizations/${orgId}/projects/${projectId}/test-runs`,
+      { testCaseId, ...config },
+    );
+    return data;
+  },
+
+  async listByBatch(orgId: string, projectId: string, batchId: string): Promise<TestRunWithUser[]> {
+    const { data } = await api.get<{ data: TestRunWithUser[] }>(
+      `/organizations/${orgId}/projects/${projectId}/test-runs`,
+      { params: { batchId } },
+    );
+    return data.data;
+  },
+
   async listAll(
     orgId: string,
     projectIds: string[],

@@ -3,12 +3,19 @@ import { eq, and, desc } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { ServiceBusClient } from "@azure/service-bus";
 import { ManagedIdentityCredential } from "@azure/identity";
+import { randomUUID } from "crypto";
 import {
   testRuns,
   testCases,
   botConnections,
   users,
 } from "@coglity/shared/schema";
+import {
+  SUPPORTED_LANGUAGES,
+  SUPPORTED_ENVIRONMENTS,
+  getLanguageConfig,
+  getEnvironmentConfig,
+} from "@coglity/shared";
 import { db as rootDb } from "../db.js";
 
 const router: RouterType = Router({ mergeParams: true });
@@ -29,6 +36,9 @@ const columns = {
   recordingUrl: testRuns.recordingUrl,
   recordingBlobName: testRuns.recordingBlobName,
   recordingDurationMs: testRuns.recordingDurationMs,
+  language: testRuns.language,
+  environment: testRuns.environment,
+  batchId: testRuns.batchId,
   startedAt: testRuns.startedAt,
   finishedAt: testRuns.finishedAt,
   createdBy: testRuns.createdBy,
@@ -47,9 +57,11 @@ router.get("/", async (req, res) => {
   const db = (req.db ?? rootDb) as DbHandle;
   const projectId = req.projectId!;
   const testCaseId = typeof req.query.testCaseId === "string" ? req.query.testCaseId : "";
+  const batchId = typeof req.query.batchId === "string" ? req.query.batchId : "";
 
   const conditions = [eq(testRuns.projectId, projectId)];
   if (testCaseId) conditions.push(eq(testRuns.testCaseId, testCaseId));
+  if (batchId) conditions.push(eq(testRuns.batchId, batchId));
 
   const rows = await baseQuery(db).where(and(...conditions)).orderBy(desc(testRuns.createdAt)).limit(50);
   res.json({ data: rows });
@@ -122,38 +134,95 @@ router.post("/", async (req, res) => {
   }
 
   const userId = req.session.userId;
-  const [inserted] = await db
-    .insert(testRuns)
-    .values({
-      testCaseId: tc.id,
-      botConnectionId: bc.id,
-      projectId,
-      state: "queued",
-      createdBy: userId,
-    })
-    .returning();
 
-  // Fire-and-forget dispatch to executor via Service Bus queue.
-  sendToQueue(inserted.id, {
-    runId: inserted.id,
-    testCase: {
-      id: tc.id,
-      preCondition: tc.preCondition,
-      testSteps: tc.testSteps,
-      expectedResults: tc.expectedResults,
-      data: tc.data,
-    },
-    botConnection: {
-      id: bc.id,
-      provider: bc.provider,
-      config: bc.config,
-    },
-  }).catch((err) => {
-    console.error(`[test-runs] dispatch failed for ${inserted.id}:`, err);
-  });
+  // Determine language/environment combinations
+  const languages: string[] = Array.isArray(req.body.languages) ? req.body.languages : [];
+  const environments: string[] = Array.isArray(req.body.environments) ? req.body.environments : [];
+  const crossProduct = req.body.crossProduct === true;
+  const combinations: Array<{ language: string; environment: string }> = Array.isArray(req.body.combinations) ? req.body.combinations : [];
 
-  const [row] = await baseQuery(db).where(eq(testRuns.id, inserted.id));
-  res.status(201).json(row);
+  // Validate values against supported constants
+  const validLangs = new Set(SUPPORTED_LANGUAGES.map((l) => l.code));
+  const validEnvs = new Set(SUPPORTED_ENVIRONMENTS.map((e) => e.id));
+  for (const l of languages) {
+    if (!validLangs.has(l)) { res.status(400).json({ error: `Unsupported language: ${l}` }); return; }
+  }
+  for (const e of environments) {
+    if (!validEnvs.has(e)) { res.status(400).json({ error: `Unsupported environment: ${e}` }); return; }
+  }
+
+  let pairs: Array<{ language: string; environment: string }>;
+  if (languages.length === 0 && environments.length === 0 && combinations.length === 0) {
+    pairs = [{ language: "en-US", environment: "quiet" }];
+  } else if (crossProduct && languages.length > 0 && environments.length > 0) {
+    pairs = languages.flatMap((l) => environments.map((e) => ({ language: l, environment: e })));
+  } else if (combinations.length > 0) {
+    pairs = combinations;
+  } else {
+    const langs = languages.length > 0 ? languages : ["en-US"];
+    const envs = environments.length > 0 ? environments : ["quiet"];
+    pairs = langs.flatMap((l) => envs.map((e) => ({ language: l, environment: e })));
+  }
+
+  const batchId = pairs.length > 1 ? randomUUID() : null;
+
+  const insertedRuns = await Promise.all(
+    pairs.map(async ({ language, environment }) => {
+      const [inserted] = await db
+        .insert(testRuns)
+        .values({
+          testCaseId: tc.id,
+          botConnectionId: bc.id,
+          projectId,
+          state: "queued",
+          language,
+          environment,
+          batchId,
+          createdBy: userId,
+        })
+        .returning();
+
+      const langConfig = getLanguageConfig(language);
+      const envConfig = getEnvironmentConfig(environment);
+
+      sendToQueue(inserted.id, {
+        runId: inserted.id,
+        testCase: {
+          id: tc.id,
+          preCondition: tc.preCondition,
+          testSteps: tc.testSteps,
+          expectedResults: tc.expectedResults,
+          data: tc.data,
+        },
+        botConnection: {
+          id: bc.id,
+          provider: bc.provider,
+          config: bc.config,
+        },
+        language: langConfig?.sttLanguage ?? "en-US",
+        ttsVoice: langConfig?.ttsVoice,
+        environment: envConfig?.id ?? "quiet",
+        environmentSnrDb: envConfig?.defaultSnrDb,
+      }).catch((err) => {
+        console.error(`[test-runs] dispatch failed for ${inserted.id}:`, err);
+      });
+
+      return inserted;
+    }),
+  );
+
+  const rows = await baseQuery(db)
+    .where(and(
+      eq(testRuns.projectId, projectId),
+      ...(batchId ? [eq(testRuns.batchId, batchId)] : [eq(testRuns.id, insertedRuns[0].id)]),
+    ))
+    .orderBy(desc(testRuns.createdAt));
+
+  if (batchId) {
+    res.status(201).json({ data: rows, batchId });
+  } else {
+    res.status(201).json(rows[0]);
+  }
 });
 
 async function sendToQueue(

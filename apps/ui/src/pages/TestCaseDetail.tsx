@@ -12,6 +12,8 @@ import { tagService } from "../services/tagService";
 import { botConnectionService, type BotConnectionWithUser } from "../services/botConnectionService";
 import { testRunService, type TestRunWithUser } from "../services/testRunService";
 import { TestRunPanel } from "../components/TestRunPanel";
+import { RunConfigModal, type RunConfig } from "../components/RunConfigModal";
+import { BatchRunPanel } from "../components/BatchRunPanel";
 import { useSetBreadcrumbs } from "../context/BreadcrumbsContext";
 import { useCurrentOrg } from "../context/OrgContext";
 
@@ -54,6 +56,8 @@ export function TestCaseDetail() {
   const [editing, setEditing] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
+  const [activeBatchId, setActiveBatchId] = useState<string | null>(null);
+  const [showRunConfig, setShowRunConfig] = useState(false);
   const [runHistory, setRunHistory] = useState<TestRunWithUser[]>([]);
   const [runError, setRunError] = useState<string>("");
   const [starting, setStarting] = useState(false);
@@ -96,12 +100,34 @@ export function TestCaseDetail() {
 
   const startRun = async () => {
     if (!id || !projectId || !org || !canRun) return;
+    setShowRunConfig(true);
+  };
+
+  const handleRunConfigSubmit = async (config: RunConfig) => {
+    if (!id || !projectId || !org || !canRun) return;
     setRunError("");
     setStarting(true);
     try {
-      const run = await testRunService.create(org.organizationId, projectId, id);
-      setActiveRunId(run.id);
-      setRunHistory((prev) => [run, ...prev]);
+      const isSingleDefault =
+        !config.crossProduct &&
+        config.combinations.length === 0 &&
+        config.languages.length <= 1 &&
+        config.environments.length <= 1 &&
+        (config.languages[0] ?? "en-US") === "en-US" &&
+        (config.environments[0] ?? "quiet") === "quiet";
+
+      if (isSingleDefault) {
+        const run = await testRunService.create(org.organizationId, projectId, id);
+        setActiveRunId(run.id);
+        setActiveBatchId(null);
+        setRunHistory((prev) => [run, ...prev]);
+      } else {
+        const result = await testRunService.createBatch(org.organizationId, projectId, id, config);
+        setActiveBatchId(result.batchId);
+        setActiveRunId(null);
+        setRunHistory((prev) => [...result.data, ...prev]);
+      }
+      setShowRunConfig(false);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Failed to start run";
       setRunError(msg);
@@ -220,11 +246,11 @@ export function TestCaseDetail() {
           {canRun && (
             <Button
               variant="teal"
-              disabled={starting || !!activeRunId}
+              disabled={starting || !!activeRunId || !!activeBatchId}
               onClick={startRun}
-              title={activeRunId ? "A run is already in progress" : "Run this voice test case"}
+              title={activeRunId || activeBatchId ? "A run is already in progress" : "Run this voice test case"}
             >
-              {starting ? "Starting…" : activeRunId ? "Running…" : "Run"}
+              {starting ? "Starting…" : activeRunId || activeBatchId ? "Running…" : "Run"}
             </Button>
           )}
           {deleteConfirm ? (
@@ -369,6 +395,23 @@ export function TestCaseDetail() {
         </div>
       )}
 
+      {showRunConfig && (
+        <RunConfigModal
+          onSubmit={handleRunConfigSubmit}
+          onCancel={() => setShowRunConfig(false)}
+          submitting={starting}
+        />
+      )}
+
+      {activeBatchId && org && projectId && (
+        <BatchRunPanel
+          orgId={org.organizationId}
+          projectId={projectId}
+          batchId={activeBatchId}
+          onAllTerminal={() => setActiveBatchId(null)}
+        />
+      )}
+
       {activeRunId && org && projectId && (
         <TestRunPanel
           orgId={org.organizationId}
@@ -381,7 +424,7 @@ export function TestCaseDetail() {
         />
       )}
 
-      {runHistory.length > 0 && !activeRunId && (
+      {runHistory.length > 0 && !activeRunId && !activeBatchId && (
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>
             Run history

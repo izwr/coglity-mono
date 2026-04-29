@@ -7,6 +7,7 @@ import { uploadRecording } from "./recording.js";
 import { azureCredential } from "./azureCredential.js";
 import { buildTesterSystemPrompt } from "./testerPrompt.js";
 import { computeRuleBasedMetrics, evaluateWithLlm, type TurnTiming } from "./metrics.js";
+import { loadNoiseSample, mixWithNoise } from "./audioMixer.js";
 
 const AZURE_AI_SCOPE = "https://cognitiveservices.azure.com/.default";
 
@@ -37,6 +38,10 @@ export type RunPayload = {
     provider: string;
     config: BotConnectionConfig;
   };
+  language?: string;
+  ttsVoice?: string;
+  environment?: string;
+  environmentSnrDb?: number;
 };
 
 export async function runVoiceTest(payload: RunPayload): Promise<void> {
@@ -77,17 +82,24 @@ export async function runVoiceTest(payload: RunPayload): Promise<void> {
     return;
   }
 
-  // ── Azure Speech config (AAD auth via DefaultAzureCredential) ───
+  // ── Azure Speech config (AAD auth via custom subdomain) ─────────
   const speechRegion = process.env.AZURE_SPEECH_REGION ?? "";
   const speechResourceId = process.env.AZURE_SPEECH_RESOURCE_ID ?? "";
+  const speechCustomDomain = process.env.AZURE_SPEECH_CUSTOM_DOMAIN ?? "";
   if (!speechRegion || !speechResourceId) {
     await finish("errored", { error: "AZURE_SPEECH_REGION or AZURE_SPEECH_RESOURCE_ID not set" });
     return;
   }
   const speechAuthToken = `aad#${speechResourceId}#${token}`;
-  const speechConfig = speechSdk.SpeechConfig.fromAuthorizationToken(speechAuthToken, speechRegion);
-  speechConfig.speechRecognitionLanguage = "en-US";
-  speechConfig.speechSynthesisVoiceName = process.env.AZURE_SPEECH_VOICE ?? "en-US-AvaMultilingualNeural";
+  let speechConfig: speechSdk.SpeechConfig;
+  if (speechCustomDomain) {
+    speechConfig = speechSdk.SpeechConfig.fromHost(new URL(`wss://${speechCustomDomain}.cognitiveservices.azure.com`));
+    speechConfig.authorizationToken = speechAuthToken;
+  } else {
+    speechConfig = speechSdk.SpeechConfig.fromAuthorizationToken(speechAuthToken, speechRegion);
+  }
+  speechConfig.speechRecognitionLanguage = payload.language ?? "en-US";
+  speechConfig.speechSynthesisVoiceName = payload.ttsVoice ?? process.env.AZURE_SPEECH_VOICE ?? "en-US-AvaMultilingualNeural";
   speechConfig.speechSynthesisOutputFormat = speechSdk.SpeechSynthesisOutputFormat.Raw24Khz16BitMonoPcm;
 
   // ── Azure OpenAI (GPT-4.1 mini) ────────────────────────────────
@@ -105,6 +117,11 @@ export async function runVoiceTest(payload: RunPayload): Promise<void> {
       return tok.token;
     },
   });
+
+  // ── Environment noise ────────────────────────────────────────────
+  const noiseSamples = loadNoiseSample(payload.environment ?? "quiet");
+  const snrDb = payload.environmentSnrDb ?? 15;
+  let noiseOffset = 0;
 
   // ── Connect to SUT ──────────────────────────────────────────────
   const sutUrl = cfg.url;
@@ -140,6 +157,7 @@ export async function runVoiceTest(payload: RunPayload): Promise<void> {
     expectedResults: payload.testCase.expectedResults,
     maxTurns,
     silenceMs,
+    language: payload.language,
   });
 
   const messages: ChatCompletionMessageParam[] = [
@@ -290,21 +308,29 @@ export async function runVoiceTest(payload: RunPayload): Promise<void> {
         const t3 = Date.now();
         const ttsAudio = await synthesizeSpeech(speechConfig, testerText);
         timing.ttsMs = Date.now() - t3;
-        timing.testerBytes = ttsAudio.length;
         console.log(`${TAG} TTS produced ${ttsAudio.length} bytes in ${timing.ttsMs}ms`);
+
+        // Mix environment noise into TTS audio before sending to SUT
+        let audioToSend = ttsAudio;
+        if (noiseSamples) {
+          const result = mixWithNoise(ttsAudio, noiseSamples, snrDb, noiseOffset);
+          audioToSend = result.mixed;
+          noiseOffset = result.newOffset;
+        }
+        timing.testerBytes = audioToSend.length;
 
         const nowMs2 = Date.now();
         const gapMs2 = nowMs2 - lastSegmentEndMs;
         if (gapMs2 > 100) {
           audioSegments.push({ side: "silence", pcm: Buffer.alloc(Math.round((sampleRate * 2 * gapMs2) / 1000)) });
         }
-        audioSegments.push({ side: "tester", pcm: ttsAudio });
+        audioSegments.push({ side: "tester", pcm: audioToSend });
         lastSegmentEndMs = Date.now();
 
         // 5. Stream audio to SUT
         const CHUNK_SIZE = 4800;
-        for (let offset = 0; offset < ttsAudio.length && sut.readyState === WebSocket.OPEN; offset += CHUNK_SIZE) {
-          const chunk = ttsAudio.subarray(offset, offset + CHUNK_SIZE);
+        for (let offset = 0; offset < audioToSend.length && sut.readyState === WebSocket.OPEN; offset += CHUNK_SIZE) {
+          const chunk = audioToSend.subarray(offset, offset + CHUNK_SIZE);
           sut.send(JSON.stringify(buildOutgoingFrame(cfg.outputTemplate, cfg.inputAudioField ?? "audio", chunk.toString("base64"))));
         }
         sut.send(JSON.stringify({ type: "commit" }));

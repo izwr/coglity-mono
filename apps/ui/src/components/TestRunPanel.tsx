@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { SUPPORTED_LANGUAGES, SUPPORTED_ENVIRONMENTS } from "@coglity/shared";
 import { testRunService, type TestRunWithUser } from "../services/testRunService";
 import { Chip, type ChipVariant } from "./ui/Chip";
 
@@ -66,8 +67,14 @@ export function TestRunPanel({ orgId, projectId, runId, onTerminal }: Props) {
 
   return (
     <div className="run-panel" style={panelStyle}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
         <Chip variant={chip.variant} dot pulse={chip.pulse}>{chip.label}</Chip>
+        {run.language && run.language !== "en-US" && (
+          <Chip variant="info">{SUPPORTED_LANGUAGES.find((l) => l.code === run.language)?.label ?? run.language}</Chip>
+        )}
+        {run.environment && run.environment !== "quiet" && (
+          <Chip variant="warn">{SUPPORTED_ENVIRONMENTS.find((e) => e.id === run.environment)?.label ?? run.environment}</Chip>
+        )}
         {run.startedAt && (
           <span className="muted" style={{ fontSize: 12 }}>
             Started {new Date(run.startedAt).toLocaleTimeString()}

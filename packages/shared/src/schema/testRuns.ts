@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, pgEnum, jsonb, integer } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, pgEnum, jsonb, integer, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { users } from "./users.js";
@@ -36,6 +36,9 @@ export const testRuns = pgTable("test_runs", {
   recordingBlobName: text("recording_blob_name").default("").notNull(),
   recordingDurationMs: integer("recording_duration_ms").default(0).notNull(),
   properties: jsonb("properties").$type<TestRunProperties>().default({}).notNull(),
+  language: varchar("language", { length: 10 }).default("en-US").notNull(),
+  environment: varchar("environment", { length: 50 }).default("quiet").notNull(),
+  batchId: uuid("batch_id"),
   startedAt: timestamp("started_at", { withTimezone: true }),
   finishedAt: timestamp("finished_at", { withTimezone: true }),
   createdBy: uuid("created_by").references(() => users.id),
