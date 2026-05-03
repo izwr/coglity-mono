@@ -10,7 +10,7 @@ export function loadNoiseSample(environmentId: string): Int16Array | null {
   if (!environmentId || environmentId === "quiet") return null;
   if (noiseCache.has(environmentId)) return noiseCache.get(environmentId)!;
 
-  const filePath = resolve(__dirname, `../../assets/noise/${environmentId}.pcm`);
+  const filePath = resolve(__dirname, `../../../assets/noise/${environmentId}.pcm`);
   try {
     const buf = readFileSync(filePath);
     const samples = new Int16Array(buf.buffer, buf.byteOffset, buf.byteLength / 2);

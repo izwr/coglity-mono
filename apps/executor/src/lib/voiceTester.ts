@@ -82,21 +82,25 @@ export async function runVoiceTest(payload: RunPayload): Promise<void> {
     return;
   }
 
-  // ── Azure Speech config (AAD auth via custom subdomain) ─────────
+  // ── Azure Speech config ─────────────────────────────────────────
   const speechRegion = process.env.AZURE_SPEECH_REGION ?? "";
+  const speechKey = process.env.AZURE_SPEECH_KEY ?? "";
   const speechResourceId = process.env.AZURE_SPEECH_RESOURCE_ID ?? "";
   const speechCustomDomain = process.env.AZURE_SPEECH_CUSTOM_DOMAIN ?? "";
-  if (!speechRegion || !speechResourceId) {
-    await finish("errored", { error: "AZURE_SPEECH_REGION or AZURE_SPEECH_RESOURCE_ID not set" });
-    return;
-  }
-  const speechAuthToken = `aad#${speechResourceId}#${token}`;
   let speechConfig: speechSdk.SpeechConfig;
-  if (speechCustomDomain) {
-    speechConfig = speechSdk.SpeechConfig.fromHost(new URL(`wss://${speechCustomDomain}.cognitiveservices.azure.com`));
-    speechConfig.authorizationToken = speechAuthToken;
+  if (speechKey && speechRegion) {
+    speechConfig = speechSdk.SpeechConfig.fromSubscription(speechKey, speechRegion);
+  } else if (!speechRegion || !speechResourceId) {
+    await finish("errored", { error: "AZURE_SPEECH_KEY+AZURE_SPEECH_REGION or AZURE_SPEECH_RESOURCE_ID+AZURE_SPEECH_REGION must be set" });
+    return;
   } else {
-    speechConfig = speechSdk.SpeechConfig.fromAuthorizationToken(speechAuthToken, speechRegion);
+    const speechAuthToken = `aad#${speechResourceId}#${token}`;
+    if (speechCustomDomain) {
+      speechConfig = speechSdk.SpeechConfig.fromHost(new URL(`wss://${speechCustomDomain}.cognitiveservices.azure.com`));
+      speechConfig.authorizationToken = speechAuthToken;
+    } else {
+      speechConfig = speechSdk.SpeechConfig.fromAuthorizationToken(speechAuthToken, speechRegion);
+    }
   }
   speechConfig.speechRecognitionLanguage = payload.language ?? "en-US";
   speechConfig.speechSynthesisVoiceName = payload.ttsVoice ?? process.env.AZURE_SPEECH_VOICE ?? "en-US-AvaMultilingualNeural";

@@ -57,6 +57,7 @@ export function createFunctionApp(args: FunctionAppArgs) {
         { name: "AZURE_OPENAI_REALTIME_API_VERSION", value: "2024-10-01-preview" },
         { name: "AZURE_SPEECH_REGION", value: args.aiServicesLocation },
         { name: "AZURE_SPEECH_RESOURCE_ID", value: args.aiServicesAccountId },
+        { name: "AZURE_SPEECH_CUSTOM_DOMAIN", value: "coglity-ai" },
         { name: "AZURE_STORAGE_ACCOUNT", value: args.storageAccountName },
         { name: "AZURE_STORAGE_RECORDINGS_CONTAINER", value: args.recordingsContainerName },
         { name: "EXECUTOR_MAX_DURATION_MS", value: "180000" },
