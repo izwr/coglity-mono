@@ -1,3 +1,15 @@
 #!/usr/bin/env node
 
-console.log("coglity cli");
+import { Cli } from 'clipanion';
+import { WebTestCommand } from './commands/web/test.js';
+import { SetupClaudeCommand } from './commands/setup/claude.js';
+
+const cli = new Cli({
+  binaryLabel: 'coglity',
+  binaryName: 'coglity',
+  binaryVersion: '0.0.1',
+});
+
+cli.register(WebTestCommand);
+cli.register(SetupClaudeCommand);
+cli.runExit(process.argv.slice(2));

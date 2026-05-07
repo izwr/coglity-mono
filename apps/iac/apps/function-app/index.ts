@@ -46,6 +46,7 @@ export function createFunctionApp(args: FunctionAppArgs) {
       appSettings: [
         { name: "FUNCTIONS_WORKER_RUNTIME", value: "node" },
         { name: "FUNCTIONS_EXTENSION_VERSION", value: "~4" },
+        { name: "WEBSITE_RUN_FROM_PACKAGE", value: "1" },
         { name: "AzureWebJobsStorage", value: args.storageConnectionString },
         { name: "ServiceBusConnection", value: args.serviceBusConnectionString },
         { name: "EXECUTOR_WEBHOOK_SECRET", value: args.executorWebhookSecret },
