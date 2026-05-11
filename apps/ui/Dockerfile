@@ -3,6 +3,11 @@ WORKDIR /app
 
 FROM base AS deps
 COPY bun.lock package.json ./
+COPY apps/backend/package.json apps/backend/package.json
+COPY apps/cli/package.json apps/cli/package.json
+COPY apps/executor/package.json apps/executor/package.json
+COPY apps/iac/package.json apps/iac/package.json
+COPY apps/landing/package.json apps/landing/package.json
 COPY apps/ui/package.json apps/ui/package.json
 COPY packages/shared/package.json packages/shared/package.json
 RUN bun install --frozen-lockfile
