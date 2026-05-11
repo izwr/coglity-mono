@@ -1,24 +1,24 @@
 import path from 'node:path';
-import type { ParsedSpec } from '../spec/types.js';
+import type { ParsedSpec } from '../spec/types';
 import type {
   RunOptions,
   RunResult,
   RunEventEmitter,
   StepResult,
-} from './events.js';
-import { launchBrowser, closeBrowser, executeAction } from './playwright.js';
-import { takeSnapshot } from './snapshot.js';
-import { finalizeRun } from './recorder.js';
-import { plannerAgent } from '../agents/planner/index.js';
-import { judgeAgent } from '../agents/judge/index.js';
-import { getClient } from '../agents/shared/client.js';
-import { createTraceWriter } from '../agents/shared/trace.js';
-import { isRetryable } from '../agents/shared/errors.js';
-import { ensureRunDir, generateRunId } from '../lib/paths.js';
+} from './events';
+import { launchBrowser, closeBrowser, executeAction } from './playwright';
+import { takeSnapshot } from './snapshot';
+import { finalizeRun } from './recorder';
+import { plannerAgent } from '../agents/planner/index';
+import { judgeAgent } from '../agents/judge/index';
+import { getClient } from '../agents/shared/client';
+import { createTraceWriter } from '../agents/shared/trace';
+import { isRetryable } from '../agents/shared/errors';
+import { ensureRunDir, generateRunId } from '../lib/paths';
 import {
   DEFAULT_PLANNER_MODEL,
   DEFAULT_JUDGE_MODEL,
-} from '../lib/config.js';
+} from '../lib/config';
 
 export async function runSpec(
   spec: ParsedSpec,

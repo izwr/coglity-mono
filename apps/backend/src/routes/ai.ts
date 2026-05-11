@@ -3,8 +3,8 @@ import { and, eq } from "drizzle-orm";
 import OpenAI from "openai";
 import { z } from "zod";
 import { aiGenerationSessions, insertAiGenerationSessionSchema, testCases, testSuites } from "@coglity/shared/schema";
-import { db as rootDb } from "../db.js";
-import { searchKnowledge } from "../lib/searchClient.js";
+import { db as rootDb } from "../db";
+import { searchKnowledge } from "../lib/searchClient";
 
 const router: RouterType = Router({ mergeParams: true });
 

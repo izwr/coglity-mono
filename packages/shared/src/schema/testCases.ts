@@ -1,10 +1,10 @@
 import { pgTable, uuid, varchar, text, timestamp, pgEnum } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
-import { users } from "./users.js";
-import { testSuites } from "./testSuites.js";
-import { botConnections } from "./botConnections.js";
-import { projects } from "./projects.js";
+import { users } from "./users";
+import { testSuites } from "./testSuites";
+import { botConnections } from "./botConnections";
+import { projects } from "./projects";
 
 export const testCaseStatusEnum = pgEnum("test_case_status", ["draft", "active"]);
 

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import crypto from "node:crypto";
-import { db } from "../db.js";
+import { db } from "../db";
 import { users } from "@coglity/shared/schema";
 import { eq } from "drizzle-orm";
 

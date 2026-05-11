@@ -1,6 +1,6 @@
 import { Box, Text } from 'ink';
-import type { Verdict as VerdictType } from '../../runner/events.js';
-import { colors, icons } from '../theme.js';
+import type { Verdict as VerdictType } from '../../runner/events';
+import { colors, icons } from '../theme';
 
 interface VerdictProps {
   verdict: VerdictType;

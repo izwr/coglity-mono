@@ -14,7 +14,7 @@ import {
   projects,
   users,
 } from "@coglity/shared/schema";
-import { db } from "../db.js";
+import { db } from "../db";
 
 const router: RouterType = Router({ mergeParams: true });
 

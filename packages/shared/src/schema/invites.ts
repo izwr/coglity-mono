@@ -2,9 +2,9 @@ import { pgTable, uuid, varchar, timestamp, index, uniqueIndex } from "drizzle-o
 import { sql } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
-import { users } from "./users.js";
-import { organizations } from "./organizations.js";
-import { projects, projectRoleEnum } from "./projects.js";
+import { users } from "./users";
+import { organizations } from "./organizations";
+import { projects, projectRoleEnum } from "./projects";
 
 export const invites = pgTable(
   "invites",

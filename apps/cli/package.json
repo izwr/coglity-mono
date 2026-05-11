@@ -8,12 +8,12 @@
     "coglity-mcp": "dist/mcp/index.js"
   },
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "bun --watch src/index.ts",
     "build": "tsup",
     "compile": "tsup && bun build dist/index.js --compile --outfile dist/coglity",
     "compile:linux": "tsup && bun build dist/index.js --compile --target=bun-linux-x64 --outfile dist/coglity-linux",
     "compile:windows": "tsup && bun build dist/index.js --compile --target=bun-windows-x64 --outfile dist/coglity.exe",
-    "start": "node dist/index.js",
+    "start": "bun run src/index.ts",
     "lint": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
@@ -37,7 +37,6 @@
     "@types/mdast": "^4.0.4",
     "@types/node": "^22",
     "tsup": "^8.5.0",
-    "tsx": "^4",
     "typescript": "^5",
     "vitest": "^3.2.1"
   }

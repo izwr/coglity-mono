@@ -1,5 +1,5 @@
-import type { RunEventEmitter, RunResult, PlaywrightAction } from './events.js';
-import type { ParsedSpec } from '../spec/types.js';
+import type { RunEventEmitter, RunResult, PlaywrightAction } from './events';
+import type { ParsedSpec } from '../spec/types';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 

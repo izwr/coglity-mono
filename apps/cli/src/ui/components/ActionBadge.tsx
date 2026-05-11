@@ -1,6 +1,6 @@
 import { Text } from 'ink';
-import type { PlaywrightAction } from '../../runner/events.js';
-import { colors } from '../theme.js';
+import type { PlaywrightAction } from '../../runner/events';
+import { colors } from '../theme';
 
 interface ActionBadgeProps {
   action: PlaywrightAction;

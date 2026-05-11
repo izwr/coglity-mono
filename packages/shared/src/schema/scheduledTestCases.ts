@@ -1,10 +1,10 @@
 import { pgTable, uuid, text, timestamp, pgEnum, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
-import { users } from "./users.js";
-import { testCases } from "./testCases.js";
-import { scheduledTestSuites } from "./scheduledTestSuites.js";
-import { projects } from "./projects.js";
+import { users } from "./users";
+import { testCases } from "./testCases";
+import { scheduledTestSuites } from "./scheduledTestSuites";
+import { projects } from "./projects";
 
 export const scheduledTestCaseStateEnum = pgEnum("scheduled_test_case_state", [
   "not_started",

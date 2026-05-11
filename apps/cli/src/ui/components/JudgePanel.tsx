@@ -1,6 +1,6 @@
 import { Box, Text } from 'ink';
 import Spinner from 'ink-spinner';
-import { colors, icons } from '../theme.js';
+import { colors, icons } from '../theme';
 
 export function JudgePanel() {
   return (

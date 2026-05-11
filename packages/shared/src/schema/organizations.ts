@@ -1,7 +1,7 @@
 import { pgTable, uuid, varchar, timestamp, pgEnum, primaryKey } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
-import { users } from "./users.js";
+import { users } from "./users";
 
 export const orgRoleEnum = pgEnum("org_role", ["super_admin", "member"]);
 export const ORG_ROLES = ["super_admin", "member"] as const;

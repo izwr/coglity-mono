@@ -1,2 +1,2 @@
-export * from "./schema/index.js";
-export * from "./constants/voiceTestConfig.js";
+export * from "./schema/index";
+export * from "./constants/voiceTestConfig";

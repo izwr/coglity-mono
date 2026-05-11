@@ -1,14 +1,14 @@
 import { Box, useApp } from 'ink';
 import { useEffect, useRef } from 'react';
-import type { ParsedSpec } from '../spec/types.js';
-import type { RunOptions, RunResult } from '../runner/events.js';
-import { useRunEvents } from './hooks/useRunEvents.js';
-import { useElapsed } from './hooks/useElapsed.js';
-import { Header } from './components/Header.js';
-import { StepList } from './components/StepList.js';
-import { JudgePanel } from './components/JudgePanel.js';
-import { Verdict } from './components/Verdict.js';
-import { Footer } from './components/Footer.js';
+import type { ParsedSpec } from '../spec/types';
+import type { RunOptions, RunResult } from '../runner/events';
+import { useRunEvents } from './hooks/useRunEvents';
+import { useElapsed } from './hooks/useElapsed';
+import { Header } from './components/Header';
+import { StepList } from './components/StepList';
+import { JudgePanel } from './components/JudgePanel';
+import { Verdict } from './components/Verdict';
+import { Footer } from './components/Footer';
 
 interface AppProps {
   spec: ParsedSpec;

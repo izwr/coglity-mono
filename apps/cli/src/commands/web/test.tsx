@@ -1,12 +1,12 @@
 import { Command, Option } from 'clipanion';
 import { render } from 'ink';
-import { parseSpec } from '../../spec/index.js';
-import { runSpec } from '../../runner/index.js';
-import { fakeRun } from '../../runner/fake.js';
-import { App } from '../../ui/App.js';
-import type { RunEvent, RunEventEmitter, PlaywrightAction, RunResult } from '../../runner/events.js';
-import type { ParsedSpec } from '../../spec/types.js';
-import type { RunOptions } from '../../runner/events.js';
+import { parseSpec } from '../../spec/index';
+import { runSpec } from '../../runner/index';
+import { fakeRun } from '../../runner/fake';
+import { App } from '../../ui/App';
+import type { RunEvent, RunEventEmitter, PlaywrightAction, RunResult } from '../../runner/events';
+import type { ParsedSpec } from '../../spec/types';
+import type { RunOptions } from '../../runner/events';
 
 type RunFn = (spec: ParsedSpec, opts: RunOptions, onEvent: RunEventEmitter) => Promise<RunResult>;
 

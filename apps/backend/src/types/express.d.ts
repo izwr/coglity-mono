@@ -1,4 +1,4 @@
-import type { db } from "../db.js";
+import type { db } from "../db";
 
 declare global {
   namespace Express {

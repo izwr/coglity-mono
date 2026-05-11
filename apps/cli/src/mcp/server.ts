@@ -2,10 +2,10 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { parseSpecContent } from '../spec/parser.js';
-import { runSpec } from '../runner/index.js';
-import type { RunEvent, RunResult, RunEventEmitter, PlaywrightAction } from '../runner/events.js';
-import { CoglityError } from '../agents/shared/errors.js';
+import { parseSpecContent } from '../spec/parser';
+import { runSpec } from '../runner/index';
+import type { RunEvent, RunResult, RunEventEmitter, PlaywrightAction } from '../runner/events';
+import { CoglityError } from '../agents/shared/errors';
 
 type RunFn = typeof runSpec;
 

@@ -6,7 +6,7 @@ import {
   scheduledTestCases, updateScheduledTestCaseSchema,
   testSuites, testCases, users, bugs,
 } from "@coglity/shared/schema";
-import { db as rootDb } from "../db.js";
+import { db as rootDb } from "../db";
 
 const router: RouterType = Router({ mergeParams: true });
 

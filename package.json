@@ -2,18 +2,12 @@
   "name": "coglity",
   "version": "1.0.0",
   "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "packageManager": "bun@1.3.13",
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
     "lint": "turbo lint"
-  },
-  "packageManager": "pnpm@10.32.1",
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "protobufjs",
-      "sharp"
-    ]
   },
   "devDependencies": {
     "turbo": "^2"

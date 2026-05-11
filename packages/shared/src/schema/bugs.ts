@@ -1,8 +1,8 @@
 import { pgTable, uuid, varchar, text, timestamp, pgEnum, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
-import { users } from "./users.js";
-import { projects } from "./projects.js";
+import { users } from "./users";
+import { projects } from "./projects";
 
 export const bugTypeEnum = pgEnum("bug_type", [
   "functional",

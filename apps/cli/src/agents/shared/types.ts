@@ -1,5 +1,5 @@
 import type Anthropic from '@anthropic-ai/sdk';
-import type { TraceWriter } from './trace.js';
+import type { TraceWriter } from './trace';
 
 export interface AgentContext {
   client: Anthropic;

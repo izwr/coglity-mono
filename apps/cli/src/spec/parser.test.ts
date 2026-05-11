@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { parseSpec, parseSpecContent } from './parser.js';
-import { SpecParseError, SpecValidationError } from '../agents/shared/errors.js';
+import { parseSpec, parseSpecContent } from './parser';
+import { SpecParseError, SpecValidationError } from '../agents/shared/errors';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 

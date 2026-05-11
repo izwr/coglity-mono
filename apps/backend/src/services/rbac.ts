@@ -10,7 +10,7 @@ import {
   type ProjectRole,
   type RbacAuditAction,
 } from "@coglity/shared/schema";
-import { db } from "../db.js";
+import { db } from "../db";
 
 export type EffectiveProjectRole = "super_admin" | ProjectRole | null;
 
