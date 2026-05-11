@@ -1,7 +1,7 @@
 import { Router, type Router as RouterType } from "express";
 import { z } from "zod";
-import { requireAuth } from "../middleware/requireAuth.js";
-import { consumeInvite, RbacError } from "../services/rbac.js";
+import { requireAuth } from "../middleware/requireAuth";
+import { consumeInvite, RbacError } from "../services/rbac";
 
 const router: RouterType = Router();
 

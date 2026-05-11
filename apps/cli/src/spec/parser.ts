@@ -4,12 +4,12 @@ import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import { toString } from 'mdast-util-to-string';
 import type { Heading, List, RootContent } from 'mdast';
-import { frontmatterSchema } from './schema.js';
-import type { ParsedSpec } from './types.js';
+import { frontmatterSchema } from './schema';
+import type { ParsedSpec } from './types';
 import {
   SpecParseError,
   SpecValidationError,
-} from '../agents/shared/errors.js';
+} from '../agents/shared/errors';
 
 export async function parseSpec(filePath: string): Promise<ParsedSpec> {
   const raw = await fs.readFile(filePath, 'utf-8');

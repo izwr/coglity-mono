@@ -1,6 +1,6 @@
 import { Box, Static } from 'ink';
-import type { StepState } from '../hooks/useRunEvents.js';
-import { StepRow } from './StepRow.js';
+import type { StepState } from '../hooks/useRunEvents';
+import { StepRow } from './StepRow';
 
 interface StepListProps {
   steps: StepState[];

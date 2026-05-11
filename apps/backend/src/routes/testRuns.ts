@@ -16,7 +16,7 @@ import {
   getLanguageConfig,
   getEnvironmentConfig,
 } from "@coglity/shared";
-import { db as rootDb } from "../db.js";
+import { db as rootDb } from "../db";
 
 const router: RouterType = Router({ mergeParams: true });
 

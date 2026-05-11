@@ -1,7 +1,7 @@
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
-import type { ParsedSpec } from '../spec/types.js';
-import type { PlaywrightAction } from './events.js';
-import { ElementNotFoundError, NavigationError } from '../agents/shared/errors.js';
+import type { ParsedSpec } from '../spec/types';
+import type { PlaywrightAction } from './events';
+import { ElementNotFoundError, NavigationError } from '../agents/shared/errors';
 
 export interface BrowserSession {
   browser: Browser;

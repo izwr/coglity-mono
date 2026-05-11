@@ -2,12 +2,12 @@ import { Router, type Router as RouterType } from "express";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { projectMembers, users, PROJECT_ROLES } from "@coglity/shared/schema";
-import { db } from "../db.js";
-import { requireAuth } from "../middleware/requireAuth.js";
-import { resolveOrg } from "../middleware/resolveOrg.js";
-import { resolveProject } from "../middleware/resolveProject.js";
-import { requireProjectRole } from "../middleware/requireProjectRole.js";
-import { auditRbac, ensureNotLastProjectAdmin, invalidateProjectCache, RbacError } from "../services/rbac.js";
+import { db } from "../db";
+import { requireAuth } from "../middleware/requireAuth";
+import { resolveOrg } from "../middleware/resolveOrg";
+import { resolveProject } from "../middleware/resolveProject";
+import { requireProjectRole } from "../middleware/requireProjectRole";
+import { auditRbac, ensureNotLastProjectAdmin, invalidateProjectCache, RbacError } from "../services/rbac";
 
 const router: RouterType = Router({ mergeParams: true });
 

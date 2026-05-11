@@ -1,11 +1,11 @@
 import type Anthropic from '@anthropic-ai/sdk';
-import type { AgentContext, AgentResult } from '../shared/types.js';
-import type { Verdict, StepResult } from '../../runner/events.js';
-import type { ParsedSpec } from '../../spec/types.js';
-import { JUDGE_SYSTEM_PROMPT } from './prompt.js';
-import { verdictSchema } from './schema.js';
-import { extractToolUseBlocks } from '../shared/tools.js';
-import { AgentSchemaError } from '../shared/errors.js';
+import type { AgentContext, AgentResult } from '../shared/types';
+import type { Verdict, StepResult } from '../../runner/events';
+import type { ParsedSpec } from '../../spec/types';
+import { JUDGE_SYSTEM_PROMPT } from './prompt';
+import { verdictSchema } from './schema';
+import { extractToolUseBlocks } from '../shared/tools';
+import { AgentSchemaError } from '../shared/errors';
 
 export interface JudgeInput {
   spec: ParsedSpec;

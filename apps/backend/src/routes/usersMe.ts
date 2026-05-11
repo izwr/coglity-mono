@@ -1,8 +1,8 @@
 import { Router, type Router as RouterType } from "express";
 import { and, eq, or, sql } from "drizzle-orm";
 import { users, organizationMembers, organizations, projects, projectMembers } from "@coglity/shared/schema";
-import { db } from "../db.js";
-import { requireAuth } from "../middleware/requireAuth.js";
+import { db } from "../db";
+import { requireAuth } from "../middleware/requireAuth";
 
 const router: RouterType = Router();
 

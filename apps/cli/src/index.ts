@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 import { Cli } from 'clipanion';
-import { WebTestCommand } from './commands/web/test.js';
-import { SetupClaudeCommand } from './commands/setup/claude.js';
+import { WebTestCommand } from './commands/web/test';
+import { SetupClaudeCommand } from './commands/setup/claude';
 
 const cli = new Cli({
   binaryLabel: 'coglity',

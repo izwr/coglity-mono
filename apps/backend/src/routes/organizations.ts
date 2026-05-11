@@ -10,11 +10,11 @@ import {
   insertProjectSchema,
   selectOrganizationSchema,
 } from "@coglity/shared/schema";
-import { db } from "../db.js";
-import { requireAuth } from "../middleware/requireAuth.js";
-import { resolveOrg } from "../middleware/resolveOrg.js";
-import { requireOrgRole } from "../middleware/requireOrgRole.js";
-import { auditRbac, invalidateOrgCache } from "../services/rbac.js";
+import { db } from "../db";
+import { requireAuth } from "../middleware/requireAuth";
+import { resolveOrg } from "../middleware/resolveOrg";
+import { requireOrgRole } from "../middleware/requireOrgRole";
+import { auditRbac, invalidateOrgCache } from "../services/rbac";
 
 const router: RouterType = Router();
 

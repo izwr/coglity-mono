@@ -1,6 +1,6 @@
 import { useReducer, useCallback } from 'react';
-import type { ParsedSpec } from '../../spec/types.js';
-import type { RunEvent, PlaywrightAction, Verdict, RunResult } from '../../runner/events.js';
+import type { ParsedSpec } from '../../spec/types';
+import type { RunEvent, PlaywrightAction, Verdict, RunResult } from '../../runner/events';
 
 export interface StepState {
   index: number;

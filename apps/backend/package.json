@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "bun --watch src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js",
+    "start": "bun run src/index.ts",
     "lint": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
@@ -35,7 +35,6 @@
     "@types/multer": "^2.1.0",
     "@types/node": "^22",
     "drizzle-kit": "^0.31.10",
-    "tsx": "^4",
     "typescript": "^5"
   }
 }

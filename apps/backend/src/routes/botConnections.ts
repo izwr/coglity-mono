@@ -2,7 +2,7 @@ import { type Router as RouterType, Router } from "express";
 import { eq, and, ilike, desc, asc, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { botConnections, insertBotConnectionSchema, users } from "@coglity/shared/schema";
-import { db as rootDb } from "../db.js";
+import { db as rootDb } from "../db";
 
 const router: RouterType = Router({ mergeParams: true });
 

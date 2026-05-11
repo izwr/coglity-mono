@@ -1,9 +1,9 @@
 import { pgTable, uuid, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
-import { users } from "./users.js";
-import { testSuites } from "./testSuites.js";
-import { projects } from "./projects.js";
+import { users } from "./users";
+import { testSuites } from "./testSuites";
+import { projects } from "./projects";
 
 export const scheduledTestSuites = pgTable("scheduled_test_suites", {
   id: uuid("id").defaultRandom().primaryKey(),

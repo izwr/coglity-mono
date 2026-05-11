@@ -1,7 +1,7 @@
 import express, { type Router as RouterType, Router } from "express";
 import { eq } from "drizzle-orm";
 import { testRuns, updateTestRunSchema, type TestRunProperties } from "@coglity/shared/schema";
-import { db } from "../db.js";
+import { db } from "../db";
 
 const router: RouterType = Router();
 

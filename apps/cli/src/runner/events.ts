@@ -1,4 +1,4 @@
-import type { ParsedSpec } from '../spec/types.js';
+import type { ParsedSpec } from '../spec/types';
 
 export type PlaywrightAction =
   | { tool: 'click'; selector: string }

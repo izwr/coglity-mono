@@ -1,9 +1,9 @@
 import { Box, Text } from 'ink';
-import type { StepState } from '../hooks/useRunEvents.js';
-import { colors, icons } from '../theme.js';
-import { ThinkingDots } from './ThinkingDots.js';
-import { ActionBadge } from './ActionBadge.js';
-import { formatMs } from '../hooks/useElapsed.js';
+import type { StepState } from '../hooks/useRunEvents';
+import { colors, icons } from '../theme';
+import { ThinkingDots } from './ThinkingDots';
+import { ActionBadge } from './ActionBadge';
+import { formatMs } from '../hooks/useElapsed';
 
 interface StepRowProps {
   step: StepState;

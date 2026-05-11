@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Coglity is an AI-first QA/testing management application with CRUD for test suites, test cases, tags, and entity-tag relationships, plus AI-powered test case generation. Built as a TypeScript monorepo using pnpm workspaces and Turborepo.
+Coglity is an AI-first QA/testing management application with CRUD for test suites, test cases, tags, and entity-tag relationships, plus AI-powered test case generation. Built as a TypeScript monorepo using Bun workspaces and Turborepo.
 
 ## Monorepo Structure
 
@@ -16,16 +16,16 @@ Coglity is an AI-first QA/testing management application with CRUD for test suit
 ## Commands
 
 ```bash
-pnpm install              # Install all dependencies
-pnpm dev                  # Start all apps concurrently (Turbo)
-pnpm build                # Build all packages
-pnpm lint                 # Type-check all packages (tsc)
+bun install               # Install all dependencies
+bun run dev               # Start all apps concurrently (Turbo)
+bun run build             # Build all packages
+bun run lint              # Type-check all packages (tsc)
 
 # Database (run from apps/backend)
-pnpm db:push              # Push schema directly to database
-pnpm db:generate          # Generate migration files
-pnpm db:migrate           # Run migrations
-pnpm db:studio            # Open Drizzle Studio
+bun run db:push           # Push schema directly to database
+bun run db:generate       # Generate migration files
+bun run db:migrate        # Run migrations
+bun run db:studio         # Open Drizzle Studio
 ```
 
 ## Architecture

@@ -1,8 +1,8 @@
 import type { Request, Response, NextFunction } from "express";
 import { and, eq, inArray } from "drizzle-orm";
 import { projects, projectMembers } from "@coglity/shared/schema";
-import { db } from "../db.js";
-import { resolveOrgRole } from "../services/rbac.js";
+import { db } from "../db";
+import { resolveOrgRole } from "../services/rbac";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

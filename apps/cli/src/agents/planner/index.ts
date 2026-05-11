@@ -1,11 +1,11 @@
 import type Anthropic from '@anthropic-ai/sdk';
-import type { AgentContext, AgentResult } from '../shared/types.js';
-import type { PlaywrightAction } from '../../runner/events.js';
-import { PLANNER_TOOLS } from './tools.js';
-import { PLANNER_SYSTEM_PROMPT } from './prompt.js';
-import { extractToolUseBlocks } from '../shared/tools.js';
-import { AgentSchemaError, AgentRefusalError, UnknownToolError } from '../shared/errors.js';
-import { MAX_ACTIONS_PER_STEP } from '../../lib/config.js';
+import type { AgentContext, AgentResult } from '../shared/types';
+import type { PlaywrightAction } from '../../runner/events';
+import { PLANNER_TOOLS } from './tools';
+import { PLANNER_SYSTEM_PROMPT } from './prompt';
+import { extractToolUseBlocks } from '../shared/tools';
+import { AgentSchemaError, AgentRefusalError, UnknownToolError } from '../shared/errors';
+import { MAX_ACTIONS_PER_STEP } from '../../lib/config';
 
 export interface PlannerInput {
   step: string;

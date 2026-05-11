@@ -3,9 +3,9 @@ import { eq, and, ilike, desc, asc, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import multer from "multer";
 import { knowledgeSources, insertKnowledgeSourceSchema, users } from "@coglity/shared/schema";
-import { db as rootDb } from "../db.js";
-import { uploadBlob, deleteBlob } from "../lib/blobStorage.js";
-import { checkIndexStatus } from "../lib/searchClient.js";
+import { db as rootDb } from "../db";
+import { uploadBlob, deleteBlob } from "../lib/blobStorage";
+import { checkIndexStatus } from "../lib/searchClient";
 
 const router: RouterType = Router({ mergeParams: true });
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });

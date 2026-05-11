@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { RunResult } from './events.js';
-import type { ParsedSpec } from '../spec/types.js';
+import type { RunResult } from './events';
+import type { ParsedSpec } from '../spec/types';
 
 export async function finalizeRun(
   runDir: string,

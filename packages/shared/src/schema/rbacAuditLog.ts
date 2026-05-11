@@ -1,9 +1,9 @@
 import { pgTable, uuid, varchar, jsonb, timestamp, index } from "drizzle-orm/pg-core";
 import { createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
-import { users } from "./users.js";
-import { organizations } from "./organizations.js";
-import { projects } from "./projects.js";
+import { users } from "./users";
+import { organizations } from "./organizations";
+import { projects } from "./projects";
 
 export const RBAC_AUDIT_ACTIONS = [
   "create_org",

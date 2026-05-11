@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { PROJECT_ROLE_RANK } from "../services/rbac.js";
+import { PROJECT_ROLE_RANK } from "../services/rbac";
 
 export function requireProjectRole(min: "read" | "writer" | "admin") {
   return function (req: Request, res: Response, next: NextFunction): void {

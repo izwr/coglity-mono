@@ -1,5 +1,5 @@
 import { pgTable, uuid, varchar, text, timestamp, numeric, integer, boolean, jsonb, pgEnum } from "drizzle-orm/pg-core";
-import { users } from "./users.js";
+import { users } from "./users";
 
 export const billingModeEnum = pgEnum("billing_mode", ["prepaid", "postpaid"]);
 export const transactionTypeEnum = pgEnum("transaction_type", ["credit", "debit"]);

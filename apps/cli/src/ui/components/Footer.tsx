@@ -1,6 +1,6 @@
 import { Box, Text } from 'ink';
-import { colors } from '../theme.js';
-import { formatMs } from '../hooks/useElapsed.js';
+import { colors } from '../theme';
+import { formatMs } from '../hooks/useElapsed';
 
 interface FooterProps {
   elapsed: number;

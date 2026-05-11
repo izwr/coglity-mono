@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { sql } from "drizzle-orm";
-import { db } from "../db.js";
+import { db } from "../db";
 
 /**
  * Narrow variant of withScopedTx used only by POST /api/invites/accept.

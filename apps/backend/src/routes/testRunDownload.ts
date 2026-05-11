@@ -3,7 +3,7 @@ import { eq, and } from "drizzle-orm";
 import { BlobServiceClient } from "@azure/storage-blob";
 import { ChainedTokenCredential, AzureCliCredential, ManagedIdentityCredential } from "@azure/identity";
 import { testRuns } from "@coglity/shared/schema";
-import { db as rootDb } from "../db.js";
+import { db as rootDb } from "../db";
 
 const router: RouterType = Router({ mergeParams: true });
 
