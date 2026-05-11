@@ -5,6 +5,7 @@ import multer from "multer";
 import { knowledgeSources, insertKnowledgeSourceSchema, users } from "@coglity/shared/schema";
 import { db as rootDb } from "../db.js";
 import { uploadBlob, deleteBlob } from "../lib/blobStorage.js";
+import { checkIndexStatus } from "../lib/searchClient.js";
 
 const router: RouterType = Router({ mergeParams: true });
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
@@ -21,6 +22,10 @@ const columns = {
   sourceType: knowledgeSources.sourceType,
   url: knowledgeSources.url,
   description: knowledgeSources.description,
+  status: knowledgeSources.status,
+  chunkCount: knowledgeSources.chunkCount,
+  indexedAt: knowledgeSources.indexedAt,
+  errorMessage: knowledgeSources.errorMessage,
   createdBy: knowledgeSources.createdBy,
   updatedBy: knowledgeSources.updatedBy,
   createdAt: knowledgeSources.createdAt,
@@ -49,7 +54,7 @@ router.get("/", async (req, res) => {
 
   const conditions = [eq(knowledgeSources.projectId, projectId)];
   if (search) conditions.push(ilike(knowledgeSources.name, `%${search}%`));
-  if (sourceType === "pdf" || sourceType === "screen" || sourceType === "figma" || sourceType === "url") {
+  if (sourceType === "pdf" || sourceType === "docx" || sourceType === "screen" || sourceType === "figma" || sourceType === "url") {
     conditions.push(eq(knowledgeSources.sourceType, sourceType));
   }
   const where = and(...conditions);
@@ -72,6 +77,15 @@ router.get("/", async (req, res) => {
   res.json({ data, total, page, limit });
 });
 
+function extractBlobName(url: string): string | null {
+  if (!url || !url.includes("blob.core.windows.net")) return null;
+  try {
+    return new URL(url).pathname.split("/").pop() ?? null;
+  } catch {
+    return null;
+  }
+}
+
 router.get("/:id", async (req, res) => {
   const db = (req.db ?? rootDb) as DbHandle;
   const projectId = req.projectId!;
@@ -82,6 +96,23 @@ router.get("/:id", async (req, res) => {
     res.status(404).json({ error: "Knowledge source not found" });
     return;
   }
+
+  if (row.status === "pending" || row.status === "processing") {
+    const blobName = extractBlobName(row.url);
+    if (blobName) {
+      const indexStatus = await checkIndexStatus(blobName);
+      if (indexStatus.indexed) {
+        await db
+          .update(knowledgeSources)
+          .set({ status: "indexed", chunkCount: indexStatus.chunkCount, indexedAt: new Date() })
+          .where(eq(knowledgeSources.id, row.id));
+        const [updated] = await baseQuery(db).where(eq(knowledgeSources.id, row.id));
+        res.json(updated);
+        return;
+      }
+    }
+  }
+
   res.json(row);
 });
 
@@ -90,7 +121,7 @@ router.post("/", upload.single("file"), async (req, res) => {
   const projectId = req.projectId!;
   let fileUrl = "";
   if (req.file) {
-    const blob = await uploadBlob(req.file);
+    const blob = await uploadBlob(req.file, { projectId });
     fileUrl = blob.url;
   }
 
@@ -132,7 +163,7 @@ router.put("/:id", upload.single("file"), async (req, res) => {
     if (existing.url && existing.url.includes("blob.core.windows.net")) {
       await deleteBlob(existing.url);
     }
-    const blob = await uploadBlob(req.file);
+    const blob = await uploadBlob(req.file, { projectId });
     fileUrl = blob.url;
   }
 
@@ -151,7 +182,12 @@ router.put("/:id", upload.single("file"), async (req, res) => {
   const userId = req.session.userId;
   const [updated] = await db
     .update(knowledgeSources)
-    .set({ ...parsed.data, updatedBy: userId, updatedAt: new Date() })
+    .set({
+      ...parsed.data,
+      updatedBy: userId,
+      updatedAt: new Date(),
+      ...(req.file ? { status: "pending" as const, chunkCount: 0, indexedAt: null, errorMessage: null } : {}),
+    })
     .where(and(eq(knowledgeSources.id, req.params.id as string), eq(knowledgeSources.projectId, projectId)))
     .returning();
   const [row] = await baseQuery(db).where(eq(knowledgeSources.id, updated.id));

@@ -9,7 +9,7 @@ export interface KnowledgeSourceWithUser extends KnowledgeSource {
 
 export interface CreateKnowledgeSourcePayload {
   name: string;
-  sourceType: "pdf" | "screen" | "figma" | "url";
+  sourceType: "pdf" | "docx" | "screen" | "figma" | "url";
   url: string;
   description: string;
   file?: File;

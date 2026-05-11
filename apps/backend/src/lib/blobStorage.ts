@@ -22,6 +22,7 @@ function getContainerClient() {
 
 export async function uploadBlob(
   file: Express.Multer.File,
+  metadata?: Record<string, string>,
 ): Promise<{ url: string; blobName: string }> {
   const container = getContainerClient();
   await container.createIfNotExists({ access: "blob" });
@@ -32,6 +33,7 @@ export async function uploadBlob(
 
   await blockBlob.uploadData(file.buffer, {
     blobHTTPHeaders: { blobContentType: file.mimetype },
+    metadata,
   });
 
   return { url: blockBlob.url, blobName };

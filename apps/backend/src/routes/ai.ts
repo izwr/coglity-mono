@@ -4,6 +4,7 @@ import OpenAI from "openai";
 import { z } from "zod";
 import { aiGenerationSessions, insertAiGenerationSessionSchema, testCases, testSuites } from "@coglity/shared/schema";
 import { db as rootDb } from "../db.js";
+import { searchKnowledge } from "../lib/searchClient.js";
 
 const router: RouterType = Router({ mergeParams: true });
 
@@ -64,13 +65,18 @@ router.post("/session/:id/followup", async (req, res) => {
     return;
   }
 
+  const knowledgeChunks = await searchKnowledge(projectId, session.userStory);
+  const knowledgeContext = knowledgeChunks.length > 0
+    ? "\n\nRelevant project knowledge:\n---\n" + knowledgeChunks.join("\n---\n")
+    : "";
+
   const completion = await openai.responses.parse({
     model: "gpt-4.1-mini",
     instructions:
       "You are a senior QA engineer. Given a user story or feature description, generate 3-5 clarifying follow-up questions " +
       "that would help you create better, more comprehensive test scenarios. " +
       "Focus on edge cases, acceptance criteria, boundary conditions, and non-functional requirements.",
-    input: `User Story: ${session.userStory}`,
+    input: `User Story: ${session.userStory}${knowledgeContext}`,
     text: {
       format: {
         type: "json_schema",
@@ -135,13 +141,18 @@ router.post("/session/:id/generate-scenarios", async (req, res) => {
     ? "\n\nAdditional context from Q&A:\n" + followUpQA.map((qa) => `Q: ${qa.question}\nA: ${qa.answer}`).join("\n\n")
     : "";
 
+  const knowledgeChunks = await searchKnowledge(projectId, session.userStory);
+  const knowledgeContext = knowledgeChunks.length > 0
+    ? "\n\nRelevant project knowledge:\n---\n" + knowledgeChunks.join("\n---\n")
+    : "";
+
   const completion = await openai.responses.parse({
     model: "gpt-4.1-mini",
     instructions:
       "You are a senior QA engineer. Given a user story and additional context, generate a comprehensive list of test scenarios. " +
       "Each scenario should have a clear, concise title and a brief description of what to test. " +
       "Cover happy paths, edge cases, error scenarios, and boundary conditions.",
-    input: `User Story: ${session.userStory}${qaContext}`,
+    input: `User Story: ${session.userStory}${qaContext}${knowledgeContext}`,
     text: {
       format: {
         type: "json_schema",
@@ -223,6 +234,11 @@ router.post("/session/:id/create-test-cases", async (req, res) => {
     ? "\n\nAdditional context from Q&A:\n" + followUpQA.map((qa) => `Q: ${qa.question}\nA: ${qa.answer}`).join("\n\n")
     : "";
 
+  const knowledgeChunks = await searchKnowledge(projectId, session.userStory);
+  const knowledgeContext = knowledgeChunks.length > 0
+    ? "\n\nRelevant project knowledge:\n---\n" + knowledgeChunks.join("\n---\n")
+    : "";
+
   const detailCompletion = await openai.responses.parse({
     model: "gpt-4.1-mini",
     instructions:
@@ -232,7 +248,7 @@ router.post("/session/:id/create-test-cases", async (req, res) => {
       "testSteps (numbered step-by-step instructions to execute the test), " +
       "and expectedResults (what should happen when the test is executed correctly). " +
       "Return the results in the same order as the input scenarios.",
-    input: `User Story: ${session.userStory}${qaContext}\n\nScenarios:\n${selectedScenarios.map((s, i) => `${i + 1}. ${s.title}: ${s.description}`).join("\n")}`,
+    input: `User Story: ${session.userStory}${qaContext}${knowledgeContext}\n\nScenarios:\n${selectedScenarios.map((s, i) => `${i + 1}. ${s.title}: ${s.description}`).join("\n")}`,
     text: {
       format: {
         type: "json_schema",

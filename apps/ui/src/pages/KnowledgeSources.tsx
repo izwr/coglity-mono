@@ -4,6 +4,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { knowledgeSourceService, type KnowledgeSourceWithUser } from "../services/knowledgeSourceService";
 import { Button } from "../components/ui/Button";
+import { Chip } from "../components/ui/Chip";
 import { PageHead } from "../components/ui/PageHead";
 import { Tabs } from "../components/ui/Tabs";
 import { useSetBreadcrumbs } from "../context/BreadcrumbsContext";
@@ -13,6 +14,7 @@ import { useCurrentOrg } from "../context/OrgContext";
 
 const SOURCE_TYPES = [
   { value: "pdf", label: "PDF" },
+  { value: "docx", label: "DOCX" },
   { value: "screen", label: "Screen" },
   { value: "figma", label: "Figma" },
   { value: "url", label: "URL" },
@@ -23,6 +25,14 @@ const SOURCE_TYPE_ICONS: Record<string, React.ReactElement> = {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
       <polyline points="14 2 14 8 20 8" />
+    </svg>
+  ),
+  docx: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="8" y1="13" x2="16" y2="13" />
+      <line x1="8" y1="17" x2="13" y2="17" />
     </svg>
   ),
   screen: (
@@ -90,13 +100,14 @@ export function KnowledgeSources() {
   });
 
   const selectedSourceType = watch("sourceType");
-  const supportsUpload = selectedSourceType === "pdf" || selectedSourceType === "screen" || selectedSourceType === "figma";
+  const supportsUpload = selectedSourceType === "pdf" || selectedSourceType === "docx" || selectedSourceType === "screen" || selectedSourceType === "figma";
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploadedFileName, setUploadedFileName] = useState<string>("");
   const [isDragging, setIsDragging] = useState(false);
 
   const ACCEPT_MAP: Record<string, string> = {
     pdf: ".pdf",
+    docx: ".docx,.doc",
     screen: "image/*",
     figma: ".fig",
   };
@@ -169,7 +180,7 @@ export function KnowledgeSources() {
   const onSubmit = async (data: FormValues) => {
     const payload = {
       name: data.name,
-      sourceType: data.sourceType as "pdf" | "screen" | "figma" | "url",
+      sourceType: data.sourceType as "pdf" | "docx" | "screen" | "figma" | "url",
       url: data.url || "",
       description: data.description || "",
       file: uploadedFile ?? undefined,
@@ -199,9 +210,11 @@ export function KnowledgeSources() {
     ? "https://www.figma.com/file/..."
     : watch("sourceType") === "pdf"
       ? "https://example.com/document.pdf"
-      : watch("sourceType") === "screen"
-        ? "https://example.com/screen.png"
-        : "https://example.com/resource";
+      : watch("sourceType") === "docx"
+        ? "https://example.com/document.docx"
+        : watch("sourceType") === "screen"
+          ? "https://example.com/screen.png"
+          : "https://example.com/resource";
 
   return (
     <div className="page">
@@ -352,6 +365,7 @@ export function KnowledgeSources() {
             options={[
               { value: "all",    label: "All",    count: total, chipVariant: "teal", dotColor: "var(--teal)" },
               { value: "pdf",    label: "PDF",    count: sources.filter((s) => s.sourceType === "pdf").length,    chipVariant: "fail" },
+              { value: "docx",   label: "DOCX",   count: sources.filter((s) => s.sourceType === "docx").length,   chipVariant: "fail" },
               { value: "screen", label: "Screen", count: sources.filter((s) => s.sourceType === "screen").length, chipVariant: "info" },
               { value: "figma",  label: "Figma",  count: sources.filter((s) => s.sourceType === "figma").length,  chipVariant: "voice" },
               { value: "url",    label: "URL",    count: sources.filter((s) => s.sourceType === "url").length,    chipVariant: "agent" },
@@ -385,6 +399,10 @@ export function KnowledgeSources() {
                       </span>
                       {src.name}
                       <span className="tag-badge">{sourceTypeLabel(src.sourceType)}</span>
+                      {src.status === "indexed" && <Chip variant="pass" dot>Indexed</Chip>}
+                      {src.status === "processing" && <Chip variant="run" dot pulse>Processing</Chip>}
+                      {src.status === "pending" && <Chip variant="warn" dot>Pending</Chip>}
+                      {src.status === "failed" && <Chip variant="fail" dot>Failed</Chip>}
                     </div>
                     {src.url && (
                       <div className="ts-card-desc" style={{ wordBreak: "break-all" }}>{src.url}</div>
@@ -395,7 +413,14 @@ export function KnowledgeSources() {
                     <div className="ts-card-meta">
                       Created {new Date(src.createdAt).toLocaleDateString()}
                       {src.createdByName && ` by ${src.createdByName}`}
+                      {src.status === "indexed" && src.chunkCount > 0 && ` · ${src.chunkCount} chunks`}
+                      {src.indexedAt && ` · Indexed ${new Date(src.indexedAt).toLocaleDateString()}`}
                     </div>
+                    {src.status === "failed" && src.errorMessage && (
+                      <div className="ts-card-desc" style={{ color: "var(--fail)", fontSize: 12 }}>
+                        {src.errorMessage}
+                      </div>
+                    )}
                   </div>
                   <div className="ts-card-actions">
                     <Button variant="ghost" size="sm" onClick={() => startEdit(src)}>Edit</Button>

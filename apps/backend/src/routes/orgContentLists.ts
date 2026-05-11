@@ -356,7 +356,7 @@ router.get("/knowledge-sources", async (req, res) => {
 
   const conditions = [inArray(knowledgeSources.projectId, ids)];
   if (search) conditions.push(ilike(knowledgeSources.name, `%${search}%`));
-  if (sourceType === "pdf" || sourceType === "screen" || sourceType === "figma" || sourceType === "url") {
+  if (sourceType === "pdf" || sourceType === "docx" || sourceType === "screen" || sourceType === "figma" || sourceType === "url") {
     conditions.push(eq(knowledgeSources.sourceType, sourceType));
   }
   const where = and(...conditions);
@@ -378,6 +378,10 @@ router.get("/knowledge-sources", async (req, res) => {
       sourceType: knowledgeSources.sourceType,
       url: knowledgeSources.url,
       description: knowledgeSources.description,
+      status: knowledgeSources.status,
+      chunkCount: knowledgeSources.chunkCount,
+      indexedAt: knowledgeSources.indexedAt,
+      errorMessage: knowledgeSources.errorMessage,
       createdBy: knowledgeSources.createdBy,
       updatedBy: knowledgeSources.updatedBy,
       createdAt: knowledgeSources.createdAt,
