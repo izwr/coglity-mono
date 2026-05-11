@@ -13,3 +13,4 @@
 .env.*
 !.env.example
 apps/iac
+!apps/iac/package.json
