@@ -11,9 +11,7 @@ import { testCaseService, type TestCaseWithTags } from "../services/testCaseServ
 import { tagService } from "../services/tagService";
 import { botConnectionService, type BotConnectionWithUser } from "../services/botConnectionService";
 import { testRunService } from "../services/testRunService";
-import { TestRunPanel } from "../components/TestRunPanel";
 import { RunConfigModal, type RunConfig } from "../components/RunConfigModal";
-import { BatchRunPanel } from "../components/BatchRunPanel";
 import { useSetBreadcrumbs } from "../context/BreadcrumbsContext";
 import { useCurrentOrg } from "../context/OrgContext";
 
@@ -396,26 +394,6 @@ export function TestCaseDetail() {
           onSubmit={handleRunConfigSubmit}
           onCancel={() => setShowRunConfig(false)}
           submitting={starting}
-        />
-      )}
-
-      {activeBatchId && org && projectId && (
-        <BatchRunPanel
-          orgId={org.organizationId}
-          projectId={projectId}
-          batchId={activeBatchId}
-          onAllTerminal={() => setActiveBatchId(null)}
-        />
-      )}
-
-      {activeRunId && org && projectId && (
-        <TestRunPanel
-          orgId={org.organizationId}
-          projectId={projectId}
-          runId={activeRunId}
-          onTerminal={() => {
-            setActiveRunId(null);
-          }}
         />
       )}
 
