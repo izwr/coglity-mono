@@ -23,11 +23,11 @@ export const testRunService = {
   },
 
   async create(orgId: string, projectId: string, testCaseId: string): Promise<TestRunWithUser> {
-    const { data } = await api.post<TestRunWithUser>(
+    const { data } = await api.post<{ data: TestRunWithUser[]; batchId: string | null }>(
       `/organizations/${orgId}/projects/${projectId}/test-runs`,
       { testCaseId },
     );
-    return data;
+    return data.data[0];
   },
 
   async createBatch(
@@ -40,8 +40,8 @@ export const testRunService = {
       crossProduct?: boolean;
       combinations?: Array<{ language: string; environment: string }>;
     },
-  ): Promise<{ data: TestRunWithUser[]; batchId: string }> {
-    const { data } = await api.post<{ data: TestRunWithUser[]; batchId: string }>(
+  ): Promise<{ data: TestRunWithUser[]; batchId: string | null }> {
+    const { data } = await api.post<{ data: TestRunWithUser[]; batchId: string | null }>(
       `/organizations/${orgId}/projects/${projectId}/test-runs`,
       { testCaseId, ...config },
     );

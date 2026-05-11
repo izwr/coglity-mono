@@ -10,7 +10,7 @@ import { Chip, type ChipVariant } from "../components/ui/Chip";
 import { testCaseService, type TestCaseWithTags } from "../services/testCaseService";
 import { tagService } from "../services/tagService";
 import { botConnectionService, type BotConnectionWithUser } from "../services/botConnectionService";
-import { testRunService, type TestRunWithUser } from "../services/testRunService";
+import { testRunService } from "../services/testRunService";
 import { TestRunPanel } from "../components/TestRunPanel";
 import { RunConfigModal, type RunConfig } from "../components/RunConfigModal";
 import { BatchRunPanel } from "../components/BatchRunPanel";
@@ -58,7 +58,6 @@ export function TestCaseDetail() {
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [activeBatchId, setActiveBatchId] = useState<string | null>(null);
   const [showRunConfig, setShowRunConfig] = useState(false);
-  const [runHistory, setRunHistory] = useState<TestRunWithUser[]>([]);
   const [runError, setRunError] = useState<string>("");
   const [starting, setStarting] = useState(false);
 
@@ -82,12 +81,10 @@ export function TestCaseDetail() {
       testCaseService.getById(org.organizationId, projectId, id),
       tagService.getAll(org.organizationId, [projectId]),
       botConnectionService.getAll(org.organizationId, [projectId], { limit: 100 }),
-      testRunService.listByTestCase(org.organizationId, projectId, id).catch(() => []),
-    ]).then(([tcData, tagsData, bcData, runsData]) => {
+    ]).then(([tcData, tagsData, bcData]) => {
       setTc(tcData);
       setAllTags(Array.isArray(tagsData) ? tagsData : []);
       setAllBotConnections(Array.isArray(bcData.data) ? bcData.data : []);
-      setRunHistory(Array.isArray(runsData) ? runsData : []);
       populateFields(tcData);
     }).catch(() => {
       navigate("/test-cases");
@@ -120,12 +117,15 @@ export function TestCaseDetail() {
         const run = await testRunService.create(org.organizationId, projectId, id);
         setActiveRunId(run.id);
         setActiveBatchId(null);
-        setRunHistory((prev) => [run, ...prev]);
       } else {
         const result = await testRunService.createBatch(org.organizationId, projectId, id, config);
-        setActiveBatchId(result.batchId);
-        setActiveRunId(null);
-        setRunHistory((prev) => [...result.data, ...prev]);
+        if (result.batchId) {
+          setActiveBatchId(result.batchId);
+          setActiveRunId(null);
+        } else {
+          setActiveRunId(result.data[0]?.id ?? null);
+          setActiveBatchId(null);
+        }
       }
       setShowRunConfig(false);
     } catch (e: unknown) {
@@ -146,10 +146,6 @@ export function TestCaseDetail() {
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canRun, loading, searchParams]);
-
-  const refreshHistoryAfterTerminal = (final: TestRunWithUser) => {
-    setRunHistory((prev) => prev.map((r) => (r.id === final.id ? final : r)));
-  };
 
   const populateFields = (d: TestCaseWithTags) => {
     reset({
@@ -417,73 +413,10 @@ export function TestCaseDetail() {
           orgId={org.organizationId}
           projectId={projectId}
           runId={activeRunId}
-          onTerminal={(run) => {
-            refreshHistoryAfterTerminal(run);
+          onTerminal={() => {
             setActiveRunId(null);
           }}
         />
-      )}
-
-      {runHistory.length > 0 && !activeRunId && !activeBatchId && (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>
-            Run history
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            {runHistory.slice(0, 5).map((r) => (
-              <button
-                key={r.id}
-                type="button"
-                onClick={() => setActiveRunId(r.id)}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: "6px 10px",
-                  border: "1px solid var(--line)",
-                  borderRadius: 8,
-                  background: "var(--bg-1)",
-                  cursor: "pointer",
-                  fontSize: 12,
-                  textAlign: "left",
-                }}
-              >
-                <span>
-                  <Chip
-                    variant={
-                      r.state === "passed"
-                        ? "pass"
-                        : r.state === "failed"
-                          ? "fail"
-                          : r.state === "errored"
-                            ? "warn"
-                            : "info"
-                    }
-                  >
-                    {r.state}
-                  </Chip>
-                  <span style={{ marginLeft: 8, color: "var(--muted)" }}>
-                    {new Date(r.createdAt).toLocaleString()}
-                  </span>
-                </span>
-                {r.verdict && (
-                  <span
-                    style={{
-                      marginLeft: 12,
-                      color: "var(--muted)",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      maxWidth: 400,
-                    }}
-                  >
-                    {r.verdict}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
       )}
 
       {/* Pre Condition */}

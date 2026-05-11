@@ -218,11 +218,7 @@ router.post("/", async (req, res) => {
     ))
     .orderBy(desc(testRuns.createdAt));
 
-  if (batchId) {
-    res.status(201).json({ data: rows, batchId });
-  } else {
-    res.status(201).json(rows[0]);
-  }
+  res.status(201).json({ data: rows, batchId });
 });
 
 async function sendToQueue(
