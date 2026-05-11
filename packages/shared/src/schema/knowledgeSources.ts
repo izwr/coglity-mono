@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, text, timestamp, pgEnum, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { users } from "./users";
@@ -6,9 +6,17 @@ import { projects } from "./projects";
 
 export const knowledgeSourceTypeEnum = pgEnum("knowledge_source_type", [
   "pdf",
+  "docx",
   "screen",
   "figma",
   "url",
+]);
+
+export const knowledgeSourceStatusEnum = pgEnum("knowledge_source_status", [
+  "pending",
+  "processing",
+  "indexed",
+  "failed",
 ]);
 
 export const knowledgeSources = pgTable("knowledge_sources", {
@@ -16,8 +24,12 @@ export const knowledgeSources = pgTable("knowledge_sources", {
   projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
   name: varchar("name", { length: 255 }).notNull(),
   sourceType: knowledgeSourceTypeEnum("source_type").notNull(),
+  status: knowledgeSourceStatusEnum("status").default("pending").notNull(),
   url: text("url").default("").notNull(),
   description: text("description").default("").notNull(),
+  chunkCount: integer("chunk_count").default(0).notNull(),
+  indexedAt: timestamp("indexed_at", { withTimezone: true }),
+  errorMessage: text("error_message"),
   createdBy: uuid("created_by").references(() => users.id),
   updatedBy: uuid("updated_by").references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -28,7 +40,7 @@ export const insertKnowledgeSourceSchema = createInsertSchema(knowledgeSources, 
   name: (schema) => schema.min(1, "Name is required").max(255),
   url: (schema) => schema.max(2000).optional().default(""),
   description: (schema) => schema.max(2000).optional().default(""),
-}).omit({ id: true, projectId: true, createdBy: true, updatedBy: true, createdAt: true, updatedAt: true });
+}).omit({ id: true, projectId: true, createdBy: true, updatedBy: true, createdAt: true, updatedAt: true, status: true, chunkCount: true, indexedAt: true, errorMessage: true });
 
 export const selectKnowledgeSourceSchema = createSelectSchema(knowledgeSources);
 
