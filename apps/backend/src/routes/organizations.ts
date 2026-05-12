@@ -6,6 +6,7 @@ import {
   organizationMembers,
   projects,
   projectMembers,
+  billingAccount,
   insertOrganizationSchema,
   insertProjectSchema,
   selectOrganizationSchema,
@@ -63,6 +64,13 @@ router.post("/", requireAuth, async (req, res) => {
     userId,
     orgRole: "super_admin",
     joinedVia: "creation",
+  });
+
+  await db.insert(billingAccount).values({
+    organisationId: org.id,
+    accountType: "credit",
+    consumptionLimit: "0",
+    balance: "0",
   });
 
   const [project] = await db

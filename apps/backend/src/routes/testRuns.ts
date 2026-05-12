@@ -17,6 +17,7 @@ import {
   getEnvironmentConfig,
 } from "@coglity/shared";
 import { db as rootDb } from "../db";
+import { reserveBalance, BillingError } from "../lib/billingClient";
 
 const router: RouterType = Router({ mergeParams: true });
 
@@ -165,6 +166,7 @@ router.post("/", async (req, res) => {
   }
 
   const batchId = pairs.length > 1 ? randomUUID() : null;
+  const organisationId = req.organizationId!;
 
   const insertedRuns = await Promise.all(
     pairs.map(async ({ language, environment }) => {
@@ -181,6 +183,31 @@ router.post("/", async (req, res) => {
           createdBy: userId,
         })
         .returning();
+
+      // Gate on billing — reserve balance before dispatching
+      try {
+        const reservation = await reserveBalance(
+          organisationId,
+          inserted.id,
+          "voice_test",
+        );
+        if (!reservation.allowed) {
+          await db
+            .update(testRuns)
+            .set({ state: "errored", error: "Insufficient balance" })
+            .where(eq(testRuns.id, inserted.id));
+          return inserted;
+        }
+      } catch (err) {
+        if (err instanceof BillingError) {
+          await db
+            .update(testRuns)
+            .set({ state: "errored", error: `Billing error: ${err.message}` })
+            .where(eq(testRuns.id, inserted.id));
+          return inserted;
+        }
+        console.error(`[test-runs] billing reserve failed for ${inserted.id}:`, err);
+      }
 
       const langConfig = getLanguageConfig(language);
       const envConfig = getEnvironmentConfig(environment);
@@ -203,6 +230,8 @@ router.post("/", async (req, res) => {
         ttsVoice: langConfig?.ttsVoice,
         environment: envConfig?.id ?? "quiet",
         environmentSnrDb: envConfig?.defaultSnrDb,
+        organisationId,
+        correlationId: inserted.id,
       }).catch((err) => {
         console.error(`[test-runs] dispatch failed for ${inserted.id}:`, err);
       });

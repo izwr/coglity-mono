@@ -340,6 +340,20 @@ const aiFoundryProjectEndpoint = pulumi
       `https://${aiName}.services.ai.azure.com/api/projects/${projName}/openai/v1/`,
   );
 
+// ── 13. Billing Queues ────────────────────────────────────────────
+
+new azure.storage.Queue("usage-events", {
+  resourceGroupName: resourceGroup.name,
+  accountName: storageAccount.name,
+  queueName: "usage-events",
+});
+
+new azure.storage.Queue("run-completions", {
+  resourceGroupName: resourceGroup.name,
+  accountName: storageAccount.name,
+  queueName: "run-completions",
+});
+
 // ── Exports ────────────────────────────────────────────────────────
 
 export const resourceGroupName = resourceGroup.name;
@@ -380,3 +394,6 @@ export const storageAccountId = storageAccount.id;
 export const serviceBusNamespaceId = serviceBusNamespace.id;
 export { storageConnectionString };
 export const appInsightsConnectionString = appInsights.connectionString;
+
+export const usageEventsQueueName = "usage-events";
+export const runCompletionsQueueName = "run-completions";

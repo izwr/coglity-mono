@@ -8,6 +8,7 @@ import { azureCredential } from "./azureCredential.js";
 import { buildTesterSystemPrompt } from "./testerPrompt.js";
 import { computeRuleBasedMetrics, evaluateWithLlm, type TurnTiming } from "./metrics.js";
 import { loadNoiseSample, mixWithNoise } from "./audioMixer.js";
+import { emitUsageEvent, emitCompletionEvent } from "./billingQueue.js";
 
 const AZURE_AI_SCOPE = "https://cognitiveservices.azure.com/.default";
 
@@ -42,6 +43,8 @@ export type RunPayload = {
   ttsVoice?: string;
   environment?: string;
   environmentSnrDb?: number;
+  organisationId?: string;
+  correlationId?: string;
 };
 
 export async function runVoiceTest(payload: RunPayload): Promise<void> {
@@ -186,6 +189,18 @@ export async function runVoiceTest(payload: RunPayload): Promise<void> {
           payload.testCase.testSteps, payload.testCase.expectedResults,
         );
         console.log(`${TAG} llm metrics:`, JSON.stringify(llmMetrics));
+
+        if (payload.organisationId && payload.correlationId) {
+          emitUsageEvent({
+            event_id: `${payload.runId}_eval_llm`,
+            correlation_id: payload.correlationId,
+            project_id: payload.testCase.id,
+            organisation_id: payload.organisationId,
+            sku: "llm-gpt4.1-mini-eval",
+            consumption_qty: 1,
+            timestamp: new Date().toISOString(),
+          });
+        }
       } catch (e) {
         console.error(`${TAG} LLM eval failed:`, e);
       }
@@ -224,6 +239,10 @@ export async function runVoiceTest(payload: RunPayload): Promise<void> {
       startedAt,
       finishedAt: new Date(),
     });
+
+    if (payload.correlationId) {
+      emitCompletionEvent(payload.correlationId);
+    }
   };
 
   try {
@@ -260,6 +279,18 @@ export async function runVoiceTest(payload: RunPayload): Promise<void> {
       console.log(`${TAG} SUT said (${timing.sttMs}ms): "${sutText.slice(0, 150)}"`);
       transcript.push({ role: "sut", text: sutText, ts: Date.now() });
 
+      if (payload.organisationId && payload.correlationId) {
+        emitUsageEvent({
+          event_id: `${payload.runId}_${turn}_stt`,
+          correlation_id: payload.correlationId,
+          project_id: payload.testCase.id,
+          organisation_id: payload.organisationId,
+          sku: "stt-azure-speech",
+          consumption_qty: 1,
+          timestamp: new Date().toISOString(),
+        });
+      }
+
       // 3. LLM
       messages.push({ role: "user", content: `[Bot said]: ${sutText}` });
       console.log(`${TAG} calling LLM (turn ${turn + 1})...`);
@@ -289,6 +320,18 @@ export async function runVoiceTest(payload: RunPayload): Promise<void> {
       });
       timing.llmMs = Date.now() - t2;
 
+      if (payload.organisationId && payload.correlationId) {
+        emitUsageEvent({
+          event_id: `${payload.runId}_${turn}_llm`,
+          correlation_id: payload.correlationId,
+          project_id: payload.testCase.id,
+          organisation_id: payload.organisationId,
+          sku: "llm-gpt4.1-mini",
+          consumption_qty: 1,
+          timestamp: new Date().toISOString(),
+        });
+      }
+
       const choice = llmResult.choices[0];
       const toolCall = choice.message.tool_calls?.[0];
 
@@ -313,6 +356,18 @@ export async function runVoiceTest(payload: RunPayload): Promise<void> {
         const ttsAudio = await synthesizeSpeech(speechConfig, testerText);
         timing.ttsMs = Date.now() - t3;
         console.log(`${TAG} TTS produced ${ttsAudio.length} bytes in ${timing.ttsMs}ms`);
+
+        if (payload.organisationId && payload.correlationId) {
+          emitUsageEvent({
+            event_id: `${payload.runId}_${turn}_tts`,
+            correlation_id: payload.correlationId,
+            project_id: payload.testCase.id,
+            organisation_id: payload.organisationId,
+            sku: "tts-azure-speech",
+            consumption_qty: 1,
+            timestamp: new Date().toISOString(),
+          });
+        }
 
         // Mix environment noise into TTS audio before sending to SUT
         let audioToSend = ttsAudio;

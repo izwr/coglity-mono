@@ -1,31 +1,25 @@
 {
-  "name": "@coglity/executor",
+  "name": "@coglity/billing",
   "version": "0.0.1",
   "private": true,
   "type": "module",
-  "main": "dist/src/index.js",
   "scripts": {
-    "dev": "tsc && func start",
+    "dev": "bun --watch src/index.ts",
     "build": "tsc",
-    "start": "func start",
+    "start": "bun run src/index.ts",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@azure/functions": "^4.12.0",
     "@azure/identity": "^4.5.0",
-    "@azure/storage-blob": "^12.31.0",
     "@azure/storage-queue": "^12.24.0",
     "@coglity/shared": "workspace:*",
-    "microsoft-cognitiveservices-speech-sdk": "^1.49.0",
-    "openai": "^4.73.0",
-    "ws": "^8.20.0",
-    "zod": "^4.3.6"
+    "drizzle-orm": "^0.44.7",
+    "postgres": "^3.4.8",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@types/bun": "^1.2.18",
     "@types/node": "^22",
-    "@types/ws": "^8",
     "typescript": "^5"
   }
 }
-
-
