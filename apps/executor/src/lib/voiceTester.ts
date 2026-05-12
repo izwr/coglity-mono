@@ -127,22 +127,21 @@ export async function runVoiceTest(payload: RunPayload): Promise<void> {
   let speechConfig: speechSdk.SpeechConfig;
   if (speechKey && speechRegion) {
     speechConfig = speechSdk.SpeechConfig.fromSubscription(speechKey, speechRegion);
-  } else if (!speechRegion || !speechResourceId) {
+  } else if (speechResourceId && speechCustomDomain) {
+    const speechAuthToken = `aad#${speechResourceId}#${token}`;
+    speechConfig = speechSdk.SpeechConfig.fromHost(
+      new URL(`wss://${speechCustomDomain}.cognitiveservices.azure.com`),
+    );
+    speechConfig.authorizationToken = speechAuthToken;
+  } else if (speechResourceId && speechRegion) {
+    const speechAuthToken = `aad#${speechResourceId}#${token}`;
+    speechConfig = speechSdk.SpeechConfig.fromAuthorizationToken(speechAuthToken, speechRegion);
+  } else {
     await finishWithProps('errored', {
       error:
-        'AZURE_SPEECH_KEY+AZURE_SPEECH_REGION or AZURE_SPEECH_RESOURCE_ID+AZURE_SPEECH_REGION must be set',
+        'AZURE_SPEECH_KEY+AZURE_SPEECH_REGION, AZURE_SPEECH_RESOURCE_ID+AZURE_SPEECH_CUSTOM_DOMAIN, or AZURE_SPEECH_RESOURCE_ID+AZURE_SPEECH_REGION must be set',
     });
     return;
-  } else {
-    const speechAuthToken = `aad#${speechResourceId}#${token}`;
-    if (speechCustomDomain) {
-      speechConfig = speechSdk.SpeechConfig.fromHost(
-        new URL(`wss://${speechCustomDomain}.cognitiveservices.azure.com`),
-      );
-      speechConfig.authorizationToken = speechAuthToken;
-    } else {
-      speechConfig = speechSdk.SpeechConfig.fromAuthorizationToken(speechAuthToken, speechRegion);
-    }
   }
   speechConfig.speechRecognitionLanguage = payload.language ?? 'en-US';
   speechConfig.speechSynthesisVoiceName =
