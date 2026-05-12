@@ -1,5 +1,5 @@
-import * as pulumi from "@pulumi/pulumi";
-import * as azure from "@pulumi/azure-native";
+import * as pulumi from '@pulumi/pulumi';
+import * as azure from '@pulumi/azure-native';
 
 export interface FunctionAppArgs {
   resourceGroupName: pulumi.Input<string>;
@@ -13,79 +13,88 @@ export interface FunctionAppArgs {
   aiFoundryProjectEndpoint: pulumi.Input<string>;
   aiServicesAccountId: pulumi.Input<string>;
   aiServicesLocation: pulumi.Input<string>;
+  speechServicesAccountId: pulumi.Input<string>;
+  speechServicesLocation: pulumi.Input<string>;
+  speechServicesCustomDomain: pulumi.Input<string>;
   backendFqdn: pulumi.Input<string>;
   executorWebhookSecret: pulumi.Input<string>;
   appInsightsConnectionString: pulumi.Input<string>;
 }
 
 export function createFunctionApp(args: FunctionAppArgs) {
-  const plan = new azure.web.AppServicePlan("executor-plan", {
+  const plan = new azure.web.AppServicePlan('executor-plan', {
     resourceGroupName: args.resourceGroupName,
     location: args.location,
-    name: "coglity-executor-plan",
-    kind: "linux",
+    name: 'coglity-executor-plan',
+    kind: 'linux',
     reserved: true,
-    sku: { name: "Y1", tier: "Dynamic" },
+    sku: { name: 'Y1', tier: 'Dynamic' },
   });
 
   const realtimeEndpoint = pulumi
     .output(args.aiFoundryProjectEndpoint)
-    .apply((ep) => ep.replace(/^https:\/\//, "wss://").replace(/\/$/, ""));
+    .apply((ep) => ep.replace(/^https:\/\//, 'wss://').replace(/\/$/, ''));
 
-  const functionApp = new azure.web.WebApp("executor", {
+  const functionApp = new azure.web.WebApp('executor', {
     resourceGroupName: args.resourceGroupName,
     location: args.location,
-    name: "coglity-executor",
-    kind: "functionapp,linux",
+    name: 'coglity-executor',
+    kind: 'functionapp,linux',
     serverFarmId: plan.id,
     identity: {
-      type: "SystemAssigned",
+      type: 'SystemAssigned',
     },
     siteConfig: {
-      linuxFxVersion: "Node|22",
+      linuxFxVersion: 'Node|22',
       appSettings: [
-        { name: "FUNCTIONS_WORKER_RUNTIME", value: "node" },
-        { name: "FUNCTIONS_EXTENSION_VERSION", value: "~4" },
-        { name: "WEBSITE_RUN_FROM_PACKAGE", value: "1" },
-        { name: "AzureWebJobsStorage", value: args.storageConnectionString },
-        { name: "ServiceBusConnection", value: args.serviceBusConnectionString },
-        { name: "EXECUTOR_WEBHOOK_SECRET", value: args.executorWebhookSecret },
-        { name: "BACKEND_INTERNAL_URL", value: "https://studio.coglity.com" },
-        { name: "AZURE_OPENAI_ENDPOINT", value: args.aiServicesEndpoint },
-        { name: "AZURE_OPENAI_CHAT_DEPLOYMENT", value: "gpt-5-mini" },
-        { name: "AZURE_OPENAI_REALTIME_ENDPOINT", value: realtimeEndpoint },
-        { name: "AZURE_OPENAI_REALTIME_DEPLOYMENT", value: "gpt-realtime" },
-        { name: "AZURE_OPENAI_REALTIME_API_VERSION", value: "2024-10-01-preview" },
-        { name: "AZURE_SPEECH_REGION", value: args.aiServicesLocation },
-        { name: "AZURE_SPEECH_RESOURCE_ID", value: args.aiServicesAccountId },
-        { name: "AZURE_SPEECH_CUSTOM_DOMAIN", value: "coglity-ai" },
-        { name: "AZURE_STORAGE_ACCOUNT", value: args.storageAccountName },
-        { name: "AZURE_STORAGE_RECORDINGS_CONTAINER", value: args.recordingsContainerName },
-        { name: "EXECUTOR_MAX_DURATION_MS", value: "180000" },
-        { name: "EXECUTOR_MAX_TURNS", value: "12" },
-        { name: "EXECUTOR_SILENCE_MS", value: "8000" },
-        { name: "APPLICATIONINSIGHTS_CONNECTION_STRING", value: args.appInsightsConnectionString },
+        { name: 'FUNCTIONS_WORKER_RUNTIME', value: 'node' },
+        { name: 'FUNCTIONS_EXTENSION_VERSION', value: '~4' },
+        { name: 'WEBSITE_RUN_FROM_PACKAGE', value: '1' },
+        { name: 'AzureWebJobsStorage', value: args.storageConnectionString },
+        { name: 'ServiceBusConnection', value: args.serviceBusConnectionString },
+        { name: 'EXECUTOR_WEBHOOK_SECRET', value: args.executorWebhookSecret },
+        { name: 'BACKEND_INTERNAL_URL', value: 'https://studio.coglity.com' },
+        { name: 'AZURE_OPENAI_ENDPOINT', value: args.aiServicesEndpoint },
+        { name: 'AZURE_OPENAI_CHAT_DEPLOYMENT', value: 'gpt-5-mini' },
+        { name: 'AZURE_OPENAI_REALTIME_ENDPOINT', value: realtimeEndpoint },
+        { name: 'AZURE_OPENAI_REALTIME_DEPLOYMENT', value: 'gpt-realtime' },
+        { name: 'AZURE_OPENAI_REALTIME_API_VERSION', value: '2024-10-01-preview' },
+        { name: 'AZURE_SPEECH_REGION', value: args.speechServicesLocation },
+        { name: 'AZURE_SPEECH_RESOURCE_ID', value: args.speechServicesAccountId },
+        { name: 'AZURE_SPEECH_CUSTOM_DOMAIN', value: args.speechServicesCustomDomain },
+        { name: 'AZURE_STORAGE_ACCOUNT', value: args.storageAccountName },
+        { name: 'AZURE_STORAGE_RECORDINGS_CONTAINER', value: args.recordingsContainerName },
+        { name: 'EXECUTOR_MAX_DURATION_MS', value: '180000' },
+        { name: 'EXECUTOR_MAX_TURNS', value: '12' },
+        { name: 'EXECUTOR_SILENCE_MS', value: '8000' },
+        { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: args.appInsightsConnectionString },
       ],
     },
   });
 
   // Cognitive Services OpenAI User role
-  const openAiUserRoleId = "5e0bd9bd-7b93-4f28-af87-19fc36ad61bd";
-  new azure.authorization.RoleAssignment("executor-openai-user", {
+  const openAiUserRoleId = '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd';
+  new azure.authorization.RoleAssignment('executor-openai-user', {
     principalId: functionApp.identity.apply((id) => id!.principalId!),
-    principalType: "ServicePrincipal",
+    principalType: 'ServicePrincipal',
     roleDefinitionId: pulumi.interpolate`/subscriptions/${azure.authorization.getClientConfigOutput().apply((c) => c.subscriptionId)}/providers/Microsoft.Authorization/roleDefinitions/${openAiUserRoleId}`,
     scope: args.aiServicesAccountId,
   });
 
-  // NOTE: Cognitive Services OpenAI User + Speech User roles are assigned
-  // manually via az CLI (CI SP lacks roleAssignments/write on this scope).
+  // Cognitive Services Speech User role on dedicated Speech account
+  const speechUserRoleId = 'f2dc8367-1007-4938-bd23-fe263f013447';
+  new azure.authorization.RoleAssignment('executor-speech-user', {
+    principalId: functionApp.identity.apply((id) => id!.principalId!),
+    principalType: 'ServicePrincipal',
+    roleDefinitionId: pulumi.interpolate`/subscriptions/${azure.authorization.getClientConfigOutput().apply((c) => c.subscriptionId)}/providers/Microsoft.Authorization/roleDefinitions/${speechUserRoleId}`,
+    scope: args.speechServicesAccountId,
+  });
 
   // Storage Blob Data Contributor role
-  const storageBlobRoleId = "ba92f5b4-2d11-453d-a403-e96b0029c9fe";
-  new azure.authorization.RoleAssignment("executor-storage-contributor", {
+  const storageBlobRoleId = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe';
+  new azure.authorization.RoleAssignment('executor-storage-contributor', {
     principalId: functionApp.identity.apply((id) => id!.principalId!),
-    principalType: "ServicePrincipal",
+    principalType: 'ServicePrincipal',
     roleDefinitionId: pulumi.interpolate`/subscriptions/${azure.authorization.getClientConfigOutput().apply((c) => c.subscriptionId)}/providers/Microsoft.Authorization/roleDefinitions/${storageBlobRoleId}`,
     scope: args.storageAccountId,
   });

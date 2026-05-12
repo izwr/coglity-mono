@@ -1,54 +1,54 @@
-import * as pulumi from "@pulumi/pulumi";
-import * as azure from "@pulumi/azure-native";
+import * as pulumi from '@pulumi/pulumi';
+import * as azure from '@pulumi/azure-native';
 import {
   createCloudflareProvider,
   createCnameRecord,
   createLandingCnameRecords,
   createAsuidTxtRecord,
   createOriginCertificate,
-} from "../apps/src/cloudflare-dns.ts";
+} from '../apps/src/cloudflare-dns.ts';
 
 const config = new pulumi.Config();
-const cfConfig = new pulumi.Config("cloudflare");
+const cfConfig = new pulumi.Config('cloudflare');
 
-const location = "centralindia";
-const aiLocation = "southindia";
-const cfZoneId = config.require("cfZoneId");
-const cfApiToken = cfConfig.requireSecret("apiToken");
-const postgresAdminPassword = config.requireSecret("postgresAdminPassword");
+const location = 'centralindia';
+const aiLocation = 'southindia';
+const cfZoneId = config.require('cfZoneId');
+const cfApiToken = cfConfig.requireSecret('apiToken');
+const postgresAdminPassword = config.requireSecret('postgresAdminPassword');
 
 // ── 1. Resource Group ──────────────────────────────────────────────
 
-const resourceGroup = new azure.resources.ResourceGroup("coglity-rg", {
-  resourceGroupName: "coglity-rg",
+const resourceGroup = new azure.resources.ResourceGroup('coglity-rg', {
+  resourceGroupName: 'coglity-rg',
   location,
 });
 
 // ── 2. Log Analytics Workspace ─────────────────────────────────────
 
-const logAnalytics = new azure.operationalinsights.Workspace("coglity-logs", {
+const logAnalytics = new azure.operationalinsights.Workspace('coglity-logs', {
   resourceGroupName: resourceGroup.name,
   location,
-  sku: { name: "PerGB2018" },
+  sku: { name: 'PerGB2018' },
   retentionInDays: 30,
 });
 
-const appInsights = new azure.applicationinsights.Component("coglity-appinsights", {
+const appInsights = new azure.applicationinsights.Component('coglity-appinsights', {
   resourceGroupName: resourceGroup.name,
   location,
-  resourceName: "coglity-appinsights",
-  kind: "web",
-  applicationType: "web",
+  resourceName: 'coglity-appinsights',
+  kind: 'web',
+  applicationType: 'web',
   workspaceResourceId: logAnalytics.id,
 });
 
 // ── 3. Container Apps Environment ──────────────────────────────────
 
-const environment = new azure.app.ManagedEnvironment("coglity-env", {
+const environment = new azure.app.ManagedEnvironment('coglity-env', {
   resourceGroupName: resourceGroup.name,
   location,
   appLogsConfiguration: {
-    destination: "log-analytics",
+    destination: 'log-analytics',
     logAnalyticsConfiguration: {
       customerId: logAnalytics.customerId,
       sharedKey: pulumi
@@ -76,39 +76,39 @@ const customDomainVerificationId = azure.app
 createCnameRecord({
   provider: cfProvider,
   zoneId: cfZoneId,
-  namePrefix: "ui",
-  hostname: "studio.coglity.com",
+  namePrefix: 'ui',
+  hostname: 'studio.coglity.com',
   originFqdn: pulumi.interpolate`coglity-ui.${environment.defaultDomain}`,
 });
 
 createLandingCnameRecords({
   provider: cfProvider,
   zoneId: cfZoneId,
-  namePrefix: "landing",
+  namePrefix: 'landing',
   originFqdn: pulumi.interpolate`coglity-landing.${environment.defaultDomain}`,
 });
 
 createAsuidTxtRecord({
   provider: cfProvider,
   zoneId: cfZoneId,
-  namePrefix: "ui",
-  hostname: "studio",
+  namePrefix: 'ui',
+  hostname: 'studio',
   verificationId: customDomainVerificationId,
 });
 
 createAsuidTxtRecord({
   provider: cfProvider,
   zoneId: cfZoneId,
-  namePrefix: "landing-root",
-  hostname: "@",
+  namePrefix: 'landing-root',
+  hostname: '@',
   verificationId: customDomainVerificationId,
 });
 
 createAsuidTxtRecord({
   provider: cfProvider,
   zoneId: cfZoneId,
-  namePrefix: "landing-www",
-  hostname: "www",
+  namePrefix: 'landing-www',
+  hostname: 'www',
   verificationId: customDomainVerificationId,
 });
 
@@ -116,8 +116,8 @@ createAsuidTxtRecord({
 
 const uiCert = createOriginCertificate({
   provider: cfProvider,
-  namePrefix: "ui",
-  hostname: "studio.coglity.com",
+  namePrefix: 'ui',
+  hostname: 'studio.coglity.com',
   resourceGroupName: resourceGroup.name,
   location,
   environmentName: environment.name,
@@ -125,8 +125,8 @@ const uiCert = createOriginCertificate({
 
 const landingRootCert = createOriginCertificate({
   provider: cfProvider,
-  namePrefix: "landing-root",
-  hostname: "coglity.com",
+  namePrefix: 'landing-root',
+  hostname: 'coglity.com',
   resourceGroupName: resourceGroup.name,
   location,
   environmentName: environment.name,
@@ -134,8 +134,8 @@ const landingRootCert = createOriginCertificate({
 
 const landingWwwCert = createOriginCertificate({
   provider: cfProvider,
-  namePrefix: "landing-www",
-  hostname: "www.coglity.com",
+  namePrefix: 'landing-www',
+  hostname: 'www.coglity.com',
   resourceGroupName: resourceGroup.name,
   location,
   environmentName: environment.name,
@@ -143,36 +143,36 @@ const landingWwwCert = createOriginCertificate({
 
 // ── 6. PostgreSQL Flexible Server ──────────────────────────────────
 
-const pgServer = new azure.dbforpostgresql.Server("coglity-pg", {
+const pgServer = new azure.dbforpostgresql.Server('coglity-pg', {
   resourceGroupName: resourceGroup.name,
   location,
-  serverName: "coglity-pg",
-  version: "16",
-  administratorLogin: "pgadmin",
+  serverName: 'coglity-pg',
+  version: '16',
+  administratorLogin: 'pgadmin',
   administratorLoginPassword: postgresAdminPassword,
   authConfig: {
-    activeDirectoryAuth: "Disabled",
-    passwordAuth: "Enabled",
+    activeDirectoryAuth: 'Disabled',
+    passwordAuth: 'Enabled',
   },
   storage: { storageSizeGB: 32 },
   sku: {
-    name: "Standard_B1ms",
+    name: 'Standard_B1ms',
     tier: azure.dbforpostgresql.SkuTier.Burstable,
   },
 });
 
-new azure.dbforpostgresql.FirewallRule("allow-azure-services", {
+new azure.dbforpostgresql.FirewallRule('allow-azure-services', {
   resourceGroupName: resourceGroup.name,
   serverName: pgServer.name,
-  firewallRuleName: "AllowAzureServices",
-  startIpAddress: "0.0.0.0",
-  endIpAddress: "0.0.0.0",
+  firewallRuleName: 'AllowAzureServices',
+  startIpAddress: '0.0.0.0',
+  endIpAddress: '0.0.0.0',
 });
 
-const pgDatabase = new azure.dbforpostgresql.Database("coglity-db", {
+const pgDatabase = new azure.dbforpostgresql.Database('coglity-db', {
   resourceGroupName: resourceGroup.name,
   serverName: pgServer.name,
-  databaseName: "coglity",
+  databaseName: 'coglity',
 });
 
 const databaseUrl = pulumi
@@ -184,18 +184,18 @@ const databaseUrl = pulumi
 
 // ── 7. Service Bus Namespace + Queue ───────────────────────────────
 
-const serviceBusNamespace = new azure.servicebus.Namespace("coglity-sb", {
+const serviceBusNamespace = new azure.servicebus.Namespace('coglity-sb', {
   resourceGroupName: resourceGroup.name,
   location,
-  namespaceName: "coglity-servicebus",
-  sku: { name: "Basic", tier: "Basic" },
+  namespaceName: 'coglity-servicebus',
+  sku: { name: 'Basic', tier: 'Basic' },
 });
 
-new azure.servicebus.Queue("test-run-jobs", {
+new azure.servicebus.Queue('test-run-jobs', {
   resourceGroupName: resourceGroup.name,
   namespaceName: serviceBusNamespace.name,
-  queueName: "test-run-jobs",
-  lockDuration: "PT5M",
+  queueName: 'test-run-jobs',
+  lockDuration: 'PT5M',
   maxDeliveryCount: 3,
 });
 
@@ -205,36 +205,36 @@ const serviceBusKeys = pulumi
     azure.servicebus.listNamespaceKeysOutput({
       resourceGroupName: rgName,
       namespaceName: nsName,
-      authorizationRuleName: "RootManageSharedAccessKey",
+      authorizationRuleName: 'RootManageSharedAccessKey',
     }),
   );
 
 // ── 8. Storage Account + Blob Containers ───────────────────────────
 
-const storageAccount = new azure.storage.StorageAccount("coglitysa", {
+const storageAccount = new azure.storage.StorageAccount('coglitysa', {
   resourceGroupName: resourceGroup.name,
   location,
-  accountName: "coglitysa",
+  accountName: 'coglitysa',
   kind: azure.storage.Kind.StorageV2,
   sku: { name: azure.storage.SkuName.Standard_LRS },
 });
 
-new azure.storage.BlobContainer("test-run-recordings", {
+new azure.storage.BlobContainer('test-run-recordings', {
   resourceGroupName: resourceGroup.name,
   accountName: storageAccount.name,
-  containerName: "test-run-recordings",
+  containerName: 'test-run-recordings',
 });
 
-new azure.storage.BlobContainer("knowledge-sources", {
+new azure.storage.BlobContainer('knowledge-sources', {
   resourceGroupName: resourceGroup.name,
   accountName: storageAccount.name,
-  containerName: "knowledge-sources",
+  containerName: 'knowledge-sources',
 });
 
-new azure.storage.BlobContainer("pulumi-state", {
+new azure.storage.BlobContainer('pulumi-state', {
   resourceGroupName: resourceGroup.name,
   accountName: storageAccount.name,
-  containerName: "pulumi-state",
+  containerName: 'pulumi-state',
 });
 
 const storageKeys = pulumi
@@ -257,13 +257,13 @@ const storageConnectionString = pulumi
 
 // ── 9. Key Vault ───────────────────────────────────────────────────
 
-const keyVault = new azure.keyvault.Vault("coglity-kv", {
+const keyVault = new azure.keyvault.Vault('coglity-kv', {
   resourceGroupName: resourceGroup.name,
   location,
-  vaultName: "coglity-kv",
+  vaultName: 'coglity-kv',
   properties: {
     tenantId: pulumi.output(azure.authorization.getClientConfig()).apply((c) => c.tenantId),
-    sku: { family: "A", name: azure.keyvault.SkuName.Standard },
+    sku: { family: 'A', name: azure.keyvault.SkuName.Standard },
     enableSoftDelete: true,
     accessPolicies: [],
   },
@@ -271,14 +271,14 @@ const keyVault = new azure.keyvault.Vault("coglity-kv", {
 
 // ── 10. AI Services Account ────────────────────────────────────────
 
-const aiServices = new azure.cognitiveservices.Account("coglity-ai", {
+const aiServices = new azure.cognitiveservices.Account('coglity-ai', {
   resourceGroupName: resourceGroup.name,
   location: aiLocation,
-  accountName: "coglity-ai",
-  kind: "AIServices",
-  sku: { name: "S0" },
+  accountName: 'coglity-ai',
+  kind: 'AIServices',
+  sku: { name: 'S0' },
   properties: {
-    customSubDomainName: "coglity-ai",
+    customSubDomainName: 'coglity-ai',
   },
 });
 
@@ -293,43 +293,43 @@ const aiServicesKeys = pulumi
 
 // ── 11. AI Model Deployments ───────────────────────────────────────
 
-new azure.cognitiveservices.Deployment("gpt-5-mini", {
+new azure.cognitiveservices.Deployment('gpt-5-mini', {
   resourceGroupName: resourceGroup.name,
   accountName: aiServices.name,
-  deploymentName: "gpt-5-mini",
+  deploymentName: 'gpt-5-mini',
   properties: {
     model: {
-      format: "OpenAI",
-      name: "gpt-5-mini",
-      version: "2025-08-07",
+      format: 'OpenAI',
+      name: 'gpt-5-mini',
+      version: '2025-08-07',
     },
-    versionUpgradeOption: "OnceCurrentVersionExpired",
+    versionUpgradeOption: 'OnceCurrentVersionExpired',
   },
-  sku: { name: "GlobalStandard", capacity: 10 },
+  sku: { name: 'GlobalStandard', capacity: 10 },
 });
 
 // ── 12. AI Foundry Hub + Project ──────���───────────────────────────
 
-const aiHub = new azure.machinelearningservices.Workspace("coglity-ai-hub", {
+const aiHub = new azure.machinelearningservices.Workspace('coglity-ai-hub', {
   resourceGroupName: resourceGroup.name,
   location: aiLocation,
-  workspaceName: "coglity-ai-hub",
-  kind: "Hub",
-  sku: { name: "Basic", tier: "Basic" },
-  identity: { type: "SystemAssigned" },
-  friendlyName: "Coglity AI Hub",
+  workspaceName: 'coglity-ai-hub',
+  kind: 'Hub',
+  sku: { name: 'Basic', tier: 'Basic' },
+  identity: { type: 'SystemAssigned' },
+  friendlyName: 'Coglity AI Hub',
   keyVault: keyVault.id,
   storageAccount: storageAccount.id,
 });
 
-const aiProject = new azure.machinelearningservices.Workspace("coglity-foundry", {
+const aiProject = new azure.machinelearningservices.Workspace('coglity-foundry', {
   resourceGroupName: resourceGroup.name,
   location: aiLocation,
-  workspaceName: "coglity-foundry",
-  kind: "Project",
-  sku: { name: "Basic", tier: "Basic" },
-  identity: { type: "SystemAssigned" },
-  friendlyName: "Coglity Foundry",
+  workspaceName: 'coglity-foundry',
+  kind: 'Project',
+  sku: { name: 'Basic', tier: 'Basic' },
+  identity: { type: 'SystemAssigned' },
+  friendlyName: 'Coglity Foundry',
   hubResourceId: aiHub.id,
 });
 
@@ -338,6 +338,28 @@ const aiFoundryProjectEndpoint = pulumi
   .apply(
     ([aiName, projName]) =>
       `https://${aiName}.services.ai.azure.com/api/projects/${projName}/openai/v1/`,
+  );
+
+// ── 13. Speech Services Account (Central India) ───────────────────
+
+const speechServices = new azure.cognitiveservices.Account('coglity-speech', {
+  resourceGroupName: resourceGroup.name,
+  location,
+  accountName: 'coglity-speech',
+  kind: 'SpeechServices',
+  sku: { name: 'S0' },
+  properties: {
+    customSubDomainName: 'coglity-speech',
+  },
+});
+
+const speechServicesKeys = pulumi
+  .all([resourceGroup.name, speechServices.name])
+  .apply(([rgName, accountName]) =>
+    azure.cognitiveservices.listAccountKeysOutput({
+      resourceGroupName: rgName,
+      accountName,
+    }),
   );
 
 // ── Exports ────────────────────────────────────────────────────────
@@ -357,12 +379,12 @@ export const serviceBusNamespaceFqdn = serviceBusNamespace.name.apply(
 export const serviceBusConnectionString = pulumi.secret(
   serviceBusKeys.apply((k) => k.primaryConnectionString!),
 );
-export const serviceBusQueueName = "test-run-jobs";
+export const serviceBusQueueName = 'test-run-jobs';
 
 export const storageAccountName = storageAccount.name;
 export { storageAccountKey };
-export const recordingsContainerName = "test-run-recordings";
-export const knowledgeSourcesContainerName = "knowledge-sources";
+export const recordingsContainerName = 'test-run-recordings';
+export const knowledgeSourcesContainerName = 'knowledge-sources';
 
 export { customDomainVerificationId };
 export const uiCertificateId = uiCert.containerAppCert.id;
@@ -374,6 +396,11 @@ export { aiFoundryProjectEndpoint };
 export const aiServicesAccountId = aiServices.id;
 export const aiServicesApiKey = pulumi.secret(aiServicesKeys.apply((k) => k.key1!));
 export const aiServicesLocation = aiLocation;
+
+export const speechServicesAccountId = speechServices.id;
+export const speechServicesLocation = location;
+export const speechServicesCustomDomain = 'coglity-speech';
+export const speechServicesApiKey = pulumi.secret(speechServicesKeys.apply((k) => k.key1!));
 
 export const keyVaultId = keyVault.id;
 export const storageAccountId = storageAccount.id;
