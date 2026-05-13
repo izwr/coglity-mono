@@ -279,6 +279,7 @@ const aiServices = new azure.cognitiveservices.Account('coglity-ai', {
   sku: { name: 'S0' },
   properties: {
     customSubDomainName: 'coglity-ai',
+    publicNetworkAccess: 'Enabled',
   },
 });
 
@@ -350,6 +351,7 @@ const speechServices = new azure.cognitiveservices.Account('coglity-speech', {
   sku: { name: 'S0' },
   properties: {
     customSubDomainName: 'coglity-speech',
+    publicNetworkAccess: 'Enabled',
   },
 });
 
