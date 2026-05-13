@@ -186,7 +186,7 @@ jobs:
           cp -r assets deploy/
           cp host.json deploy/
           node -e "const fs=require('fs'); const p=require('./package.json'); delete p.devDependencies; delete p.dependencies['@coglity/shared']; fs.writeFileSync('deploy/package.json', JSON.stringify(p, null, 2));"
-          cd deploy && npm install --omit=dev --no-audit --no-fund
+          cd deploy && npm install --omit=dev --no-audit --no-fund --legacy-peer-deps
           zip -r ../deploy.zip .
 
       - uses: azure/login@v2
