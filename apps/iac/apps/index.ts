@@ -58,6 +58,7 @@ const coreOut = {
   speechServicesAccountId: coreStack.requireOutput('speechServicesAccountId') as pulumi.Output<string>,
   speechServicesLocation: coreStack.requireOutput('speechServicesLocation') as pulumi.Output<string>,
   speechServicesCustomDomain: coreStack.requireOutput('speechServicesCustomDomain') as pulumi.Output<string>,
+  speechServicesApiKey: coreStack.requireOutput('speechServicesApiKey') as pulumi.Output<string>,
   appInsightsConnectionString: coreStack.requireOutput(
     'appInsightsConnectionString',
   ) as pulumi.Output<string>,
@@ -170,6 +171,7 @@ const executor = createFunctionApp({
   speechServicesAccountId: coreOut.speechServicesAccountId,
   speechServicesLocation: coreOut.speechServicesLocation,
   speechServicesCustomDomain: coreOut.speechServicesCustomDomain,
+  speechServicesApiKey: coreOut.speechServicesApiKey,
   backendFqdn: backend.fqdn,
   executorWebhookSecret,
   appInsightsConnectionString: coreOut.appInsightsConnectionString,

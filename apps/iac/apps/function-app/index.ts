@@ -16,6 +16,7 @@ export interface FunctionAppArgs {
   speechServicesAccountId: pulumi.Input<string>;
   speechServicesLocation: pulumi.Input<string>;
   speechServicesCustomDomain: pulumi.Input<string>;
+  speechServicesApiKey: pulumi.Input<string>;
   backendFqdn: pulumi.Input<string>;
   executorWebhookSecret: pulumi.Input<string>;
   appInsightsConnectionString: pulumi.Input<string>;
@@ -62,6 +63,7 @@ export function createFunctionApp(args: FunctionAppArgs) {
         { name: 'AZURE_SPEECH_REGION', value: args.speechServicesLocation },
         { name: 'AZURE_SPEECH_RESOURCE_ID', value: args.speechServicesAccountId },
         { name: 'AZURE_SPEECH_CUSTOM_DOMAIN', value: args.speechServicesCustomDomain },
+        { name: 'AZURE_SPEECH_KEY', value: args.speechServicesApiKey },
         { name: 'AZURE_STORAGE_ACCOUNT', value: args.storageAccountName },
         { name: 'AZURE_STORAGE_RECORDINGS_CONTAINER', value: args.recordingsContainerName },
         { name: 'EXECUTOR_MAX_DURATION_MS', value: '180000' },
