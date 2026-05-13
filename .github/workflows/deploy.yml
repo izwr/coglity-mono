@@ -256,3 +256,13 @@ jobs:
           ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           ARM_USE_OIDC: 'true'
+
+  deploy-executor:
+    needs: iac-apps
+    if: needs.iac-apps.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger coglity-executor deploy
+        run: gh workflow run "Build & Deploy Executor" --repo izwr/coglity-executor
+        env:
+          GH_TOKEN: ${{ secrets.EXECUTOR_DEPLOY_PAT }}
