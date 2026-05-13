@@ -8,7 +8,6 @@ on:
       - 'apps/backend/**'
       - 'apps/ui/**'
       - 'apps/landing/**'
-      - 'apps/executor/**'
       - 'apps/iac/**'
       - 'packages/shared/**'
       - 'bun.lock'
@@ -21,7 +20,6 @@ permissions:
 env:
   ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
   AZURE_RESOURCE_GROUP: coglity-rg
-  FUNCTION_APP_NAME: coglity-executor
 
 jobs:
   changes:
@@ -30,7 +28,6 @@ jobs:
       backend: ${{ steps.filter.outputs.backend }}
       ui: ${{ steps.filter.outputs.ui }}
       landing: ${{ steps.filter.outputs.landing }}
-      executor: ${{ steps.filter.outputs.executor }}
       iac-core: ${{ steps.filter.outputs.iac-core }}
       iac-apps: ${{ steps.filter.outputs.iac-apps }}
     steps:
@@ -49,10 +46,6 @@ jobs:
               - "bun.lock"
             landing:
               - "apps/landing/**"
-              - "bun.lock"
-            executor:
-              - "apps/executor/**"
-              - "packages/shared/**"
               - "bun.lock"
             iac-core:
               - "apps/iac/core/**"
@@ -157,49 +150,6 @@ jobs:
           resourceGroup: ${{ env.AZURE_RESOURCE_GROUP }}
           containerAppName: coglity-landing
           imageToDeploy: ${{ env.ACR_LOGIN_SERVER }}/coglity-landing:${{ github.sha }}
-
-  executor:
-    needs: [changes, iac-apps]
-    if: always() && (needs.changes.outputs.executor == 'true' || needs.iac-apps.result == 'success') && needs.iac-apps.result != 'failure'
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v2
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Build shared + executor
-        run: |
-          bun run --filter @coglity/shared build
-          bun run --filter @coglity/executor build
-
-      - name: Prepare deployment package
-        run: |
-          cd apps/executor
-          mkdir -p deploy
-          cp -r dist deploy/
-          cp -r assets deploy/
-          cp host.json deploy/
-          node -e "const fs=require('fs'); const p=require('./package.json'); delete p.devDependencies; delete p.dependencies['@coglity/shared']; fs.writeFileSync('deploy/package.json', JSON.stringify(p, null, 2));"
-          cd deploy && npm install --omit=dev --no-audit --no-fund --legacy-peer-deps
-          zip -r ../deploy.zip .
-
-      - uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Deploy to Function App
-        uses: azure/functions-action@v1
-        with:
-          app-name: ${{ env.FUNCTION_APP_NAME }}
-          package: apps/executor/deploy.zip
 
   iac-core:
     needs: changes
