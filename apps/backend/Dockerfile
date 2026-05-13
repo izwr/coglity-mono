@@ -1,4 +1,4 @@
-FROM oven/bun:1 AS base
+FROM oven/bun:1.3.13 AS base
 WORKDIR /app
 
 FROM base AS deps
@@ -21,7 +21,7 @@ COPY bun.lock package.json turbo.json ./
 RUN bun run --filter @coglity/shared build
 RUN bun run --filter @coglity/backend build
 
-FROM oven/bun:1-alpine AS runner
+FROM oven/bun:1.3.13-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 app && adduser --system --uid 1001 app
