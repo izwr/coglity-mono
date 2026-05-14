@@ -26,6 +26,8 @@ export interface BackendArgs {
   acrLoginServer: pulumi.Input<string>;
   acrIdentityId: pulumi.Input<string>;
   imageTag: string;
+  billingServiceUrl: pulumi.Input<string>;
+  billingSecret: pulumi.Input<string>;
 }
 
 export function createBackend(args: BackendArgs) {
@@ -39,6 +41,7 @@ export function createBackend(args: BackendArgs) {
     { name: "google-client-secret", value: args.googleClientSecret },
     { name: "openai-api-key", value: args.aiServicesApiKey },
     { name: "executor-webhook-secret", value: args.executorWebhookSecret },
+    { name: "billing-secret", value: args.billingSecret },
   ];
 
   const app = new azure.app.ContainerApp("backend", {
@@ -89,6 +92,8 @@ export function createBackend(args: BackendArgs) {
             { name: "AZURE_SERVICE_BUS_NAMESPACE", value: args.serviceBusNamespaceFqdn },
             { name: "AZURE_SERVICE_BUS_QUEUE_NAME", value: args.serviceBusQueueName },
             { name: "COOKIE_DOMAIN", value: "studio.coglity.com" },
+            { name: "BILLING_SERVICE_URL", value: args.billingServiceUrl },
+            { name: "BILLING_SECRET", secretRef: "billing-secret" },
             { name: "NODE_TLS_REJECT_UNAUTHORIZED", value: "0" },
           ],
         },

@@ -30,6 +30,7 @@ import orgContentListsRouter from "./routes/orgContentLists";
 import testRunsRouter from "./routes/testRuns";
 import testRunsCallbackRouter from "./routes/testRunsCallback";
 import testRunDownloadRouter from "./routes/testRunDownload";
+import billingRouter from "./routes/billing";
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -86,6 +87,8 @@ projectContent.use("/test-runs", testRunDownloadRouter);
 
 app.use("/api/organizations/:orgId/projects/:projectId", projectContent);
 app.use("/api/organizations/:orgId/projects", projectsRouter);
+// Org-scoped billing (proxy to billing service)
+app.use("/api/organizations/:orgId/billing", requireAuth, resolveOrg, billingRouter);
 // Multi-project list endpoints used by the project-filter UI on content pages.
 app.use(
   "/api/organizations/:orgId",

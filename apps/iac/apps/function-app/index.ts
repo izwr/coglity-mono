@@ -20,6 +20,8 @@ export interface FunctionAppArgs {
   backendFqdn: pulumi.Input<string>;
   executorWebhookSecret: pulumi.Input<string>;
   appInsightsConnectionString: pulumi.Input<string>;
+  usageEventsQueueName: string;
+  runCompletionsQueueName: string;
 }
 
 export function createFunctionApp(args: FunctionAppArgs) {
@@ -70,6 +72,8 @@ export function createFunctionApp(args: FunctionAppArgs) {
         { name: 'EXECUTOR_MAX_TURNS', value: '12' },
         { name: 'EXECUTOR_SILENCE_MS', value: '8000' },
         { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: args.appInsightsConnectionString },
+        { name: 'AZURE_QUEUE_USAGE_EVENTS', value: args.usageEventsQueueName },
+        { name: 'AZURE_QUEUE_COMPLETIONS', value: args.runCompletionsQueueName },
       ],
     },
   });
@@ -98,6 +102,15 @@ export function createFunctionApp(args: FunctionAppArgs) {
     principalId: functionApp.identity.apply((id) => id!.principalId!),
     principalType: 'ServicePrincipal',
     roleDefinitionId: pulumi.interpolate`/subscriptions/${azure.authorization.getClientConfigOutput().apply((c) => c.subscriptionId)}/providers/Microsoft.Authorization/roleDefinitions/${storageBlobRoleId}`,
+    scope: args.storageAccountId,
+  });
+
+  // Storage Queue Data Message Sender — send usage/completion events
+  const storageQueueSenderRoleId = 'c6a89b2d-59bc-44d0-9896-0f6e12d7b80a';
+  new azure.authorization.RoleAssignment('executor-queue-sender', {
+    principalId: functionApp.identity.apply((id) => id!.principalId!),
+    principalType: 'ServicePrincipal',
+    roleDefinitionId: pulumi.interpolate`/subscriptions/${azure.authorization.getClientConfigOutput().apply((c) => c.subscriptionId)}/providers/Microsoft.Authorization/roleDefinitions/${storageQueueSenderRoleId}`,
     scope: args.storageAccountId,
   });
 

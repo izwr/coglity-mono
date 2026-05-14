@@ -4,6 +4,7 @@ import { createBackend } from './backend/index.ts';
 import { createUi } from './ui/index.ts';
 import { createLanding } from './landing/index.ts';
 import { createFunctionApp } from './function-app/index.ts';
+import { createBilling } from './billing/index.ts';
 
 const config = new pulumi.Config();
 
@@ -93,6 +94,25 @@ const azureTenantId = config.requireSecret('azureTenantId');
 const googleClientId = config.requireSecret('googleClientId');
 const googleClientSecret = config.requireSecret('googleClientSecret');
 const executorWebhookSecret = config.requireSecret('executorWebhookSecret');
+const billingSecret = config.requireSecret('billingSecret');
+const billingImageTag = config.get('billingImageTag') ?? 'latest';
+
+// ── Billing ───────────────────────────────────────────────────────
+
+const billing = createBilling({
+  resourceGroupName: coreOut.resourceGroupName,
+  location: coreOut.location,
+  environmentId: coreOut.environmentId,
+  databaseUrl: coreOut.databaseUrl,
+  storageAccountName: coreOut.storageAccountName,
+  storageAccountId: coreOut.storageAccountId,
+  usageEventsQueueName: 'usage-events',
+  runCompletionsQueueName: 'run-completions',
+  billingSecret,
+  acrLoginServer,
+  acrIdentityId: acrIdentity.id,
+  imageTag: billingImageTag,
+});
 
 // ── Backend ────────────────────────────────────────────────────────
 
@@ -121,6 +141,8 @@ const backend = createBackend({
   acrLoginServer,
   acrIdentityId: acrIdentity.id,
   imageTag: backendImageTag,
+  billingServiceUrl: pulumi.interpolate`http://${billing.fqdn}`,
+  billingSecret,
 });
 
 // ── UI ─────────────────────────────────────────────────────────────
@@ -175,6 +197,8 @@ const executor = createFunctionApp({
   backendFqdn: backend.fqdn,
   executorWebhookSecret,
   appInsightsConnectionString: coreOut.appInsightsConnectionString,
+  usageEventsQueueName: 'usage-events',
+  runCompletionsQueueName: 'run-completions',
 });
 
 // ── Exports ────────────────────────────────────────────────────────
@@ -184,3 +208,4 @@ export const uiFqdn = ui.fqdn;
 export const landingFqdn = landing.fqdn;
 export const functionAppName = executor.name;
 export const functionAppDefaultHostName = executor.defaultHostName;
+export const billingFqdn = billing.fqdn;

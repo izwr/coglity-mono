@@ -1,0 +1,25 @@
+{
+  "name": "@coglity/billing",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "build": "tsc",
+    "start": "bun run src/index.ts",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@azure/identity": "^4.5.0",
+    "@azure/storage-queue": "^12.24.0",
+    "@coglity/shared": "workspace:*",
+    "drizzle-orm": "^0.44.7",
+    "postgres": "^3.4.8",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.18",
+    "@types/node": "^22",
+    "typescript": "^5"
+  }
+}
