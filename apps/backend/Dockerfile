@@ -1,11 +1,10 @@
-FROM oven/bun:1 AS base
+FROM oven/bun:1.3.13 AS base
 WORKDIR /app
 
 FROM base AS deps
 COPY bun.lock package.json ./
 COPY apps/backend/package.json apps/backend/package.json
 COPY apps/cli/package.json apps/cli/package.json
-COPY apps/executor/package.json apps/executor/package.json
 COPY apps/iac/package.json apps/iac/package.json
 COPY apps/landing/package.json apps/landing/package.json
 COPY apps/ui/package.json apps/ui/package.json
@@ -22,7 +21,7 @@ COPY bun.lock package.json turbo.json ./
 RUN bun run --filter @coglity/shared build
 RUN bun run --filter @coglity/backend build
 
-FROM oven/bun:1-alpine AS runner
+FROM oven/bun:1.3.13-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 app && adduser --system --uid 1001 app
