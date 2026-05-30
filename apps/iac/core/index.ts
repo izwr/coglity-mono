@@ -304,7 +304,7 @@ new azure.cognitiveservices.Deployment('gpt-5.4-mini', {
     model: {
       format: 'OpenAI',
       name: 'gpt-5.4-mini',
-      version: '2025-08-07',
+      version: '2026-03-17',
     },
     versionUpgradeOption: 'OnceCurrentVersionExpired',
   },
