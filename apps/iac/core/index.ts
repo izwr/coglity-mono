@@ -296,14 +296,14 @@ const aiServicesKeys = pulumi
 
 // ── 11. AI Model Deployments ───────────────────────────────────────
 
-new azure.cognitiveservices.Deployment('gpt-5-mini', {
+new azure.cognitiveservices.Deployment('gpt-5.4-mini', {
   resourceGroupName: resourceGroup.name,
   accountName: aiServices.name,
-  deploymentName: 'gpt-5-mini',
+  deploymentName: 'gpt-5.4-mini',
   properties: {
     model: {
       format: 'OpenAI',
-      name: 'gpt-5-mini',
+      name: 'gpt-5.4-mini',
       version: '2025-08-07',
     },
     versionUpgradeOption: 'OnceCurrentVersionExpired',
