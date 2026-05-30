@@ -4,6 +4,8 @@ import * as azure from '@pulumi/azure-native';
 export interface FunctionAppArgs {
   resourceGroupName: pulumi.Input<string>;
   location: pulumi.Input<string>;
+  globalResourcePrefix: string;
+  enableRunFromPackage: boolean;
   storageConnectionString: pulumi.Input<string>;
   storageAccountName: pulumi.Input<string>;
   storageAccountId: pulumi.Input<string>;
@@ -15,7 +17,6 @@ export interface FunctionAppArgs {
   aiServicesLocation: pulumi.Input<string>;
   speechServicesAccountId: pulumi.Input<string>;
   speechServicesLocation: pulumi.Input<string>;
-  speechServicesCustomDomain: pulumi.Input<string>;
   speechServicesApiKey: pulumi.Input<string>;
   backendFqdn: pulumi.Input<string>;
   executorWebhookSecret: pulumi.Input<string>;
@@ -23,6 +24,11 @@ export interface FunctionAppArgs {
 }
 
 export function createFunctionApp(args: FunctionAppArgs) {
+  const dashedGlobalResourcePrefix = `${args.globalResourcePrefix.toLowerCase()}-`;
+  const packageSettings = args.enableRunFromPackage
+    ? [{ name: 'WEBSITE_RUN_FROM_PACKAGE', value: '1' }]
+    : [];
+
   const plan = new azure.web.AppServicePlan('executor-plan', {
     resourceGroupName: args.resourceGroupName,
     location: args.location,
@@ -39,7 +45,7 @@ export function createFunctionApp(args: FunctionAppArgs) {
   const functionApp = new azure.web.WebApp('executor', {
     resourceGroupName: args.resourceGroupName,
     location: args.location,
-    name: 'coglity-executor',
+    name: `${dashedGlobalResourcePrefix}coglity-executor`,
     kind: 'functionapp,linux',
     serverFarmId: plan.id,
     identity: {
@@ -50,7 +56,7 @@ export function createFunctionApp(args: FunctionAppArgs) {
       appSettings: [
         { name: 'FUNCTIONS_WORKER_RUNTIME', value: 'node' },
         { name: 'FUNCTIONS_EXTENSION_VERSION', value: '~4' },
-        { name: 'WEBSITE_RUN_FROM_PACKAGE', value: '1' },
+        ...packageSettings,
         { name: 'AzureWebJobsStorage', value: args.storageConnectionString },
         { name: 'ServiceBusConnection', value: args.serviceBusConnectionString },
         { name: 'EXECUTOR_WEBHOOK_SECRET', value: args.executorWebhookSecret },
@@ -62,7 +68,6 @@ export function createFunctionApp(args: FunctionAppArgs) {
         { name: 'AZURE_OPENAI_REALTIME_API_VERSION', value: '2024-10-01-preview' },
         { name: 'AZURE_SPEECH_REGION', value: args.speechServicesLocation },
         { name: 'AZURE_SPEECH_RESOURCE_ID', value: args.speechServicesAccountId },
-        { name: 'AZURE_SPEECH_CUSTOM_DOMAIN', value: args.speechServicesCustomDomain },
         { name: 'AZURE_SPEECH_KEY', value: args.speechServicesApiKey },
         { name: 'AZURE_STORAGE_ACCOUNT', value: args.storageAccountName },
         { name: 'AZURE_STORAGE_RECORDINGS_CONTAINER', value: args.recordingsContainerName },

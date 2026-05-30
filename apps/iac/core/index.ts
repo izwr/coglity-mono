@@ -16,6 +16,9 @@ const aiLocation = 'southindia';
 const cfZoneId = config.require('cfZoneId');
 const cfApiToken = cfConfig.requireSecret('apiToken');
 const postgresAdminPassword = config.requireSecret('postgresAdminPassword');
+const globalResourcePrefix = (config.get('globalResourcePrefix') ?? 'r7k3').toLowerCase();
+const dashedGlobalResourcePrefix = `${globalResourcePrefix}-`;
+const compactGlobalResourcePrefix = globalResourcePrefix.replace(/[^a-z0-9]/g, '');
 
 // ── 1. Resource Group ──────────────────────────────────────────────
 
@@ -146,7 +149,7 @@ const landingWwwCert = createOriginCertificate({
 const pgServer = new azure.dbforpostgresql.Server('coglity-pg', {
   resourceGroupName: resourceGroup.name,
   location,
-  serverName: 'coglity-pg',
+  serverName: `${dashedGlobalResourcePrefix}coglity-pg`,
   version: '16',
   administratorLogin: 'pgadmin',
   administratorLoginPassword: postgresAdminPassword,
@@ -187,7 +190,7 @@ const databaseUrl = pulumi
 const serviceBusNamespace = new azure.servicebus.Namespace('coglity-sb', {
   resourceGroupName: resourceGroup.name,
   location,
-  namespaceName: 'coglity-servicebus',
+  namespaceName: `${dashedGlobalResourcePrefix}coglity-servicebus`,
   sku: { name: 'Basic', tier: 'Basic' },
 });
 
@@ -214,7 +217,7 @@ const serviceBusKeys = pulumi
 const storageAccount = new azure.storage.StorageAccount('coglitysa', {
   resourceGroupName: resourceGroup.name,
   location,
-  accountName: 'coglitysa',
+  accountName: `${compactGlobalResourcePrefix}coglitysa`,
   kind: azure.storage.Kind.StorageV2,
   sku: { name: azure.storage.SkuName.Standard_LRS },
 });
@@ -260,7 +263,7 @@ const storageConnectionString = pulumi
 const keyVault = new azure.keyvault.Vault('coglity-kv', {
   resourceGroupName: resourceGroup.name,
   location,
-  vaultName: 'coglity-kv',
+  vaultName: `${dashedGlobalResourcePrefix}coglity-kv`,
   properties: {
     tenantId: pulumi.output(azure.authorization.getClientConfig()).apply((c) => c.tenantId),
     sku: { family: 'A', name: azure.keyvault.SkuName.Standard },
@@ -274,11 +277,10 @@ const keyVault = new azure.keyvault.Vault('coglity-kv', {
 const aiServices = new azure.cognitiveservices.Account('coglity-ai', {
   resourceGroupName: resourceGroup.name,
   location: aiLocation,
-  accountName: 'coglity-ai',
+  accountName: `${dashedGlobalResourcePrefix}coglity-ai`,
   kind: 'AIServices',
   sku: { name: 'S0' },
   properties: {
-    customSubDomainName: 'coglity-ai',
     publicNetworkAccess: 'Enabled',
   },
 });
@@ -346,11 +348,10 @@ const aiFoundryProjectEndpoint = pulumi
 const speechServices = new azure.cognitiveservices.Account('coglity-speech', {
   resourceGroupName: resourceGroup.name,
   location,
-  accountName: 'coglity-speech',
+  accountName: `${dashedGlobalResourcePrefix}coglity-speech`,
   kind: 'SpeechServices',
   sku: { name: 'S0' },
   properties: {
-    customSubDomainName: 'coglity-speech',
     publicNetworkAccess: 'Enabled',
   },
 });
@@ -401,7 +402,6 @@ export const aiServicesLocation = aiLocation;
 
 export const speechServicesAccountId = speechServices.id;
 export const speechServicesLocation = location;
-export const speechServicesCustomDomain = 'coglity-speech';
 export const speechServicesApiKey = pulumi.secret(speechServicesKeys.apply((k) => k.key1!));
 
 export const keyVaultId = keyVault.id;

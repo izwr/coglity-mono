@@ -6,6 +6,8 @@ import { createLanding } from './landing/index.ts';
 import { createFunctionApp } from './function-app/index.ts';
 
 const config = new pulumi.Config();
+const globalResourcePrefix = (config.get('globalResourcePrefix') ?? 'r7k3').toLowerCase();
+const enableFunctionRunFromPackage = config.getBoolean('enableFunctionRunFromPackage') ?? false;
 
 const coreStack = new pulumi.StackReference(config.require('coreStack'));
 
@@ -57,7 +59,6 @@ const coreOut = {
   aiServicesLocation: coreStack.requireOutput('aiServicesLocation') as pulumi.Output<string>,
   speechServicesAccountId: coreStack.requireOutput('speechServicesAccountId') as pulumi.Output<string>,
   speechServicesLocation: coreStack.requireOutput('speechServicesLocation') as pulumi.Output<string>,
-  speechServicesCustomDomain: coreStack.requireOutput('speechServicesCustomDomain') as pulumi.Output<string>,
   speechServicesApiKey: coreStack.requireOutput('speechServicesApiKey') as pulumi.Output<string>,
   appInsightsConnectionString: coreStack.requireOutput(
     'appInsightsConnectionString',
@@ -159,6 +160,8 @@ const landing = createLanding({
 const executor = createFunctionApp({
   resourceGroupName: coreOut.resourceGroupName,
   location: coreOut.location,
+  globalResourcePrefix,
+  enableRunFromPackage: enableFunctionRunFromPackage,
   storageConnectionString: coreOut.storageConnectionString,
   storageAccountName: coreOut.storageAccountName,
   storageAccountId: coreOut.storageAccountId,
@@ -170,7 +173,6 @@ const executor = createFunctionApp({
   aiServicesLocation: coreOut.aiServicesLocation,
   speechServicesAccountId: coreOut.speechServicesAccountId,
   speechServicesLocation: coreOut.speechServicesLocation,
-  speechServicesCustomDomain: coreOut.speechServicesCustomDomain,
   speechServicesApiKey: coreOut.speechServicesApiKey,
   backendFqdn: backend.fqdn,
   executorWebhookSecret,

@@ -1,4 +1,5 @@
 config:
+  coglity-core:globalResourcePrefix: r7k3
   coglity-core:postgresAdminPassword:
     secure: AAABAA+Onzi2LZzIj8eR18jk79t53gxCe5G+KXch53unhmHrTUgdFF3zjXBNIPyBO5HU9Uf7fH0=
   cloudflare:apiToken:
