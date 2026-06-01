@@ -35,6 +35,12 @@ drizzle/meta/
 
 # Coverage
 coverage/
-l
+
+# Next.js
+.next/
+
+# Claude Code worktrees
+.claude/worktrees/
+
 # Debug scripts
 ../coglity-executor/.debug/
