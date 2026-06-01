@@ -22,6 +22,37 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+type JsonSchema = Record<string, unknown>;
+
+async function createJsonChatCompletion<T>(args: {
+  instructions: string;
+  input: string;
+  schema: JsonSchema;
+}): Promise<T | null> {
+  const completion = await openai.chat.completions.create({
+    model: openaiModel,
+    messages: [
+      {
+        role: 'system',
+        content:
+          `${args.instructions}\n\n` +
+          'Return only valid JSON. Do not include markdown fences or explanatory text. ' +
+          `The JSON must match this schema: ${JSON.stringify(args.schema)}`,
+      },
+      { role: 'user', content: args.input },
+    ],
+  });
+
+  const content = completion.choices[0]?.message?.content;
+  if (!content) return null;
+
+  try {
+    return JSON.parse(content) as T;
+  } catch {
+    return null;
+  }
+}
+
 router.post('/session', async (req, res) => {
   const db = (req.db ?? rootDb) as DbHandle;
   const projectId = req.projectId!;
@@ -89,29 +120,20 @@ router.post('/session/:id/followup', async (req, res) => {
       ? '\n\nRelevant project knowledge:\n---\n' + knowledgeChunks.join('\n---\n')
       : '';
 
-  const completion = await openai.responses.parse({
-    model: openaiModel,
+  const result = await createJsonChatCompletion<{ questions: string[] }>({
     instructions:
       'You are a senior QA engineer. Given a user story or feature description, generate 3-5 clarifying follow-up questions ' +
       'that would help you create better, more comprehensive test scenarios. ' +
       'Focus on edge cases, acceptance criteria, boundary conditions, and non-functional requirements.',
     input: `User Story: ${session.userStory}${knowledgeContext}`,
-    text: {
-      format: {
-        type: 'json_schema',
-        name: 'followup_questions',
-        strict: true,
-        schema: {
-          type: 'object',
-          properties: { questions: { type: 'array', items: { type: 'string' } } },
-          required: ['questions'],
-          additionalProperties: false,
-        },
-      },
+    schema: {
+      type: 'object',
+      properties: { questions: { type: 'array', items: { type: 'string' } } },
+      required: ['questions'],
+      additionalProperties: false,
     },
   });
 
-  const result = completion.output_parsed as { questions: string[] } | null;
   if (!result) {
     res.status(500).json({ error: 'Failed to generate follow-up questions' });
     return;
@@ -178,41 +200,32 @@ router.post('/session/:id/generate-scenarios', async (req, res) => {
       ? '\n\nRelevant project knowledge:\n---\n' + knowledgeChunks.join('\n---\n')
       : '';
 
-  const completion = await openai.responses.parse({
-    model: openaiModel,
+  const result = await createJsonChatCompletion<{
+    scenarios: { title: string; description: string }[];
+  }>({
     instructions:
       'You are a senior QA engineer. Given a user story and additional context, generate a comprehensive list of test scenarios. ' +
       'Each scenario should have a clear, concise title and a brief description of what to test. ' +
       'Cover happy paths, edge cases, error scenarios, and boundary conditions.',
     input: `User Story: ${session.userStory}${qaContext}${knowledgeContext}`,
-    text: {
-      format: {
-        type: 'json_schema',
-        name: 'scenarios',
-        strict: true,
-        schema: {
-          type: 'object',
-          properties: {
-            scenarios: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: { title: { type: 'string' }, description: { type: 'string' } },
-                required: ['title', 'description'],
-                additionalProperties: false,
-              },
-            },
+    schema: {
+      type: 'object',
+      properties: {
+        scenarios: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: { title: { type: 'string' }, description: { type: 'string' } },
+            required: ['title', 'description'],
+            additionalProperties: false,
           },
-          required: ['scenarios'],
-          additionalProperties: false,
         },
       },
+      required: ['scenarios'],
+      additionalProperties: false,
     },
   });
 
-  const result = completion.output_parsed as {
-    scenarios: { title: string; description: string }[];
-  } | null;
   if (!result) {
     res.status(500).json({ error: 'Failed to generate scenarios' });
     return;
@@ -290,8 +303,9 @@ router.post('/session/:id/create-test-cases', async (req, res) => {
       ? '\n\nRelevant project knowledge:\n---\n' + knowledgeChunks.join('\n---\n')
       : '';
 
-  const detailCompletion = await openai.responses.parse({
-    model: openaiModel,
+  const details = await createJsonChatCompletion<{
+    testCases: { preCondition: string; testSteps: string; expectedResults: string }[];
+  }>({
     instructions:
       'You are a senior QA engineer. Given a user story, context, and a list of test scenarios, ' +
       'generate detailed test case information for each scenario. ' +
@@ -300,38 +314,27 @@ router.post('/session/:id/create-test-cases', async (req, res) => {
       'and expectedResults (what should happen when the test is executed correctly). ' +
       'Return the results in the same order as the input scenarios.',
     input: `User Story: ${session.userStory}${qaContext}${knowledgeContext}\n\nScenarios:\n${selectedScenarios.map((s, i) => `${i + 1}. ${s.title}: ${s.description}`).join('\n')}`,
-    text: {
-      format: {
-        type: 'json_schema',
-        name: 'test_case_details',
-        strict: true,
-        schema: {
-          type: 'object',
-          properties: {
-            testCases: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  preCondition: { type: 'string' },
-                  testSteps: { type: 'string' },
-                  expectedResults: { type: 'string' },
-                },
-                required: ['preCondition', 'testSteps', 'expectedResults'],
-                additionalProperties: false,
-              },
+    schema: {
+      type: 'object',
+      properties: {
+        testCases: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              preCondition: { type: 'string' },
+              testSteps: { type: 'string' },
+              expectedResults: { type: 'string' },
             },
+            required: ['preCondition', 'testSteps', 'expectedResults'],
+            additionalProperties: false,
           },
-          required: ['testCases'],
-          additionalProperties: false,
         },
       },
+      required: ['testCases'],
+      additionalProperties: false,
     },
   });
-
-  const details = detailCompletion.output_parsed as {
-    testCases: { preCondition: string; testSteps: string; expectedResults: string }[];
-  } | null;
 
   const insertedCases = await db
     .insert(testCases)
