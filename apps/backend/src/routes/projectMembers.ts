@@ -1,64 +1,78 @@
-import { Router, type Router as RouterType } from "express";
-import { and, eq } from "drizzle-orm";
-import { z } from "zod";
-import { projectMembers, users, PROJECT_ROLES } from "@coglity/shared/schema";
-import { db } from "../db";
-import { requireAuth } from "../middleware/requireAuth";
-import { resolveOrg } from "../middleware/resolveOrg";
-import { resolveProject } from "../middleware/resolveProject";
-import { requireProjectRole } from "../middleware/requireProjectRole";
-import { auditRbac, ensureNotLastProjectAdmin, invalidateProjectCache, RbacError } from "../services/rbac";
+import { Router, type Router as RouterType } from 'express';
+import { and, eq } from 'drizzle-orm';
+import { z } from 'zod';
+import { projectMembers, users, PROJECT_ROLES } from '@coglity/shared/schema';
+import { db } from '../db';
+import { requireAuth } from '../middleware/requireAuth';
+import { resolveOrg } from '../middleware/resolveOrg';
+import { resolveProject } from '../middleware/resolveProject';
+import { requireProjectRole } from '../middleware/requireProjectRole';
+import {
+  auditRbac,
+  ensureNotLastProjectAdmin,
+  invalidateProjectCache,
+  RbacError,
+} from '../services/rbac';
 
 const router: RouterType = Router({ mergeParams: true });
 
-const roleSchema = z.object({ role: z.enum(["admin", "writer", "read"] as const) });
+const roleSchema = z.object({ role: z.enum(['admin', 'writer', 'read'] as const) });
 
 // List project members
-router.get("/", requireAuth, resolveOrg, resolveProject, requireProjectRole("read"), async (req, res) => {
-  const rows = await db
-    .select({
-      userId: projectMembers.userId,
-      email: users.email,
-      displayName: users.displayName,
-      avatarUrl: users.avatarUrl,
-      role: projectMembers.role,
-      createdAt: projectMembers.createdAt,
-    })
-    .from(projectMembers)
-    .innerJoin(users, eq(projectMembers.userId, users.id))
-    .where(eq(projectMembers.projectId, req.projectId!));
-  res.json({ data: rows });
-});
-
-// Change role
-router.patch(
-  "/:userId",
+router.get(
+  '/',
   requireAuth,
   resolveOrg,
   resolveProject,
-  requireProjectRole("admin"),
+  requireProjectRole('read'),
+  async (req, res) => {
+    const rows = await db
+      .select({
+        userId: projectMembers.userId,
+        email: users.email,
+        displayName: users.displayName,
+        avatarUrl: users.avatarUrl,
+        role: projectMembers.role,
+        createdAt: projectMembers.createdAt,
+      })
+      .from(projectMembers)
+      .innerJoin(users, eq(projectMembers.userId, users.id))
+      .where(eq(projectMembers.projectId, req.projectId!));
+    res.json({ data: rows });
+  },
+);
+
+// Change role
+router.patch(
+  '/:userId',
+  requireAuth,
+  resolveOrg,
+  resolveProject,
+  requireProjectRole('admin'),
   async (req, res) => {
     const parsed = roleSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: parsed.error.flatten().fieldErrors });
       return;
     }
-    const targetUserId = typeof req.params.userId === "string" ? req.params.userId : null;
+    const targetUserId = typeof req.params.userId === 'string' ? req.params.userId : null;
     if (!targetUserId) {
-      res.status(400).json({ error: "Invalid userId" });
+      res.status(400).json({ error: 'Invalid userId' });
       return;
     }
     const [existing] = await db
       .select({ role: projectMembers.role })
       .from(projectMembers)
-      .where(and(eq(projectMembers.projectId, req.projectId!), eq(projectMembers.userId, targetUserId)))
+      .where(
+        and(eq(projectMembers.projectId, req.projectId!), eq(projectMembers.userId, targetUserId)),
+      )
       .limit(1);
     if (!existing) {
-      res.status(404).json({ error: "Member not found" });
+      res.status(404).json({ error: 'Member not found' });
       return;
     }
     try {
-      if (existing.role === "admin" && parsed.data.role !== "admin") {
+      if (existing.role === 'admin' && parsed.data.role !== 'admin') {
         await ensureNotLastProjectAdmin(req.projectId!, targetUserId);
       }
     } catch (err) {
@@ -71,13 +85,15 @@ router.patch(
     await db
       .update(projectMembers)
       .set({ role: parsed.data.role, updatedAt: new Date() })
-      .where(and(eq(projectMembers.projectId, req.projectId!), eq(projectMembers.userId, targetUserId)));
+      .where(
+        and(eq(projectMembers.projectId, req.projectId!), eq(projectMembers.userId, targetUserId)),
+      );
     await auditRbac({
       actorUserId: req.session.userId!,
       targetUserId,
       organizationId: req.organizationId!,
       projectId: req.projectId!,
-      action: "change_project_role",
+      action: 'change_project_role',
       fromRole: existing.role,
       toRole: parsed.data.role,
     });
@@ -88,24 +104,26 @@ router.patch(
 
 // Remove member
 router.delete(
-  "/:userId",
+  '/:userId',
   requireAuth,
   resolveOrg,
   resolveProject,
-  requireProjectRole("admin"),
+  requireProjectRole('admin'),
   async (req, res) => {
-    const targetUserId = typeof req.params.userId === "string" ? req.params.userId : null;
+    const targetUserId = typeof req.params.userId === 'string' ? req.params.userId : null;
     if (!targetUserId) {
-      res.status(400).json({ error: "Invalid userId" });
+      res.status(400).json({ error: 'Invalid userId' });
       return;
     }
     const [existing] = await db
       .select({ role: projectMembers.role })
       .from(projectMembers)
-      .where(and(eq(projectMembers.projectId, req.projectId!), eq(projectMembers.userId, targetUserId)))
+      .where(
+        and(eq(projectMembers.projectId, req.projectId!), eq(projectMembers.userId, targetUserId)),
+      )
       .limit(1);
     if (!existing) {
-      res.status(404).json({ error: "Member not found" });
+      res.status(404).json({ error: 'Member not found' });
       return;
     }
     try {
@@ -119,13 +137,15 @@ router.delete(
     }
     await db
       .delete(projectMembers)
-      .where(and(eq(projectMembers.projectId, req.projectId!), eq(projectMembers.userId, targetUserId)));
+      .where(
+        and(eq(projectMembers.projectId, req.projectId!), eq(projectMembers.userId, targetUserId)),
+      );
     await auditRbac({
       actorUserId: req.session.userId!,
       targetUserId,
       organizationId: req.organizationId!,
       projectId: req.projectId!,
-      action: "remove_project_member",
+      action: 'remove_project_member',
       fromRole: existing.role,
     });
     invalidateProjectCache(targetUserId, req.projectId!);

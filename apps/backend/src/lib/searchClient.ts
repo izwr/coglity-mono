@@ -1,8 +1,12 @@
-import { SearchClient, SearchIndexClient } from "@azure/search-documents";
-import { ChainedTokenCredential, AzureCliCredential, ManagedIdentityCredential } from "@azure/identity";
+import { SearchClient, SearchIndexClient } from '@azure/search-documents';
+import {
+  ChainedTokenCredential,
+  AzureCliCredential,
+  ManagedIdentityCredential,
+} from '@azure/identity';
 
-const endpoint = process.env.AZURE_SEARCH_ENDPOINT ?? "";
-const indexName = process.env.AZURE_SEARCH_INDEX_NAME ?? "knowledge-sources";
+const endpoint = process.env.AZURE_SEARCH_ENDPOINT ?? '';
+const indexName = process.env.AZURE_SEARCH_INDEX_NAME ?? 'knowledge-sources';
 
 const credential = new ChainedTokenCredential(
   new AzureCliCredential(),
@@ -13,21 +17,27 @@ function isConfigured(): boolean {
   return !!endpoint;
 }
 
-function getSearchClient(): SearchClient<{ content: string; projectId: string; metadata_storage_name: string }> {
-  if (!endpoint) throw new Error("AZURE_SEARCH_ENDPOINT is not set");
+function getSearchClient(): SearchClient<{
+  content: string;
+  projectId: string;
+  metadata_storage_name: string;
+}> {
+  if (!endpoint) throw new Error('AZURE_SEARCH_ENDPOINT is not set');
   return new SearchClient(endpoint, indexName, credential);
 }
 
 function getIndexClient(): SearchIndexClient {
-  if (!endpoint) throw new Error("AZURE_SEARCH_ENDPOINT is not set");
+  if (!endpoint) throw new Error('AZURE_SEARCH_ENDPOINT is not set');
   return new SearchIndexClient(endpoint, credential);
 }
 
-export async function checkIndexStatus(blobName: string): Promise<{ indexed: boolean; chunkCount: number }> {
+export async function checkIndexStatus(
+  blobName: string,
+): Promise<{ indexed: boolean; chunkCount: number }> {
   if (!isConfigured()) return { indexed: false, chunkCount: 0 };
   try {
     const client = getSearchClient();
-    const results = await client.search("*", {
+    const results = await client.search('*', {
       filter: `metadata_storage_name eq '${blobName}'`,
       top: 0,
       includeTotalCount: true,
@@ -50,9 +60,9 @@ export async function searchKnowledge(
     const results = await client.search(query, {
       filter: `projectId eq '${projectId}'`,
       top: topK,
-      queryType: "semantic",
+      queryType: 'semantic',
       semanticSearchOptions: {
-        configurationName: "default",
+        configurationName: 'default',
       },
     });
     const chunks: string[] = [];

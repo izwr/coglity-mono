@@ -19,7 +19,9 @@ export function createTraceWriter(runDir: string): TraceWriter {
 
   return {
     log(event: TraceEvent) {
-      buffer.push(JSON.stringify({ ...event, timestamp: event.timestamp || new Date().toISOString() }));
+      buffer.push(
+        JSON.stringify({ ...event, timestamp: event.timestamp || new Date().toISOString() }),
+      );
     },
 
     async writeSidecar(name: string, data: unknown): Promise<string> {
@@ -41,7 +43,9 @@ export function createTraceWriter(runDir: string): TraceWriter {
 export function createNoopTraceWriter(): TraceWriter {
   return {
     log() {},
-    async writeSidecar(_name: string, _data: unknown) { return ''; },
+    async writeSidecar(_name: string, _data: unknown) {
+      return '';
+    },
     async flush() {},
   };
 }

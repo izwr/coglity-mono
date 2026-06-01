@@ -1,4 +1,4 @@
-import { api } from "./api";
+import { api } from './api';
 
 export interface UserOption {
   id: string;
@@ -13,7 +13,9 @@ export const userService = {
    */
   async getAll(orgId: string, projectId: string): Promise<UserOption[]> {
     if (!orgId || !projectId) return [];
-    const { data } = await api.get<UserOption[]>(`/organizations/${orgId}/projects/${projectId}/users`);
+    const { data } = await api.get<UserOption[]>(
+      `/organizations/${orgId}/projects/${projectId}/users`,
+    );
     return data;
   },
 };

@@ -1,5 +1,5 @@
-import { type ReactNode } from "react";
-import type { ChipVariant } from "./Chip";
+import { type ReactNode } from 'react';
+import type { ChipVariant } from './Chip';
 
 export interface TabOption<T extends string = string> {
   value: T;
@@ -15,8 +15,8 @@ interface TabsProps<T extends string = string> {
   options: TabOption<T>[];
   value: T;
   onChange: (value: T) => void;
-  variant?: "chip" | "segmented" | "underline";
-  size?: "sm" | "md";
+  variant?: 'chip' | 'segmented' | 'underline';
+  size?: 'sm' | 'md';
   className?: string;
 }
 
@@ -24,18 +24,25 @@ export function Tabs<T extends string = string>({
   options,
   value,
   onChange,
-  variant = "chip",
-  size = "md",
+  variant = 'chip',
+  size = 'md',
   className,
 }: TabsProps<T>) {
-  const cls = ["tabs", `tabs-${variant}`, size === "sm" ? "tabs-sm" : "", className].filter(Boolean).join(" ");
+  const cls = ['tabs', `tabs-${variant}`, size === 'sm' ? 'tabs-sm' : '', className]
+    .filter(Boolean)
+    .join(' ');
 
-  if (variant === "chip") {
+  if (variant === 'chip') {
     return (
       <div className={cls} role="tablist">
         {options.map((opt) => {
           const active = opt.value === value;
-          const chipCls = ["chip", opt.chipVariant ?? "neutral", "tab-chip", active ? "active" : "inactive"].join(" ");
+          const chipCls = [
+            'chip',
+            opt.chipVariant ?? 'neutral',
+            'tab-chip',
+            active ? 'active' : 'inactive',
+          ].join(' ');
           return (
             <button
               key={opt.value}
@@ -46,9 +53,7 @@ export function Tabs<T extends string = string>({
             >
               <span className="dot" style={opt.dotColor ? { color: opt.dotColor } : undefined} />
               <span>{opt.label}</span>
-              {opt.count !== undefined && (
-                <span className="tab-count">· {opt.count}</span>
-              )}
+              {opt.count !== undefined && <span className="tab-count">· {opt.count}</span>}
             </button>
           );
         })}
@@ -65,7 +70,7 @@ export function Tabs<T extends string = string>({
             key={opt.value}
             role="tab"
             aria-selected={active}
-            className={`tab${active ? " active" : ""}`}
+            className={`tab${active ? ' active' : ''}`}
             onClick={() => onChange(opt.value)}
           >
             <span className="tab-label">{opt.label}</span>

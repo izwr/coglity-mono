@@ -35,3 +35,6 @@ drizzle/meta/
 
 # Coverage
 coverage/
+l
+# Debug scripts
+../coglity-executor/.debug/

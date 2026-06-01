@@ -1,38 +1,42 @@
-import { useEffect, useState } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { useForm } from "react-hook-form";
-import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from "yup";
-import type { Tag } from "@coglity/shared";
-import { Button } from "../components/ui/Button";
-import { Select } from "../components/ui/Select";
-import { Chip, type ChipVariant } from "../components/ui/Chip";
-import { testCaseService, type TestCaseWithTags } from "../services/testCaseService";
-import { tagService } from "../services/tagService";
-import { botConnectionService, type BotConnectionWithUser } from "../services/botConnectionService";
-import { testRunService } from "../services/testRunService";
-import { RunConfigModal, type RunConfig } from "../components/RunConfigModal";
-import { useSetBreadcrumbs } from "../context/BreadcrumbsContext";
-import { useCurrentOrg } from "../context/OrgContext";
+import { useEffect, useState } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from 'yup';
+import type { Tag } from '@coglity/shared';
+import { Button } from '../components/ui/Button';
+import { Select } from '../components/ui/Select';
+import { Chip, type ChipVariant } from '../components/ui/Chip';
+import { testCaseService, type TestCaseWithTags } from '../services/testCaseService';
+import { tagService } from '../services/tagService';
+import { botConnectionService, type BotConnectionWithUser } from '../services/botConnectionService';
+import { testRunService } from '../services/testRunService';
+import { RunConfigModal, type RunConfig } from '../components/RunConfigModal';
+import { useSetBreadcrumbs } from '../context/BreadcrumbsContext';
+import { useCurrentOrg } from '../context/OrgContext';
 
 const TEST_CASE_TYPES = [
-  { value: "web", label: "Web" },
-  { value: "mobile", label: "Mobile" },
-  { value: "chat", label: "Chat" },
-  { value: "voice", label: "Voice" },
-  { value: "agent", label: "Agent" },
+  { value: 'web', label: 'Web' },
+  { value: 'mobile', label: 'Mobile' },
+  { value: 'chat', label: 'Chat' },
+  { value: 'voice', label: 'Voice' },
+  { value: 'agent', label: 'Agent' },
 ];
 
 const typeChipVariant: Record<string, ChipVariant> = {
-  web: "web", mobile: "mobile", chat: "chat", voice: "voice", agent: "agent",
+  web: 'web',
+  mobile: 'mobile',
+  chat: 'chat',
+  voice: 'voice',
+  agent: 'agent',
 };
 
 const testCaseFormSchema = yup.object({
-  title: yup.string().required("Title is required").max(255),
-  preCondition: yup.string().max(10000).default(""),
-  testSteps: yup.string().max(10000).default(""),
-  expectedResults: yup.string().max(10000).default(""),
-  data: yup.string().max(10000).default(""),
+  title: yup.string().required('Title is required').max(255),
+  preCondition: yup.string().max(10000).default(''),
+  testSteps: yup.string().max(10000).default(''),
+  expectedResults: yup.string().max(10000).default(''),
+  data: yup.string().max(10000).default(''),
 });
 
 type FormValues = yup.InferType<typeof testCaseFormSchema>;
@@ -42,24 +46,24 @@ export function TestCaseDetail() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { org } = useCurrentOrg();
-  useSetBreadcrumbs([{ label: "Test cases", to: "/test-cases" }, { label: "Case" }]);
+  useSetBreadcrumbs([{ label: 'Test cases', to: '/test-cases' }, { label: 'Case' }]);
 
   const [tc, setTc] = useState<TestCaseWithTags | null>(null);
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [allBotConnections, setAllBotConnections] = useState<BotConnectionWithUser[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [selectedType, setSelectedType] = useState<string>("web");
-  const [selectedBotConnectionId, setSelectedBotConnectionId] = useState<string>("");
+  const [selectedType, setSelectedType] = useState<string>('web');
+  const [selectedBotConnectionId, setSelectedBotConnectionId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [activeBatchId, setActiveBatchId] = useState<string | null>(null);
   const [showRunConfig, setShowRunConfig] = useState(false);
-  const [runError, setRunError] = useState<string>("");
+  const [runError, setRunError] = useState<string>('');
   const [starting, setStarting] = useState(false);
 
-  const showBotConnectionPicker = selectedType === "chat" || selectedType === "voice";
+  const showBotConnectionPicker = selectedType === 'chat' || selectedType === 'voice';
   const filteredBotConnections = allBotConnections.filter((bc) => bc.botType === selectedType);
 
   const {
@@ -69,8 +73,8 @@ export function TestCaseDetail() {
     formState: { errors, isSubmitting, isValid },
   } = useForm<FormValues>({
     resolver: yupResolver(testCaseFormSchema),
-    mode: "onChange",
-    defaultValues: { title: "", preCondition: "", testSteps: "", expectedResults: "", data: "" },
+    mode: 'onChange',
+    defaultValues: { title: '', preCondition: '', testSteps: '', expectedResults: '', data: '' },
   });
 
   useEffect(() => {
@@ -79,19 +83,22 @@ export function TestCaseDetail() {
       testCaseService.getById(org.organizationId, projectId, id),
       tagService.getAll(org.organizationId, [projectId]),
       botConnectionService.getAll(org.organizationId, [projectId], { limit: 100 }),
-    ]).then(([tcData, tagsData, bcData]) => {
-      setTc(tcData);
-      setAllTags(Array.isArray(tagsData) ? tagsData : []);
-      setAllBotConnections(Array.isArray(bcData.data) ? bcData.data : []);
-      populateFields(tcData);
-    }).catch(() => {
-      navigate("/test-cases");
-    }).finally(() => {
-      setLoading(false);
-    });
+    ])
+      .then(([tcData, tagsData, bcData]) => {
+        setTc(tcData);
+        setAllTags(Array.isArray(tagsData) ? tagsData : []);
+        setAllBotConnections(Array.isArray(bcData.data) ? bcData.data : []);
+        populateFields(tcData);
+      })
+      .catch(() => {
+        navigate('/test-cases');
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, [id, projectId, org]);
 
-  const canRun = !!tc && tc.testCaseType === "voice" && !!tc.botConnectionId && !editing;
+  const canRun = !!tc && tc.testCaseType === 'voice' && !!tc.botConnectionId && !editing;
 
   const startRun = async () => {
     if (!id || !projectId || !org || !canRun) return;
@@ -100,7 +107,7 @@ export function TestCaseDetail() {
 
   const handleRunConfigSubmit = async (config: RunConfig) => {
     if (!id || !projectId || !org || !canRun) return;
-    setRunError("");
+    setRunError('');
     setStarting(true);
     try {
       const isSingleDefault =
@@ -108,8 +115,8 @@ export function TestCaseDetail() {
         config.combinations.length === 0 &&
         config.languages.length <= 1 &&
         config.environments.length <= 1 &&
-        (config.languages[0] ?? "en-US") === "en-US" &&
-        (config.environments[0] ?? "quiet") === "quiet";
+        (config.languages[0] ?? 'en-US') === 'en-US' &&
+        (config.environments[0] ?? 'quiet') === 'quiet';
 
       if (isSingleDefault) {
         const run = await testRunService.create(org.organizationId, projectId, id);
@@ -127,7 +134,7 @@ export function TestCaseDetail() {
       }
       setShowRunConfig(false);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Failed to start run";
+      const msg = e instanceof Error ? e.message : 'Failed to start run';
       setRunError(msg);
     } finally {
       setStarting(false);
@@ -136,13 +143,13 @@ export function TestCaseDetail() {
 
   // Auto-trigger run when navigated with ?run=1
   useEffect(() => {
-    if (searchParams.get("run") !== "1") return;
+    if (searchParams.get('run') !== '1') return;
     if (!canRun || loading || starting || activeRunId) return;
     startRun().then(() => {
-      searchParams.delete("run");
+      searchParams.delete('run');
       setSearchParams(searchParams, { replace: true });
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canRun, loading, searchParams]);
 
   const populateFields = (d: TestCaseWithTags) => {
@@ -154,8 +161,8 @@ export function TestCaseDetail() {
       data: d.data,
     });
     setSelectedTagIds((d.tags ?? []).map((t) => t.id));
-    setSelectedType(d.testCaseType || "web");
-    setSelectedBotConnectionId(d.botConnectionId || "");
+    setSelectedType(d.testCaseType || 'web');
+    setSelectedBotConnectionId(d.botConnectionId || '');
   };
 
   const startEdit = () => {
@@ -177,8 +184,11 @@ export function TestCaseDetail() {
       data: formData.data,
       expectedResults: formData.expectedResults,
       tagIds: selectedTagIds,
-      testCaseType: selectedType as "web" | "mobile" | "chat" | "voice" | "agent",
-      botConnectionId: (selectedType === "chat" || selectedType === "voice") ? selectedBotConnectionId || null : null,
+      testCaseType: selectedType as 'web' | 'mobile' | 'chat' | 'voice' | 'agent',
+      botConnectionId:
+        selectedType === 'chat' || selectedType === 'voice'
+          ? selectedBotConnectionId || null
+          : null,
     });
     setTc(updated);
     setEditing(false);
@@ -187,7 +197,7 @@ export function TestCaseDetail() {
   const handleDelete = async () => {
     if (!id || !projectId || !org) return;
     await testCaseService.remove(org.organizationId, projectId, id);
-    navigate("/test-cases");
+    navigate('/test-cases');
   };
 
   const toggleTag = (tagId: string) => {
@@ -197,11 +207,19 @@ export function TestCaseDetail() {
   };
 
   if (loading) {
-    return <div className="page-test-suites"><p className="ts-empty">Loading...</p></div>;
+    return (
+      <div className="page-test-suites">
+        <p className="ts-empty">Loading...</p>
+      </div>
+    );
   }
 
   if (!tc) {
-    return <div className="page-test-suites"><p className="ts-empty">Test case not found.</p></div>;
+    return (
+      <div className="page-test-suites">
+        <p className="ts-empty">Test case not found.</p>
+      </div>
+    );
   }
 
   return (
@@ -209,28 +227,43 @@ export function TestCaseDetail() {
       {/* Header */}
       <div className="tc-detail-header">
         <div className="tc-detail-header-left">
-          <Button variant="ghost" className="tc-back-btn" onClick={() => navigate("/test-cases")}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <Button variant="ghost" className="tc-back-btn" onClick={() => navigate('/test-cases')}>
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <polyline points="15 18 9 12 15 6" />
             </svg>
             Back
           </Button>
           {editing ? (
-            <input
-              className="tc-detail-title-input"
-              type="text"
-              autoFocus
-              {...register("title")}
-            />
+            <input className="tc-detail-title-input" type="text" autoFocus {...register('title')} />
           ) : (
             <h1 className="tc-detail-title">
               {tc.title}
-              <span style={{ marginLeft: 12, display: "inline-flex", gap: 6, verticalAlign: "middle" }}>
-                <Chip variant={typeChipVariant[tc.testCaseType] ?? "neutral"}>
-                  {TEST_CASE_TYPES.find((t) => t.value === tc.testCaseType)?.label ?? tc.testCaseType}
+              <span
+                style={{ marginLeft: 12, display: 'inline-flex', gap: 6, verticalAlign: 'middle' }}
+              >
+                <Chip variant={typeChipVariant[tc.testCaseType] ?? 'neutral'}>
+                  {TEST_CASE_TYPES.find((t) => t.value === tc.testCaseType)?.label ??
+                    tc.testCaseType}
                 </Chip>
-                {tc.status === "draft" && <Chip variant="warn" dot>Draft</Chip>}
-                {tc.status === "active" && <Chip variant="pass" dot>Active</Chip>}
+                {tc.status === 'draft' && (
+                  <Chip variant="warn" dot>
+                    Draft
+                  </Chip>
+                )}
+                {tc.status === 'active' && (
+                  <Chip variant="pass" dot>
+                    Active
+                  </Chip>
+                )}
               </span>
             </h1>
           )}
@@ -242,20 +275,30 @@ export function TestCaseDetail() {
               variant="teal"
               disabled={starting || !!activeRunId || !!activeBatchId}
               onClick={startRun}
-              title={activeRunId || activeBatchId ? "A run is already in progress" : "Run this voice test case"}
+              title={
+                activeRunId || activeBatchId
+                  ? 'A run is already in progress'
+                  : 'Run this voice test case'
+              }
             >
-              {starting ? "Starting…" : activeRunId || activeBatchId ? "Running…" : "Run"}
+              {starting ? 'Starting…' : activeRunId || activeBatchId ? 'Running…' : 'Run'}
             </Button>
           )}
           {deleteConfirm ? (
             <div className="ts-delete-confirm">
-              <Button variant="danger" size="sm" onClick={handleDelete}>Confirm</Button>
-              <Button variant="ghost" size="sm" onClick={() => setDeleteConfirm(false)}>Cancel</Button>
+              <Button variant="danger" size="sm" onClick={handleDelete}>
+                Confirm
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setDeleteConfirm(false)}>
+                Cancel
+              </Button>
             </div>
           ) : (
-            <Button variant="danger" onClick={() => setDeleteConfirm(true)}>Delete</Button>
+            <Button variant="danger" onClick={() => setDeleteConfirm(true)}>
+              Delete
+            </Button>
           )}
-          {tc.status === "draft" && !editing && (
+          {tc.status === 'draft' && !editing && (
             <Button
               variant="teal"
               onClick={async () => {
@@ -267,7 +310,7 @@ export function TestCaseDetail() {
                   data: tc.data,
                   expectedResults: tc.expectedResults,
                   tagIds: selectedTagIds,
-                  status: "active",
+                  status: 'active',
                 });
                 setTc(updated);
               }}
@@ -277,12 +320,11 @@ export function TestCaseDetail() {
           )}
           {editing ? (
             <>
-              <Button variant="ghost" onClick={cancelEdit}>Cancel</Button>
-              <Button
-                onClick={handleSubmit(onSubmit)}
-                disabled={isSubmitting || !isValid}
-              >
-                {isSubmitting ? "Saving..." : "Save"}
+              <Button variant="ghost" onClick={cancelEdit}>
+                Cancel
+              </Button>
+              <Button onClick={handleSubmit(onSubmit)} disabled={isSubmitting || !isValid}>
+                {isSubmitting ? 'Saving...' : 'Save'}
               </Button>
             </>
           ) : (
@@ -296,17 +338,19 @@ export function TestCaseDetail() {
         {editing ? (
           <>
             <div style={{ marginBottom: 12 }}>
-              <label className="tc-detail-label" style={{ marginBottom: 6 }}>Type</label>
+              <label className="tc-detail-label" style={{ marginBottom: 6 }}>
+                Type
+              </label>
               <div className="tag-picker">
                 {TEST_CASE_TYPES.map((t) => (
                   <button
                     key={t.value}
                     type="button"
-                    className={`chip-btn${selectedType === t.value ? " selected" : ""}`}
+                    className={`chip-btn${selectedType === t.value ? ' selected' : ''}`}
                     onClick={() => {
                       setSelectedType(t.value);
-                      if (t.value !== "chat" && t.value !== "voice") {
-                        setSelectedBotConnectionId("");
+                      if (t.value !== 'chat' && t.value !== 'voice') {
+                        setSelectedBotConnectionId('');
                       }
                     }}
                   >
@@ -317,14 +361,28 @@ export function TestCaseDetail() {
             </div>
             {showBotConnectionPicker && (
               <div style={{ marginBottom: 12 }}>
-                <label className="tc-detail-label" style={{ marginBottom: 6 }}>Bot Connection</label>
+                <label className="tc-detail-label" style={{ marginBottom: 6 }}>
+                  Bot Connection
+                </label>
                 {filteredBotConnections.length === 0 ? (
                   <span className="ts-form-hint">No {selectedType} bot connections available.</span>
                 ) : (
                   <Select
-                    value={selectedBotConnectionId ? { value: selectedBotConnectionId, label: filteredBotConnections.find((bc) => bc.id === selectedBotConnectionId)?.name ?? "" } : null}
-                    onChange={(opt) => setSelectedBotConnectionId(opt?.value ?? "")}
-                    options={filteredBotConnections.map((bc) => ({ value: bc.id, label: `${bc.name} (${bc.provider})` }))}
+                    value={
+                      selectedBotConnectionId
+                        ? {
+                            value: selectedBotConnectionId,
+                            label:
+                              filteredBotConnections.find((bc) => bc.id === selectedBotConnectionId)
+                                ?.name ?? '',
+                          }
+                        : null
+                    }
+                    onChange={(opt) => setSelectedBotConnectionId(opt?.value ?? '')}
+                    options={filteredBotConnections.map((bc) => ({
+                      value: bc.id,
+                      label: `${bc.name} (${bc.provider})`,
+                    }))}
                     placeholder={`Select ${selectedType} bot connection`}
                   />
                 )}
@@ -339,7 +397,7 @@ export function TestCaseDetail() {
                     <button
                       key={tag.id}
                       type="button"
-                      className={`chip-btn${selectedTagIds.includes(tag.id) ? " selected" : ""}`}
+                      className={`chip-btn${selectedTagIds.includes(tag.id) ? ' selected' : ''}`}
                       onClick={() => toggleTag(tag.id)}
                     >
                       {tag.name}
@@ -354,12 +412,14 @@ export function TestCaseDetail() {
             {(tc.tags?.length ?? 0) > 0 && (
               <div className="ts-card-tags">
                 {(tc.tags ?? []).map((tag) => (
-                  <span key={tag.id} className="tag-badge">{tag.name}</span>
+                  <span key={tag.id} className="tag-badge">
+                    {tag.name}
+                  </span>
                 ))}
               </div>
             )}
             {tc.botConnectionName && (
-              <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 4 }}>
+              <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 4 }}>
                 Bot: {tc.botConnectionName}
               </div>
             )}
@@ -369,7 +429,10 @@ export function TestCaseDetail() {
           Suite: {tc.testSuiteName} · Created {new Date(tc.createdAt).toLocaleDateString()}
           {tc.createdByName && ` by ${tc.createdByName}`}
           {tc.updatedByName && (
-            <> · Updated {new Date(tc.updatedAt).toLocaleDateString()} by {tc.updatedByName}</>
+            <>
+              {' '}
+              · Updated {new Date(tc.updatedAt).toLocaleDateString()} by {tc.updatedByName}
+            </>
           )}
         </div>
       </div>
@@ -377,10 +440,10 @@ export function TestCaseDetail() {
       {runError && (
         <div
           style={{
-            padding: "8px 12px",
+            padding: '8px 12px',
             borderRadius: 8,
-            background: "var(--red-bg)",
-            color: "var(--red)",
+            background: 'var(--red-bg)',
+            color: 'var(--red)',
             marginBottom: 12,
             fontSize: 13,
           }}
@@ -398,20 +461,24 @@ export function TestCaseDetail() {
       )}
 
       {/* Pre Condition */}
-      <div className="tc-detail-section" style={{ marginBottom: "16px" }}>
+      <div className="tc-detail-section" style={{ marginBottom: '16px' }}>
         <label className="tc-detail-label">Pre Condition</label>
         {editing ? (
           <textarea
             className="tc-detail-textarea"
             placeholder="Enter pre conditions..."
-            {...register("preCondition")}
+            {...register('preCondition')}
           />
         ) : (
           <div className="tc-detail-content">
-            {tc.preCondition || <span className="tc-detail-placeholder">No pre conditions defined.</span>}
+            {tc.preCondition || (
+              <span className="tc-detail-placeholder">No pre conditions defined.</span>
+            )}
           </div>
         )}
-        {errors.preCondition && <span className="ts-form-error">{errors.preCondition.message}</span>}
+        {errors.preCondition && (
+          <span className="ts-form-error">{errors.preCondition.message}</span>
+        )}
       </div>
 
       {/* Content grid: Instructions (left tall), Expected Results + Data (right stacked) */}
@@ -423,11 +490,13 @@ export function TestCaseDetail() {
               <textarea
                 className="tc-detail-textarea tc-detail-textarea-tall"
                 placeholder="Enter instructions..."
-                {...register("testSteps")}
+                {...register('testSteps')}
               />
             ) : (
               <div className="tc-detail-content tc-detail-content-tall">
-                {tc.testSteps || <span className="tc-detail-placeholder">No instructions defined.</span>}
+                {tc.testSteps || (
+                  <span className="tc-detail-placeholder">No instructions defined.</span>
+                )}
               </div>
             )}
             {errors.testSteps && <span className="ts-form-error">{errors.testSteps.message}</span>}
@@ -440,14 +509,18 @@ export function TestCaseDetail() {
               <textarea
                 className="tc-detail-textarea"
                 placeholder="Enter expected results..."
-                {...register("expectedResults")}
+                {...register('expectedResults')}
               />
             ) : (
               <div className="tc-detail-content">
-                {tc.expectedResults || <span className="tc-detail-placeholder">No expected results defined.</span>}
+                {tc.expectedResults || (
+                  <span className="tc-detail-placeholder">No expected results defined.</span>
+                )}
               </div>
             )}
-            {errors.expectedResults && <span className="ts-form-error">{errors.expectedResults.message}</span>}
+            {errors.expectedResults && (
+              <span className="ts-form-error">{errors.expectedResults.message}</span>
+            )}
           </div>
           <div className="tc-detail-section">
             <label className="tc-detail-label">Data</label>
@@ -455,7 +528,7 @@ export function TestCaseDetail() {
               <textarea
                 className="tc-detail-textarea"
                 placeholder="Enter test data..."
-                {...register("data")}
+                {...register('data')}
               />
             ) : (
               <div className="tc-detail-content">

@@ -1,5 +1,5 @@
-import type { BotConnection } from "@coglity/shared";
-import { api } from "./api";
+import type { BotConnection } from '@coglity/shared';
+import { api } from './api';
 
 export interface BotConnectionWithUser extends BotConnection {
   projectName?: string | null;
@@ -9,8 +9,8 @@ export interface BotConnectionWithUser extends BotConnection {
 
 export interface CreateBotConnectionPayload {
   name: string;
-  botType: "voice" | "chat";
-  provider: "dialin" | "websocket" | "http";
+  botType: 'voice' | 'chat';
+  provider: 'dialin' | 'websocket' | 'http';
   config: Record<string, unknown>;
   description: string;
 }
@@ -34,27 +34,49 @@ export interface BotConnectionListParams {
 }
 
 export const botConnectionService = {
-  async getAll(orgId: string, projectIds: string[], params?: BotConnectionListParams): Promise<PaginatedResponse<BotConnectionWithUser>> {
-    if (!orgId || projectIds.length === 0) return { data: [], total: 0, page: 1, limit: params?.limit ?? 10 };
+  async getAll(
+    orgId: string,
+    projectIds: string[],
+    params?: BotConnectionListParams,
+  ): Promise<PaginatedResponse<BotConnectionWithUser>> {
+    if (!orgId || projectIds.length === 0)
+      return { data: [], total: 0, page: 1, limit: params?.limit ?? 10 };
     const { data } = await api.get<PaginatedResponse<BotConnectionWithUser>>(
       `/organizations/${orgId}/bot-connections`,
-      { params: { ...params, projectIds: projectIds.join(",") } },
+      { params: { ...params, projectIds: projectIds.join(',') } },
     );
     return data;
   },
 
   async getById(orgId: string, projectId: string, id: string): Promise<BotConnectionWithUser> {
-    const { data } = await api.get<BotConnectionWithUser>(`/organizations/${orgId}/projects/${projectId}/bot-connections/${id}`);
+    const { data } = await api.get<BotConnectionWithUser>(
+      `/organizations/${orgId}/projects/${projectId}/bot-connections/${id}`,
+    );
     return data;
   },
 
-  async create(orgId: string, projectId: string, payload: CreateBotConnectionPayload): Promise<BotConnectionWithUser> {
-    const { data } = await api.post<BotConnectionWithUser>(`/organizations/${orgId}/projects/${projectId}/bot-connections`, payload);
+  async create(
+    orgId: string,
+    projectId: string,
+    payload: CreateBotConnectionPayload,
+  ): Promise<BotConnectionWithUser> {
+    const { data } = await api.post<BotConnectionWithUser>(
+      `/organizations/${orgId}/projects/${projectId}/bot-connections`,
+      payload,
+    );
     return data;
   },
 
-  async update(orgId: string, projectId: string, id: string, payload: UpdateBotConnectionPayload): Promise<BotConnectionWithUser> {
-    const { data } = await api.put<BotConnectionWithUser>(`/organizations/${orgId}/projects/${projectId}/bot-connections/${id}`, payload);
+  async update(
+    orgId: string,
+    projectId: string,
+    id: string,
+    payload: UpdateBotConnectionPayload,
+  ): Promise<BotConnectionWithUser> {
+    const { data } = await api.put<BotConnectionWithUser>(
+      `/organizations/${orgId}/projects/${projectId}/bot-connections/${id}`,
+      payload,
+    );
     return data;
   },
 

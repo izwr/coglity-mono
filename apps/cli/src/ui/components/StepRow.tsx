@@ -21,20 +21,21 @@ export function StepRow({ step }: StepRowProps) {
         <Text dimColor={step.status === 'pending'}>
           {step.index + 1}. {step.text}
         </Text>
-        {step.durationMs !== null && (
-          <Text dimColor>{formatMs(step.durationMs)}</Text>
-        )}
+        {step.durationMs !== null && <Text dimColor>{formatMs(step.durationMs)}</Text>}
       </Box>
       {step.status === 'thinking' && (
         <Box marginLeft={3}>
           <ThinkingDots />
         </Box>
       )}
-      {lastAction && step.status !== 'pending' && step.status !== 'ok' && step.status !== 'error' && (
-        <Box marginLeft={3}>
-          <ActionBadge action={lastAction} />
-        </Box>
-      )}
+      {lastAction &&
+        step.status !== 'pending' &&
+        step.status !== 'ok' &&
+        step.status !== 'error' && (
+          <Box marginLeft={3}>
+            <ActionBadge action={lastAction} />
+          </Box>
+        )}
       {step.error && (
         <Box marginLeft={3}>
           <Text color={colors.fail}>{step.error}</Text>
@@ -46,20 +47,30 @@ export function StepRow({ step }: StepRowProps) {
 
 function statusIcon(status: StepState['status']): string {
   switch (status) {
-    case 'pending': return icons.pending;
-    case 'running': return icons.running;
-    case 'thinking': return icons.running;
-    case 'ok': return icons.ok;
-    case 'error': return icons.error;
+    case 'pending':
+      return icons.pending;
+    case 'running':
+      return icons.running;
+    case 'thinking':
+      return icons.running;
+    case 'ok':
+      return icons.ok;
+    case 'error':
+      return icons.error;
   }
 }
 
 function statusColor(status: StepState['status']): string {
   switch (status) {
-    case 'pending': return colors.dim;
-    case 'running': return colors.brand;
-    case 'thinking': return colors.brand;
-    case 'ok': return colors.pass;
-    case 'error': return colors.fail;
+    case 'pending':
+      return colors.dim;
+    case 'running':
+      return colors.brand;
+    case 'thinking':
+      return colors.brand;
+    case 'ok':
+      return colors.pass;
+    case 'error':
+      return colors.fail;
   }
 }

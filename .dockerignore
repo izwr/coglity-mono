@@ -12,5 +12,6 @@
 .env
 .env.*
 !.env.example
+../coglity-executor/.debug
 apps/iac
 !apps/iac/package.json

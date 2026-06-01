@@ -1,6 +1,6 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { useLocation } from "react-router-dom";
-import { useAuth, type OrgMembership } from "./AuthContext";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
+import { useAuth, type OrgMembership } from './AuthContext';
 
 interface OrgContextType {
   org: OrgMembership | null;
@@ -9,7 +9,7 @@ interface OrgContextType {
 
 const OrgContext = createContext<OrgContextType | null>(null);
 
-const STORAGE_KEY = "coglity.currentOrgId";
+const STORAGE_KEY = 'coglity.currentOrgId';
 const ORG_PATH_RE = /^\/orgs\/([^/]+)/;
 
 function orgIdFromPath(pathname: string): string | null {
@@ -23,7 +23,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
   const urlOrgId = orgIdFromPath(location.pathname);
 
   const [currentOrgId, setCurrentOrgId] = useState<string | null>(() => {
-    if (typeof window !== "undefined") return window.localStorage.getItem(STORAGE_KEY);
+    if (typeof window !== 'undefined') return window.localStorage.getItem(STORAGE_KEY);
     return null;
   });
 
@@ -63,6 +63,6 @@ export function OrgProvider({ children }: { children: ReactNode }) {
 
 export function useCurrentOrg() {
   const ctx = useContext(OrgContext);
-  if (!ctx) throw new Error("useCurrentOrg must be used within OrgProvider");
+  if (!ctx) throw new Error('useCurrentOrg must be used within OrgProvider');
   return ctx;
 }

@@ -48,10 +48,7 @@ export async function closeBrowser(session: BrowserSession): Promise<void> {
   await session.browser.close();
 }
 
-export async function executeAction(
-  page: Page,
-  action: PlaywrightAction,
-): Promise<string> {
+export async function executeAction(page: Page, action: PlaywrightAction): Promise<string> {
   try {
     switch (action.tool) {
       case 'click': {

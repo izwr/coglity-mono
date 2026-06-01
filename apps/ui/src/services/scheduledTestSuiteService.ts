@@ -1,4 +1,4 @@
-import { api } from "./api";
+import { api } from './api';
 
 export interface ScheduledTestSuiteListItem {
   id: string;
@@ -24,7 +24,7 @@ export interface ScheduledTestCaseDTO {
   assignedTo: string | null;
   assignedToName: string | null;
   actualResults: string;
-  state: "not_started" | "in_progress" | "passed" | "failed" | "blocked" | "skipped";
+  state: 'not_started' | 'in_progress' | 'passed' | 'failed' | 'blocked' | 'skipped';
   linkedBugIds: string[];
   linkedBugs: { id: string; title: string }[];
   createdAt: string;
@@ -73,10 +73,11 @@ export const scheduledTestSuiteService = {
     projectIds: string[],
     params?: { page?: number; limit?: number; sortBy?: string; sortDir?: string },
   ): Promise<PaginatedResponse<ScheduledTestSuiteListItem>> {
-    if (!orgId || projectIds.length === 0) return { data: [], total: 0, page: 1, limit: params?.limit ?? 10 };
+    if (!orgId || projectIds.length === 0)
+      return { data: [], total: 0, page: 1, limit: params?.limit ?? 10 };
     const { data } = await api.get<PaginatedResponse<ScheduledTestSuiteListItem>>(
       `/organizations/${orgId}/scheduled-test-suites`,
-      { params: { ...params, projectIds: projectIds.join(",") } },
+      { params: { ...params, projectIds: projectIds.join(',') } },
     );
     return data;
   },
@@ -88,7 +89,11 @@ export const scheduledTestSuiteService = {
     return data;
   },
 
-  async create(orgId: string, projectId: string, payload: CreateScheduledTestSuitePayload): Promise<ScheduledTestSuiteListItem> {
+  async create(
+    orgId: string,
+    projectId: string,
+    payload: CreateScheduledTestSuitePayload,
+  ): Promise<ScheduledTestSuiteListItem> {
     const { data } = await api.post<ScheduledTestSuiteListItem>(
       `/organizations/${orgId}/projects/${projectId}/scheduled-test-suites`,
       payload,

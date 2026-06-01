@@ -1,11 +1,6 @@
 import path from 'node:path';
 import type { ParsedSpec } from '../spec/types';
-import type {
-  RunOptions,
-  RunResult,
-  RunEventEmitter,
-  StepResult,
-} from './events';
+import type { RunOptions, RunResult, RunEventEmitter, StepResult } from './events';
 import { launchBrowser, closeBrowser, executeAction } from './playwright';
 import { takeSnapshot } from './snapshot';
 import { finalizeRun } from './recorder';
@@ -15,10 +10,7 @@ import { getClient } from '../agents/shared/client';
 import { createTraceWriter } from '../agents/shared/trace';
 import { isRetryable } from '../agents/shared/errors';
 import { ensureRunDir, generateRunId } from '../lib/paths';
-import {
-  DEFAULT_PLANNER_MODEL,
-  DEFAULT_JUDGE_MODEL,
-} from '../lib/config';
+import { DEFAULT_PLANNER_MODEL, DEFAULT_JUDGE_MODEL } from '../lib/config';
 
 export async function runSpec(
   spec: ParsedSpec,
@@ -81,11 +73,7 @@ export async function runSpec(
     // Judge phase
     onEvent({ kind: 'judge.start' });
 
-    const finalSnapshot = await takeSnapshot(
-      session.page,
-      snapshotsDir,
-      'final',
-    );
+    const finalSnapshot = await takeSnapshot(session.page, snapshotsDir, 'final');
 
     const judgeResult = await judgeAgent.run(
       {

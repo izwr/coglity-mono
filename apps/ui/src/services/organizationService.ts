@@ -1,10 +1,10 @@
-import { api } from "./api";
+import { api } from './api';
 
 export interface OrgListItem {
   id: string;
   name: string;
-  orgRole: "super_admin" | "member";
-  joinedVia: "creation" | "invite";
+  orgRole: 'super_admin' | 'member';
+  joinedVia: 'creation' | 'invite';
 }
 
 export interface OrgMemberRow {
@@ -12,8 +12,8 @@ export interface OrgMemberRow {
   email: string;
   displayName: string;
   avatarUrl: string | null;
-  orgRole: "super_admin" | "member";
-  joinedVia: "creation" | "invite";
+  orgRole: 'super_admin' | 'member';
+  joinedVia: 'creation' | 'invite';
   createdAt: string;
 }
 
@@ -22,19 +22,22 @@ export interface OrgDetail {
   name: string;
   createdAt: string;
   updatedAt: string;
-  orgRole: "super_admin" | "member";
+  orgRole: 'super_admin' | 'member';
 }
 
 export const organizationService = {
   async listMine(): Promise<OrgListItem[]> {
-    const { data } = await api.get("/organizations");
+    const { data } = await api.get('/organizations');
     return data.data;
   },
   async create(body: {
     name: string;
     firstProject: { name: string; description?: string };
-  }): Promise<{ organization: { id: string; name: string }; project: { id: string; name: string } }> {
-    const { data } = await api.post("/organizations", body);
+  }): Promise<{
+    organization: { id: string; name: string };
+    project: { id: string; name: string };
+  }> {
+    const { data } = await api.post('/organizations', body);
     return data;
   },
   async get(orgId: string): Promise<OrgDetail> {
@@ -52,7 +55,7 @@ export const organizationService = {
     const { data } = await api.get(`/organizations/${orgId}/members`);
     return data.data;
   },
-  async updateMemberRole(orgId: string, userId: string, orgRole: "super_admin" | "member") {
+  async updateMemberRole(orgId: string, userId: string, orgRole: 'super_admin' | 'member') {
     await api.patch(`/organizations/${orgId}/members/${userId}`, { orgRole });
   },
   async removeMember(orgId: string, userId: string) {

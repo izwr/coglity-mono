@@ -1,5 +1,5 @@
-import { randomBytes } from "node:crypto";
-import { and, eq, sql, count } from "drizzle-orm";
+import { randomBytes } from 'node:crypto';
+import { and, eq, sql, count } from 'drizzle-orm';
 import {
   organizationMembers,
   projectMembers,
@@ -9,13 +9,17 @@ import {
   type OrgRole,
   type ProjectRole,
   type RbacAuditAction,
-} from "@coglity/shared/schema";
-import { db } from "../db";
+} from '@coglity/shared/schema';
+import { db } from '../db';
 
-export type EffectiveProjectRole = "super_admin" | ProjectRole | null;
+export type EffectiveProjectRole = 'super_admin' | ProjectRole | null;
 
 class RbacError extends Error {
-  constructor(public status: number, public code: string, message?: string) {
+  constructor(
+    public status: number,
+    public code: string,
+    message?: string,
+  ) {
     super(message ?? code);
   }
 }
@@ -63,7 +67,10 @@ export function invalidateProjectCache(userId: string, projectId: string): void 
   }
 }
 
-export async function resolveOrgRole(userId: string, organizationId: string): Promise<OrgRole | null> {
+export async function resolveOrgRole(
+  userId: string,
+  organizationId: string,
+): Promise<OrgRole | null> {
   const key = `${userId}:${organizationId}`;
   const cached = cacheGet(orgRoleCache, key);
   if (cached !== undefined) return cached;
@@ -71,7 +78,12 @@ export async function resolveOrgRole(userId: string, organizationId: string): Pr
   const [row] = await db
     .select({ orgRole: organizationMembers.orgRole })
     .from(organizationMembers)
-    .where(and(eq(organizationMembers.userId, userId), eq(organizationMembers.organizationId, organizationId)))
+    .where(
+      and(
+        eq(organizationMembers.userId, userId),
+        eq(organizationMembers.organizationId, organizationId),
+      ),
+    )
     .limit(1);
 
   const role = row?.orgRole ?? null;
@@ -89,9 +101,9 @@ export async function resolveProjectRole(
   if (cached !== undefined) return cached;
 
   const orgRole = await resolveOrgRole(userId, organizationId);
-  if (orgRole === "super_admin") {
-    cacheSet(projectRoleCache, key, "super_admin");
-    return "super_admin";
+  if (orgRole === 'super_admin') {
+    cacheSet(projectRoleCache, key, 'super_admin');
+    return 'super_admin';
   }
   if (orgRole === null) {
     cacheSet(projectRoleCache, key, null);
@@ -109,7 +121,10 @@ export async function resolveProjectRole(
   return role;
 }
 
-export async function projectBelongsToOrg(projectId: string, organizationId: string): Promise<boolean> {
+export async function projectBelongsToOrg(
+  projectId: string,
+  organizationId: string,
+): Promise<boolean> {
   const [row] = await db
     .select({ id: projects.id })
     .from(projects)
@@ -118,43 +133,63 @@ export async function projectBelongsToOrg(projectId: string, organizationId: str
   return !!row;
 }
 
-export const PROJECT_ROLE_RANK: Record<"read" | "writer" | "admin" | "super_admin", number> = {
+export const PROJECT_ROLE_RANK: Record<'read' | 'writer' | 'admin' | 'super_admin', number> = {
   read: 1,
   writer: 2,
   admin: 3,
   super_admin: 4,
 };
 
-export async function ensureNotLastSuperAdmin(organizationId: string, targetUserId: string): Promise<void> {
+export async function ensureNotLastSuperAdmin(
+  organizationId: string,
+  targetUserId: string,
+): Promise<void> {
   const [row] = await db
     .select({ c: count() })
     .from(organizationMembers)
-    .where(and(eq(organizationMembers.organizationId, organizationId), eq(organizationMembers.orgRole, "super_admin")));
+    .where(
+      and(
+        eq(organizationMembers.organizationId, organizationId),
+        eq(organizationMembers.orgRole, 'super_admin'),
+      ),
+    );
   if ((row?.c ?? 0) <= 1) {
     const [target] = await db
       .select({ orgRole: organizationMembers.orgRole })
       .from(organizationMembers)
-      .where(and(eq(organizationMembers.organizationId, organizationId), eq(organizationMembers.userId, targetUserId)))
+      .where(
+        and(
+          eq(organizationMembers.organizationId, organizationId),
+          eq(organizationMembers.userId, targetUserId),
+        ),
+      )
       .limit(1);
-    if (target?.orgRole === "super_admin") {
-      throw new RbacError(409, "LAST_SUPER_ADMIN", "Cannot demote the last super admin of an organization");
+    if (target?.orgRole === 'super_admin') {
+      throw new RbacError(
+        409,
+        'LAST_SUPER_ADMIN',
+        'Cannot demote the last super admin of an organization',
+      );
     }
   }
 }
 
-export async function ensureNotLastProjectAdmin(projectId: string, targetUserId: string): Promise<void> {
+export async function ensureNotLastProjectAdmin(
+  projectId: string,
+  targetUserId: string,
+): Promise<void> {
   const [row] = await db
     .select({ c: count() })
     .from(projectMembers)
-    .where(and(eq(projectMembers.projectId, projectId), eq(projectMembers.role, "admin")));
+    .where(and(eq(projectMembers.projectId, projectId), eq(projectMembers.role, 'admin')));
   if ((row?.c ?? 0) <= 1) {
     const [target] = await db
       .select({ role: projectMembers.role })
       .from(projectMembers)
       .where(and(eq(projectMembers.projectId, projectId), eq(projectMembers.userId, targetUserId)))
       .limit(1);
-    if (target?.role === "admin") {
-      throw new RbacError(409, "LAST_PROJECT_ADMIN", "Cannot remove the last admin of a project");
+    if (target?.role === 'admin') {
+      throw new RbacError(409, 'LAST_PROJECT_ADMIN', 'Cannot remove the last admin of a project');
     }
   }
 }
@@ -182,7 +217,7 @@ export async function auditRbac(opts: {
 }
 
 export function generateInviteToken(): string {
-  return randomBytes(32).toString("base64url");
+  return randomBytes(32).toString('base64url');
 }
 
 export async function createInvite(opts: {
@@ -211,7 +246,7 @@ export async function createInvite(opts: {
     actorUserId: opts.createdBy,
     organizationId: opts.organizationId,
     projectId: opts.projectId,
-    action: "create_invite",
+    action: 'create_invite',
     toRole: opts.projectRole,
     metadata: { email: opts.email.toLowerCase().trim(), inviteId: row.id },
   });
@@ -238,7 +273,11 @@ export async function consumeInvite(opts: {
     .returning();
 
   if (updated.length === 0) {
-    throw new RbacError(410, "INVITE_INVALID", "This invite is invalid, expired, or not addressed to you");
+    throw new RbacError(
+      410,
+      'INVITE_INVALID',
+      'This invite is invalid, expired, or not addressed to you',
+    );
   }
 
   const invite = updated[0];
@@ -248,8 +287,8 @@ export async function consumeInvite(opts: {
     .values({
       organizationId: invite.organizationId,
       userId: opts.userId,
-      orgRole: "member",
-      joinedVia: "invite",
+      orgRole: 'member',
+      joinedVia: 'invite',
     })
     .onConflictDoNothing();
 
@@ -273,7 +312,7 @@ export async function consumeInvite(opts: {
     targetUserId: opts.userId,
     organizationId: invite.organizationId,
     projectId: invite.projectId,
-    action: "consume_invite",
+    action: 'consume_invite',
     toRole: invite.projectRole,
     metadata: { inviteId: invite.id },
   });

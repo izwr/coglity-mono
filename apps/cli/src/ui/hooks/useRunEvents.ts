@@ -106,11 +106,7 @@ function reducer(state: RunState, event: RunEvent): RunState {
   }
 }
 
-function updateStep(
-  steps: StepState[],
-  index: number,
-  patch: Partial<StepState>,
-): StepState[] {
+function updateStep(steps: StepState[], index: number, patch: Partial<StepState>): StepState[] {
   return steps.map((s) => (s.index === index ? { ...s, ...patch } : s));
 }
 

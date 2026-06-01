@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
 export type Crumb = { label: string; to?: string };
 
@@ -20,7 +20,7 @@ export function BreadcrumbsProvider({ children }: { children: ReactNode }) {
 
 export function useBreadcrumbs() {
   const ctx = useContext(BreadcrumbsContext);
-  if (!ctx) throw new Error("useBreadcrumbs must be used within BreadcrumbsProvider");
+  if (!ctx) throw new Error('useBreadcrumbs must be used within BreadcrumbsProvider');
   return ctx;
 }
 

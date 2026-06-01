@@ -1,13 +1,17 @@
-import { PageHead } from "../../components/ui/PageHead";
-import { useSetBreadcrumbs } from "../../context/BreadcrumbsContext";
+import { PageHead } from '../../components/ui/PageHead';
+import { useSetBreadcrumbs } from '../../context/BreadcrumbsContext';
 
 export function PreferencesPrompts() {
-  useSetBreadcrumbs([{ label: "Preferences" }, { label: "Prompts" }]);
+  useSetBreadcrumbs([{ label: 'Preferences' }, { label: 'Prompts' }]);
 
   return (
     <div className="page">
       <PageHead
-        title={<><em className="italic-teal">Prompts</em></>}
+        title={
+          <>
+            <em className="italic-teal">Prompts</em>
+          </>
+        }
         subtitle="Customize the prompts used when generating test cases and triaging bugs."
       />
 

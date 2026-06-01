@@ -1,5 +1,5 @@
-import * as pulumi from "@pulumi/pulumi";
-import * as azure from "@pulumi/azure-native";
+import * as pulumi from '@pulumi/pulumi';
+import * as azure from '@pulumi/azure-native';
 
 export interface UiArgs {
   resourceGroupName: pulumi.Input<string>;
@@ -16,22 +16,22 @@ export interface UiArgs {
 }
 
 export function createUi(args: UiArgs) {
-  const app = new azure.app.ContainerApp("ui", {
+  const app = new azure.app.ContainerApp('ui', {
     resourceGroupName: args.resourceGroupName,
-    containerAppName: "coglity-ui",
+    containerAppName: 'coglity-ui',
     location: args.location,
     managedEnvironmentId: args.environmentId,
     configuration: {
-      activeRevisionsMode: "Single",
+      activeRevisionsMode: 'Single',
       ingress: {
         external: true,
         targetPort: 80,
-        transport: "auto",
+        transport: 'auto',
         customDomains: [
           {
-            name: "studio.coglity.com",
+            name: 'studio.coglity.com',
             certificateId: args.uiCertificateId,
-            bindingType: "SniEnabled",
+            bindingType: 'SniEnabled',
           },
         ],
       },
@@ -45,12 +45,12 @@ export function createUi(args: UiArgs) {
     template: {
       containers: [
         {
-          name: "ui",
+          name: 'ui',
           image: pulumi.interpolate`${args.acrLoginServer}/coglity-ui:${args.imageTag}`,
-          resources: { cpu: 0.25, memory: "0.5Gi" },
+          resources: { cpu: 0.25, memory: '0.5Gi' },
           env: [
             {
-              name: "BACKEND_URL",
+              name: 'BACKEND_URL',
               value: pulumi.interpolate`http://${args.backendFqdn}`,
             },
           ],
@@ -59,7 +59,7 @@ export function createUi(args: UiArgs) {
       scale: { minReplicas: 1, maxReplicas: 2 },
     },
     identity: {
-      type: "UserAssigned",
+      type: 'UserAssigned',
       userAssignedIdentities: [args.acrIdentityId],
     },
   });

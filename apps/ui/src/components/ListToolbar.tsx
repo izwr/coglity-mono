@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
-import type { Tag } from "@coglity/shared";
-import type { TestSuiteWithTags } from "../services/testSuiteService";
-import { Select } from "./ui/Select";
+import { useEffect, useState } from 'react';
+import type { Tag } from '@coglity/shared';
+import type { TestSuiteWithTags } from '../services/testSuiteService';
+import { Select } from './ui/Select';
 
-type SortDir = "asc" | "desc";
+type SortDir = 'asc' | 'desc';
 
 interface SortOption {
   label: string;
@@ -33,12 +33,19 @@ export interface AppliedFilters {
   status?: string;
 }
 
-export function ListToolbar({ searchPlaceholder, tags, sortOptions, onApply, suites, statusToggle }: ListToolbarProps) {
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
-  const [pendingTagId, setPendingTagId] = useState("");
-  const [pendingSuiteId, setPendingSuiteId] = useState("");
-  const [pendingStatus, setPendingStatus] = useState("");
+export function ListToolbar({
+  searchPlaceholder,
+  tags,
+  sortOptions,
+  onApply,
+  suites,
+  statusToggle,
+}: ListToolbarProps) {
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
+  const [pendingTagId, setPendingTagId] = useState('');
+  const [pendingSuiteId, setPendingSuiteId] = useState('');
+  const [pendingStatus, setPendingStatus] = useState('');
   const [pendingSort, setPendingSort] = useState(`${sortOptions[0].field}-${sortOptions[0].dir}`);
 
   // Debounce search
@@ -51,7 +58,7 @@ export function ListToolbar({ searchPlaceholder, tags, sortOptions, onApply, sui
 
   // Auto-apply on search change
   useEffect(() => {
-    const [field, dir] = pendingSort.split("-") as [string, SortDir];
+    const [field, dir] = pendingSort.split('-') as [string, SortDir];
     onApply({
       search,
       tagId: pendingTagId,
@@ -63,7 +70,7 @@ export function ListToolbar({ searchPlaceholder, tags, sortOptions, onApply, sui
   }, [search]);
 
   const handleApply = () => {
-    const [field, dir] = pendingSort.split("-") as [string, SortDir];
+    const [field, dir] = pendingSort.split('-') as [string, SortDir];
     onApply({
       search,
       tagId: pendingTagId,
@@ -86,8 +93,15 @@ export function ListToolbar({ searchPlaceholder, tags, sortOptions, onApply, sui
       {suites && (
         <Select
           compact
-          value={pendingSuiteId ? { value: pendingSuiteId, label: suites.find((s) => s.id === pendingSuiteId)?.name ?? "" } : null}
-          onChange={(opt) => setPendingSuiteId(opt?.value ?? "")}
+          value={
+            pendingSuiteId
+              ? {
+                  value: pendingSuiteId,
+                  label: suites.find((s) => s.id === pendingSuiteId)?.name ?? '',
+                }
+              : null
+          }
+          onChange={(opt) => setPendingSuiteId(opt?.value ?? '')}
           options={suites.map((suite) => ({ value: suite.id, label: suite.name }))}
           placeholder="All Suites"
           isClearable
@@ -97,8 +111,8 @@ export function ListToolbar({ searchPlaceholder, tags, sortOptions, onApply, sui
         <div className="tabs tabs-segmented">
           <button
             type="button"
-            className={`tab${pendingStatus === "" ? " active" : ""}`}
-            onClick={() => setPendingStatus("")}
+            className={`tab${pendingStatus === '' ? ' active' : ''}`}
+            onClick={() => setPendingStatus('')}
           >
             <span className="tab-label">All</span>
           </button>
@@ -106,8 +120,8 @@ export function ListToolbar({ searchPlaceholder, tags, sortOptions, onApply, sui
             <button
               key={opt.value}
               type="button"
-              className={`tab${pendingStatus === opt.value ? " active" : ""}`}
-              onClick={() => setPendingStatus(pendingStatus === opt.value ? "" : opt.value)}
+              className={`tab${pendingStatus === opt.value ? ' active' : ''}`}
+              onClick={() => setPendingStatus(pendingStatus === opt.value ? '' : opt.value)}
             >
               <span className="tab-label">{opt.label}</span>
             </button>
@@ -116,20 +130,31 @@ export function ListToolbar({ searchPlaceholder, tags, sortOptions, onApply, sui
       )}
       <Select
         compact
-        value={pendingTagId ? { value: pendingTagId, label: tags.find((t) => t.id === pendingTagId)?.name ?? "" } : null}
-        onChange={(opt) => setPendingTagId(opt?.value ?? "")}
+        value={
+          pendingTagId
+            ? { value: pendingTagId, label: tags.find((t) => t.id === pendingTagId)?.name ?? '' }
+            : null
+        }
+        onChange={(opt) => setPendingTagId(opt?.value ?? '')}
         options={tags.map((tag) => ({ value: tag.id, label: tag.name }))}
         placeholder="All Tags"
         isClearable
       />
       <Select
         compact
-        value={{ value: pendingSort, label: sortOptions.find((o) => `${o.field}-${o.dir}` === pendingSort)?.label ?? "" }}
-        onChange={(opt) => setPendingSort(opt?.value ?? `${sortOptions[0].field}-${sortOptions[0].dir}`)}
+        value={{
+          value: pendingSort,
+          label: sortOptions.find((o) => `${o.field}-${o.dir}` === pendingSort)?.label ?? '',
+        }}
+        onChange={(opt) =>
+          setPendingSort(opt?.value ?? `${sortOptions[0].field}-${sortOptions[0].dir}`)
+        }
         options={sortOptions.map((opt) => ({ value: `${opt.field}-${opt.dir}`, label: opt.label }))}
         placeholder="Sort by"
       />
-      <button type="button" className="list-toolbar-apply" onClick={handleApply}>Apply</button>
+      <button type="button" className="list-toolbar-apply" onClick={handleApply}>
+        Apply
+      </button>
     </div>
   );
 }

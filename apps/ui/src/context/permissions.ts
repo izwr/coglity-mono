@@ -1,28 +1,28 @@
-import { useCurrentOrg } from "./OrgContext";
-import { useSingleProjectId } from "../components/ProjectFilter";
+import { useCurrentOrg } from './OrgContext';
+import { useSingleProjectId } from '../components/ProjectFilter';
 
-export type OrgRole = "super_admin" | "member";
-export type ProjectRole = "admin" | "writer" | "read";
-export type EffectiveProjectRole = "super_admin" | ProjectRole | null;
+export type OrgRole = 'super_admin' | 'member';
+export type ProjectRole = 'admin' | 'writer' | 'read';
+export type EffectiveProjectRole = 'super_admin' | ProjectRole | null;
 
 export type Action =
-  | "org.create"
-  | "org.edit"
-  | "org.delete"
-  | "org.members.manage"
-  | "org.invites.manage"
-  | "project.create"
-  | "project.edit"
-  | "project.delete"
-  | "project.members.manage"
-  | "content.write"
-  | "content.delete";
+  | 'org.create'
+  | 'org.edit'
+  | 'org.delete'
+  | 'org.members.manage'
+  | 'org.invites.manage'
+  | 'project.create'
+  | 'project.edit'
+  | 'project.delete'
+  | 'project.members.manage'
+  | 'content.write'
+  | 'content.delete';
 
 export const ROLE_ORDER: Record<ProjectRole, number> = { read: 1, writer: 2, admin: 3 };
 
 export function hasProjectRole(actual: EffectiveProjectRole, min: ProjectRole): boolean {
   if (!actual) return false;
-  if (actual === "super_admin") return true;
+  if (actual === 'super_admin') return true;
   return ROLE_ORDER[actual] >= ROLE_ORDER[min];
 }
 
@@ -36,7 +36,7 @@ export function useEffectiveProjectRole(): EffectiveProjectRole {
   const { org } = useCurrentOrg();
   const projectId = useSingleProjectId();
   if (!org) return null;
-  if (org.orgRole === "super_admin") return "super_admin";
+  if (org.orgRole === 'super_admin') return 'super_admin';
   if (!projectId) return null;
   const membership = org.projects.find((p) => p.projectId === projectId);
   return membership?.role ?? null;
@@ -50,8 +50,8 @@ export function useEffectiveProjectRole(): EffectiveProjectRole {
 export function useCanAdminAnyProject(): boolean {
   const { org } = useCurrentOrg();
   if (!org) return false;
-  if (org.orgRole === "super_admin") return true;
-  return org.projects.some((p) => p.role === "admin");
+  if (org.orgRole === 'super_admin') return true;
+  return org.projects.some((p) => p.role === 'admin');
 }
 
 export function useCan(action: Action): boolean {
@@ -59,23 +59,23 @@ export function useCan(action: Action): boolean {
   const role = useEffectiveProjectRole();
 
   switch (action) {
-    case "org.create":
+    case 'org.create':
       return true;
-    case "org.edit":
-    case "org.delete":
-    case "org.members.manage":
-    case "org.invites.manage":
-      return org?.orgRole === "super_admin";
-    case "project.create":
-      return org?.orgRole === "super_admin";
-    case "project.edit":
-    case "project.members.manage":
-    case "project.delete":
-      return hasProjectRole(role, "admin");
-    case "content.write":
-      return hasProjectRole(role, "writer");
-    case "content.delete":
-      return hasProjectRole(role, "writer");
+    case 'org.edit':
+    case 'org.delete':
+    case 'org.members.manage':
+    case 'org.invites.manage':
+      return org?.orgRole === 'super_admin';
+    case 'project.create':
+      return org?.orgRole === 'super_admin';
+    case 'project.edit':
+    case 'project.members.manage':
+    case 'project.delete':
+      return hasProjectRole(role, 'admin');
+    case 'content.write':
+      return hasProjectRole(role, 'writer');
+    case 'content.delete':
+      return hasProjectRole(role, 'writer');
     default:
       return false;
   }

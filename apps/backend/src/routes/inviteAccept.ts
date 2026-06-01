@@ -1,7 +1,7 @@
-import { Router, type Router as RouterType } from "express";
-import { z } from "zod";
-import { requireAuth } from "../middleware/requireAuth";
-import { consumeInvite, RbacError } from "../services/rbac";
+import { Router, type Router as RouterType } from 'express';
+import { z } from 'zod';
+import { requireAuth } from '../middleware/requireAuth';
+import { consumeInvite, RbacError } from '../services/rbac';
 
 const router: RouterType = Router();
 
@@ -24,7 +24,7 @@ function checkRateLimit(key: string): boolean {
   return true;
 }
 
-router.post("/", requireAuth, async (req, res) => {
+router.post('/', requireAuth, async (req, res) => {
   const parsed = acceptSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten().fieldErrors });
@@ -33,11 +33,11 @@ router.post("/", requireAuth, async (req, res) => {
   const userId = req.session.userId!;
   const email = req.session.email;
   if (!email) {
-    res.status(400).json({ error: "Session missing email" });
+    res.status(400).json({ error: 'Session missing email' });
     return;
   }
   if (!checkRateLimit(userId)) {
-    res.status(429).json({ error: "Rate limit exceeded" });
+    res.status(429).json({ error: 'Rate limit exceeded' });
     return;
   }
   try {

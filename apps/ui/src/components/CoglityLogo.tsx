@@ -1,4 +1,4 @@
-import type { SVGProps } from "react";
+import type { SVGProps } from 'react';
 
 export function CoglityLogo({ size = 24, ...props }: { size?: number } & SVGProps<SVGSVGElement>) {
   return (

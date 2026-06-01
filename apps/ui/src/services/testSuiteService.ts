@@ -1,5 +1,5 @@
-import type { TestSuite, Tag } from "@coglity/shared";
-import { api } from "./api";
+import type { TestSuite, Tag } from '@coglity/shared';
+import { api } from './api';
 
 export interface TestSuiteWithTags extends TestSuite {
   projectName: string | null;
@@ -32,27 +32,49 @@ export interface ListQueryParams {
 }
 
 export const testSuiteService = {
-  async getAll(orgId: string, projectIds: string[], params?: ListQueryParams): Promise<PaginatedResponse<TestSuiteWithTags>> {
-    if (!orgId || projectIds.length === 0) return { data: [], total: 0, page: 1, limit: params?.limit ?? 10 };
+  async getAll(
+    orgId: string,
+    projectIds: string[],
+    params?: ListQueryParams,
+  ): Promise<PaginatedResponse<TestSuiteWithTags>> {
+    if (!orgId || projectIds.length === 0)
+      return { data: [], total: 0, page: 1, limit: params?.limit ?? 10 };
     const { data } = await api.get<PaginatedResponse<TestSuiteWithTags>>(
       `/organizations/${orgId}/test-suites`,
-      { params: { ...params, projectIds: projectIds.join(",") } },
+      { params: { ...params, projectIds: projectIds.join(',') } },
     );
     return data;
   },
 
   async getById(orgId: string, projectId: string, id: string): Promise<TestSuiteWithTags> {
-    const { data } = await api.get<TestSuiteWithTags>(`/organizations/${orgId}/projects/${projectId}/test-suites/${id}`);
+    const { data } = await api.get<TestSuiteWithTags>(
+      `/organizations/${orgId}/projects/${projectId}/test-suites/${id}`,
+    );
     return data;
   },
 
-  async create(orgId: string, projectId: string, payload: CreateTestSuitePayload): Promise<TestSuiteWithTags> {
-    const { data } = await api.post<TestSuiteWithTags>(`/organizations/${orgId}/projects/${projectId}/test-suites`, payload);
+  async create(
+    orgId: string,
+    projectId: string,
+    payload: CreateTestSuitePayload,
+  ): Promise<TestSuiteWithTags> {
+    const { data } = await api.post<TestSuiteWithTags>(
+      `/organizations/${orgId}/projects/${projectId}/test-suites`,
+      payload,
+    );
     return data;
   },
 
-  async update(orgId: string, projectId: string, id: string, payload: UpdateTestSuitePayload): Promise<TestSuiteWithTags> {
-    const { data } = await api.put<TestSuiteWithTags>(`/organizations/${orgId}/projects/${projectId}/test-suites/${id}`, payload);
+  async update(
+    orgId: string,
+    projectId: string,
+    id: string,
+    payload: UpdateTestSuitePayload,
+  ): Promise<TestSuiteWithTags> {
+    const { data } = await api.put<TestSuiteWithTags>(
+      `/organizations/${orgId}/projects/${projectId}/test-suites/${id}`,
+      payload,
+    );
     return data;
   },
 

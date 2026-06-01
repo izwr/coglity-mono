@@ -6,10 +6,7 @@ import { toString } from 'mdast-util-to-string';
 import type { Heading, List, RootContent } from 'mdast';
 import { frontmatterSchema } from './schema';
 import type { ParsedSpec } from './types';
-import {
-  SpecParseError,
-  SpecValidationError,
-} from '../agents/shared/errors';
+import { SpecParseError, SpecValidationError } from '../agents/shared/errors';
 
 export async function parseSpec(filePath: string): Promise<ParsedSpec> {
   const raw = await fs.readFile(filePath, 'utf-8');
@@ -21,9 +18,7 @@ export function parseSpecContent(raw: string, filePath: string): ParsedSpec {
 
   const result = frontmatterSchema.safeParse(data);
   if (!result.success) {
-    const issues = result.error.issues
-      .map((i) => `${i.path.join('.')}: ${i.message}`)
-      .join('; ');
+    const issues = result.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
     throw new SpecValidationError(`Invalid frontmatter: ${issues}`);
   }
 
@@ -34,9 +29,7 @@ export function parseSpecContent(raw: string, filePath: string): ParsedSpec {
     throw new SpecParseError('Missing required # Setup section');
   }
   if (!sections.steps || sections.steps.length === 0) {
-    throw new SpecParseError(
-      'Missing required # Steps section or no steps found',
-    );
+    throw new SpecParseError('Missing required # Steps section or no steps found');
   }
 
   return {
@@ -68,13 +61,9 @@ function extractSections(nodes: RootContent[]): Sections {
         .join('\n\n')
         .trim();
     } else if (key === 'steps') {
-      const list = contentNodes.find(
-        (n): n is List => n.type === 'list',
-      );
+      const list = contentNodes.find((n): n is List => n.type === 'list');
       if (list) {
-        sections.steps = list.children.map((item) =>
-          toString(item).trim(),
-        );
+        sections.steps = list.children.map((item) => toString(item).trim());
       }
     }
   }

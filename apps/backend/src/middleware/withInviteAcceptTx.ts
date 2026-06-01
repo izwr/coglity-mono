@@ -1,6 +1,6 @@
-import type { Request, Response, NextFunction } from "express";
-import { sql } from "drizzle-orm";
-import { db } from "../db";
+import type { Request, Response, NextFunction } from 'express';
+import { sql } from 'drizzle-orm';
+import { db } from '../db';
 
 /**
  * Narrow variant of withScopedTx used only by POST /api/invites/accept.
@@ -11,7 +11,7 @@ import { db } from "../db";
 export function withInviteAcceptTx(req: Request, res: Response, next: NextFunction): void {
   const userId = req.session?.userId;
   if (!userId) {
-    res.status(401).json({ error: "Not authenticated" });
+    res.status(401).json({ error: 'Not authenticated' });
     return;
   }
 
@@ -26,9 +26,9 @@ export function withInviteAcceptTx(req: Request, res: Response, next: NextFuncti
         if (passThroughError) reject(passThroughError);
         else resolve();
       };
-      res.once("finish", finish);
-      res.once("close", finish);
-      res.once("error", (err) => {
+      res.once('finish', finish);
+      res.once('close', finish);
+      res.once('error', (err) => {
         passThroughError = err;
         finish();
       });
@@ -49,8 +49,8 @@ export function withInviteAcceptTx(req: Request, res: Response, next: NextFuncti
   }).catch((err) => {
     if (!res.headersSent) {
       if (err instanceof Error && /^HTTP 5\d\d$/.test(err.message)) return;
-      console.error("withInviteAcceptTx error:", err);
-      res.status(500).json({ error: "Internal error" });
+      console.error('withInviteAcceptTx error:', err);
+      res.status(500).json({ error: 'Internal error' });
     }
   });
 }

@@ -1,33 +1,33 @@
-import { pgTable, uuid, varchar, timestamp, index, uniqueIndex } from "drizzle-orm/pg-core";
-import { sql } from "drizzle-orm";
-import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import { z } from "zod/v4";
-import { users } from "./users";
-import { organizations } from "./organizations";
-import { projects, projectRoleEnum } from "./projects";
+import { pgTable, uuid, varchar, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
+import { z } from 'zod/v4';
+import { users } from './users';
+import { organizations } from './organizations';
+import { projects, projectRoleEnum } from './projects';
 
 export const invites = pgTable(
-  "invites",
+  'invites',
   {
-    id: uuid("id").defaultRandom().primaryKey(),
-    token: varchar("token", { length: 64 }).notNull(),
-    email: varchar("email", { length: 255 }).notNull(),
-    organizationId: uuid("organization_id")
+    id: uuid('id').defaultRandom().primaryKey(),
+    token: varchar('token', { length: 64 }).notNull(),
+    email: varchar('email', { length: 255 }).notNull(),
+    organizationId: uuid('organization_id')
       .notNull()
-      .references(() => organizations.id, { onDelete: "cascade" }),
-    projectId: uuid("project_id")
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    projectId: uuid('project_id')
       .notNull()
-      .references(() => projects.id, { onDelete: "cascade" }),
-    projectRole: projectRoleEnum("project_role").notNull(),
-    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-    consumedAt: timestamp("consumed_at", { withTimezone: true }),
-    consumedByUserId: uuid("consumed_by_user_id").references(() => users.id),
-    createdBy: uuid("created_by").references(() => users.id),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    projectRole: projectRoleEnum('project_role').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    consumedAt: timestamp('consumed_at', { withTimezone: true }),
+    consumedByUserId: uuid('consumed_by_user_id').references(() => users.id),
+    createdBy: uuid('created_by').references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    index("invites_email_org_idx").on(table.email, table.organizationId),
-    uniqueIndex("invites_active_token_uniq")
+    index('invites_email_org_idx').on(table.email, table.organizationId),
+    uniqueIndex('invites_active_token_uniq')
       .on(table.token)
       .where(sql`${table.consumedAt} IS NULL`),
   ],

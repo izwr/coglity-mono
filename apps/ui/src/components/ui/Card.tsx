@@ -1,4 +1,4 @@
-import { type HTMLAttributes, type ReactNode } from "react";
+import { type HTMLAttributes, type ReactNode } from 'react';
 
 interface CardProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
@@ -7,13 +7,14 @@ interface CardProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 export function Card({ children, pad = true, hover, className, ...rest }: CardProps) {
-  const cls = [
-    "card",
-    pad ? "card-pad" : "",
-    hover ? "hover" : "",
-    className ?? "",
-  ].filter(Boolean).join(" ");
-  return <div className={cls} {...rest}>{children}</div>;
+  const cls = ['card', pad ? 'card-pad' : '', hover ? 'hover' : '', className ?? '']
+    .filter(Boolean)
+    .join(' ');
+  return (
+    <div className={cls} {...rest}>
+      {children}
+    </div>
+  );
 }
 
 export function CardHead({ title, actions }: { title: ReactNode; actions?: ReactNode }) {

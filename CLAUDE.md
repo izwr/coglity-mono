@@ -31,9 +31,11 @@ bun run db:studio         # Open Drizzle Studio
 ## Architecture
 
 ### Data Flow
+
 Shared package defines the single source of truth for database schema (`packages/shared/src/schema/`). Drizzle table definitions produce both the DB schema and Zod validation schemas (via `drizzle-zod`). The backend imports these directly for queries and request validation. The UI uses its own Yup schemas for form validation.
 
 ### Backend (apps/backend)
+
 - Entry: `src/index.ts` Express app setup with session middleware (connect-pg-simple)
 - DB client: `src/db.ts` Drizzle + postgres-js driver
 - Auth: `src/routes/auth.ts` Azure Entra ID OAuth (login, callback)
@@ -51,7 +53,9 @@ Shared package defines the single source of truth for database schema (`packages
 - Env vars: `DATABASE_URL`, `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_REDIRECT_URI`, `OPENAI_API_KEY` (all passed through Turbo globalPassThroughEnv)
 
 ### AI Test Generation (apps/backend/src/routes/ai.ts)
+
 Multi-step workflow using OpenAI API (gpt-4.1-mini) with structured JSON outputs:
+
 1. Create session with user story
 2. Generate 3–5 clarifying follow-up questions
 3. Submit Q&A answers
@@ -59,6 +63,7 @@ Multi-step workflow using OpenAI API (gpt-4.1-mini) with structured JSON outputs
 5. Create detailed test cases from selected scenarios
 
 ### Frontend (apps/ui)
+
 - Vite proxies `/api/*` to `http://localhost:3001`
 - Auth: Azure Entra ID login with `<ProtectedRoute>` wrapper and auth context
 - Services layer (`src/services/`) wraps Axios calls: `testSuiteService`, `testCaseService`, `tagService`, `aiService`, `bugService`, `userService`, `scheduledTestSuiteService`
@@ -69,11 +74,13 @@ Multi-step workflow using OpenAI API (gpt-4.1-mini) with structured JSON outputs
 - Google Sans font
 
 ### Landing App (apps/landing)
+
 - Standalone marketing site with animated pipeline hero visualization
 - Features: theme toggle, navbar, hero, features grid, how-it-works section, CTA
 - No backend integration
 
 ### Shared Package (packages/shared)
+
 - `schema/testSuites.ts` test_suites table
 - `schema/testCases.ts` test_cases table (title, preCondition, testSteps, data, expectedResults, status: draft/active)
 - `schema/tags.ts` tags table (name is unique)

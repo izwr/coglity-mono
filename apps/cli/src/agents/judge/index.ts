@@ -26,7 +26,8 @@ const VERDICT_TOOL: Anthropic.Tool = {
       },
       reasoning: {
         type: 'string',
-        description: 'Explanation of why this verdict was chosen, referencing specific page elements',
+        description:
+          'Explanation of why this verdict was chosen, referencing specific page elements',
       },
     },
     required: ['outcome', 'reasoning'],
@@ -37,10 +38,7 @@ export const judgeAgent = {
   name: 'judge',
   version: '0.1.0',
 
-  async run(
-    input: JudgeInput,
-    ctx: AgentContext,
-  ): Promise<AgentResult<Verdict>> {
+  async run(input: JudgeInput, ctx: AgentContext): Promise<AgentResult<Verdict>> {
     const start = Date.now();
 
     const response = await ctx.client.messages.create({

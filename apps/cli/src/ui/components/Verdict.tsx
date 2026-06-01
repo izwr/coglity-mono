@@ -19,7 +19,9 @@ export function Verdict({ verdict }: VerdictProps) {
         </Text>
       </Box>
       <Box marginLeft={3}>
-        <Text wrap="wrap" dimColor>{verdict.reasoning}</Text>
+        <Text wrap="wrap" dimColor>
+          {verdict.reasoning}
+        </Text>
       </Box>
     </Box>
   );
@@ -27,16 +29,22 @@ export function Verdict({ verdict }: VerdictProps) {
 
 function verdictIcon(outcome: VerdictType['outcome']): string {
   switch (outcome) {
-    case 'pass': return icons.pass;
-    case 'fail': return icons.fail;
-    case 'inconclusive': return icons.inconclusive;
+    case 'pass':
+      return icons.pass;
+    case 'fail':
+      return icons.fail;
+    case 'inconclusive':
+      return icons.inconclusive;
   }
 }
 
 function verdictColor(outcome: VerdictType['outcome']): string {
   switch (outcome) {
-    case 'pass': return colors.pass;
-    case 'fail': return colors.fail;
-    case 'inconclusive': return colors.inconclusive;
+    case 'pass':
+      return colors.pass;
+    case 'fail':
+      return colors.fail;
+    case 'inconclusive':
+      return colors.inconclusive;
   }
 }

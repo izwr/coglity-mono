@@ -1,28 +1,24 @@
-import { type Router as RouterType, Router } from "express";
-import { eq, and, desc } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
-import { ServiceBusClient } from "@azure/service-bus";
-import { ManagedIdentityCredential } from "@azure/identity";
-import { randomUUID } from "crypto";
-import {
-  testRuns,
-  testCases,
-  botConnections,
-  users,
-} from "@coglity/shared/schema";
+import { type Router as RouterType, Router } from 'express';
+import { eq, and, desc } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import { ServiceBusClient } from '@azure/service-bus';
+import { ManagedIdentityCredential } from '@azure/identity';
+import { randomUUID } from 'crypto';
+import { testRuns, testCases, botConnections, users } from '@coglity/shared/schema';
 import {
   SUPPORTED_LANGUAGES,
   SUPPORTED_ENVIRONMENTS,
   getLanguageConfig,
   getEnvironmentConfig,
-} from "@coglity/shared";
-import { db as rootDb } from "../db";
+} from '@coglity/shared';
+import { db as rootDb } from '../db';
+import { request } from 'node:http';
 
 const router: RouterType = Router({ mergeParams: true });
 
 type DbHandle = typeof rootDb;
 
-const createdByUser = alias(users, "createdByUser");
+const createdByUser = alias(users, 'createdByUser');
 
 const columns = {
   id: testRuns.id,
@@ -53,39 +49,54 @@ function baseQuery(db: DbHandle) {
     .leftJoin(createdByUser, eq(testRuns.createdBy, createdByUser.id));
 }
 
-router.get("/", async (req, res) => {
+router.get('/', async (req, res) => {
   const db = (req.db ?? rootDb) as DbHandle;
   const projectId = req.projectId!;
-  const testCaseId = typeof req.query.testCaseId === "string" ? req.query.testCaseId : "";
-  const batchId = typeof req.query.batchId === "string" ? req.query.batchId : "";
+  const testCaseId = typeof req.query.testCaseId === 'string' ? req.query.testCaseId : '';
+  const batchId = typeof req.query.batchId === 'string' ? req.query.batchId : '';
+  const pageSize = typeof req.query.pageSize === 'number' ? req.query.pageSize : 10;
+  let offset = 0;
+  if (
+    req.query.offset === undefined ||
+    req.query.offset === null ||
+    typeof req.query.offset !== 'number'
+  ) {
+    res.status(400).json({ error: 'Invalid offset' });
+  } else {
+    offset = req.query.offset;
+  }
 
   const conditions = [eq(testRuns.projectId, projectId)];
   if (testCaseId) conditions.push(eq(testRuns.testCaseId, testCaseId));
   if (batchId) conditions.push(eq(testRuns.batchId, batchId));
 
-  const rows = await baseQuery(db).where(and(...conditions)).orderBy(desc(testRuns.createdAt)).limit(50);
+  const rows = await baseQuery(db)
+    .where(and(...conditions))
+    .orderBy(desc(testRuns.createdAt))
+    .offset(offset)
+    .limit(pageSize);
   res.json({ data: rows });
 });
 
-router.get("/:id", async (req, res) => {
+router.get('/:id', async (req, res) => {
   const db = (req.db ?? rootDb) as DbHandle;
   const projectId = req.projectId!;
   const [row] = await baseQuery(db).where(
     and(eq(testRuns.id, req.params.id as string), eq(testRuns.projectId, projectId)),
   );
   if (!row) {
-    res.status(404).json({ error: "Test run not found" });
+    res.status(404).json({ error: 'Test run not found' });
     return;
   }
   res.json(row);
 });
 
-router.post("/", async (req, res) => {
+router.post('/', async (req, res) => {
   const db = (req.db ?? rootDb) as DbHandle;
   const projectId = req.projectId!;
-  const testCaseId = typeof req.body?.testCaseId === "string" ? req.body.testCaseId : "";
+  const testCaseId = typeof req.body?.testCaseId === 'string' ? req.body.testCaseId : '';
   if (!testCaseId) {
-    res.status(400).json({ error: "testCaseId is required" });
+    res.status(400).json({ error: 'testCaseId is required' });
     return;
   }
 
@@ -103,33 +114,38 @@ router.post("/", async (req, res) => {
     .where(and(eq(testCases.id, testCaseId), eq(testCases.projectId, projectId)));
 
   if (!tc) {
-    res.status(404).json({ error: "Test case not found" });
+    res.status(404).json({ error: 'Test case not found' });
     return;
   }
-  if (tc.testCaseType !== "voice") {
-    res.status(400).json({ error: "Only voice test cases can be run" });
+  if (tc.testCaseType !== 'voice') {
+    res.status(400).json({ error: 'Only voice test cases can be run' });
     return;
   }
   if (!tc.botConnectionId) {
-    res.status(400).json({ error: "Test case must have a bot connection attached" });
+    res.status(400).json({ error: 'Test case must have a bot connection attached' });
     return;
   }
 
   const [bc] = await db
-    .select({ id: botConnections.id, provider: botConnections.provider, config: botConnections.config, botType: botConnections.botType })
+    .select({
+      id: botConnections.id,
+      provider: botConnections.provider,
+      config: botConnections.config,
+      botType: botConnections.botType,
+    })
     .from(botConnections)
     .where(and(eq(botConnections.id, tc.botConnectionId), eq(botConnections.projectId, projectId)));
 
   if (!bc) {
-    res.status(400).json({ error: "Bot connection not found in this project" });
+    res.status(400).json({ error: 'Bot connection not found in this project' });
     return;
   }
-  if (bc.botType !== "voice") {
-    res.status(400).json({ error: "Attached bot connection is not voice" });
+  if (bc.botType !== 'voice') {
+    res.status(400).json({ error: 'Attached bot connection is not voice' });
     return;
   }
-  if (bc.provider === "dialin") {
-    res.status(400).json({ error: "Dial-in provider is not supported yet" });
+  if (bc.provider === 'dialin') {
+    res.status(400).json({ error: 'Dial-in provider is not supported yet' });
     return;
   }
 
@@ -139,28 +155,38 @@ router.post("/", async (req, res) => {
   const languages: string[] = Array.isArray(req.body.languages) ? req.body.languages : [];
   const environments: string[] = Array.isArray(req.body.environments) ? req.body.environments : [];
   const crossProduct = req.body.crossProduct === true;
-  const combinations: Array<{ language: string; environment: string }> = Array.isArray(req.body.combinations) ? req.body.combinations : [];
+  const combinations: Array<{ language: string; environment: string }> = Array.isArray(
+    req.body.combinations,
+  )
+    ? req.body.combinations
+    : [];
 
   // Validate values against supported constants
   const validLangs = new Set(SUPPORTED_LANGUAGES.map((l) => l.code));
   const validEnvs = new Set(SUPPORTED_ENVIRONMENTS.map((e) => e.id));
   for (const l of languages) {
-    if (!validLangs.has(l)) { res.status(400).json({ error: `Unsupported language: ${l}` }); return; }
+    if (!validLangs.has(l)) {
+      res.status(400).json({ error: `Unsupported language: ${l}` });
+      return;
+    }
   }
   for (const e of environments) {
-    if (!validEnvs.has(e)) { res.status(400).json({ error: `Unsupported environment: ${e}` }); return; }
+    if (!validEnvs.has(e)) {
+      res.status(400).json({ error: `Unsupported environment: ${e}` });
+      return;
+    }
   }
 
   let pairs: Array<{ language: string; environment: string }>;
   if (languages.length === 0 && environments.length === 0 && combinations.length === 0) {
-    pairs = [{ language: "en-US", environment: "quiet" }];
+    pairs = [{ language: 'en-US', environment: 'quiet' }];
   } else if (crossProduct && languages.length > 0 && environments.length > 0) {
     pairs = languages.flatMap((l) => environments.map((e) => ({ language: l, environment: e })));
   } else if (combinations.length > 0) {
     pairs = combinations;
   } else {
-    const langs = languages.length > 0 ? languages : ["en-US"];
-    const envs = environments.length > 0 ? environments : ["quiet"];
+    const langs = languages.length > 0 ? languages : ['en-US'];
+    const envs = environments.length > 0 ? environments : ['quiet'];
     pairs = langs.flatMap((l) => envs.map((e) => ({ language: l, environment: e })));
   }
 
@@ -174,7 +200,7 @@ router.post("/", async (req, res) => {
           testCaseId: tc.id,
           botConnectionId: bc.id,
           projectId,
-          state: "queued",
+          state: 'queued',
           language,
           environment,
           batchId,
@@ -199,9 +225,9 @@ router.post("/", async (req, res) => {
           provider: bc.provider,
           config: bc.config,
         },
-        language: langConfig?.sttLanguage ?? "en-US",
+        language: langConfig?.sttLanguage ?? 'en-US',
         ttsVoice: langConfig?.ttsVoice,
-        environment: envConfig?.id ?? "quiet",
+        environment: envConfig?.id ?? 'quiet',
         environmentSnrDb: envConfig?.defaultSnrDb,
       }).catch((err) => {
         console.error(`[test-runs] dispatch failed for ${inserted.id}:`, err);
@@ -212,23 +238,24 @@ router.post("/", async (req, res) => {
   );
 
   const rows = await baseQuery(db)
-    .where(and(
-      eq(testRuns.projectId, projectId),
-      ...(batchId ? [eq(testRuns.batchId, batchId)] : [eq(testRuns.id, insertedRuns[0].id)]),
-    ))
+    .where(
+      and(
+        eq(testRuns.projectId, projectId),
+        ...(batchId ? [eq(testRuns.batchId, batchId)] : [eq(testRuns.id, insertedRuns[0].id)]),
+      ),
+    )
     .orderBy(desc(testRuns.createdAt));
 
   res.status(201).json({ data: rows, batchId });
 });
 
-async function sendToQueue(
-  runId: string,
-  payload: Record<string, unknown>,
-): Promise<void> {
+async function sendToQueue(runId: string, payload: Record<string, unknown>): Promise<void> {
   const namespace = process.env.AZURE_SERVICE_BUS_NAMESPACE;
   const queueName = process.env.AZURE_SERVICE_BUS_QUEUE_NAME;
   if (!namespace || !queueName) {
-    console.warn(`[test-runs] AZURE_SERVICE_BUS_NAMESPACE or AZURE_SERVICE_BUS_QUEUE_NAME not set; run ${runId} will stay queued`);
+    console.warn(
+      `[test-runs] AZURE_SERVICE_BUS_NAMESPACE or AZURE_SERVICE_BUS_QUEUE_NAME not set; run ${runId} will stay queued`,
+    );
     return;
   }
   const client = new ServiceBusClient(namespace, new ManagedIdentityCredential());
@@ -237,7 +264,7 @@ async function sendToQueue(
     await sender.sendMessages({
       body: payload,
       messageId: runId,
-      contentType: "application/json",
+      contentType: 'application/json',
     });
   } finally {
     await sender.close();

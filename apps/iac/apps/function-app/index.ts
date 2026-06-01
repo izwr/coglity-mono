@@ -62,7 +62,7 @@ export function createFunctionApp(args: FunctionAppArgs) {
         { name: 'EXECUTOR_WEBHOOK_SECRET', value: args.executorWebhookSecret },
         { name: 'BACKEND_INTERNAL_URL', value: 'https://studio.coglity.com' },
         { name: 'AZURE_OPENAI_ENDPOINT', value: args.aiServicesEndpoint },
-        { name: 'AZURE_OPENAI_CHAT_DEPLOYMENT', value: 'gpt-5-mini' },
+        { name: 'AZURE_OPENAI_CHAT_DEPLOYMENT', value: 'gemma-4-31B-it' },
         { name: 'AZURE_OPENAI_REALTIME_ENDPOINT', value: realtimeEndpoint },
         { name: 'AZURE_OPENAI_REALTIME_DEPLOYMENT', value: 'gpt-realtime' },
         { name: 'AZURE_OPENAI_REALTIME_API_VERSION', value: '2024-10-01-preview' },

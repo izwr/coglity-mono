@@ -1,6 +1,14 @@
-import { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from "react";
-import { api, redirectToLogin } from "../services/api";
-import type { OrgRole, ProjectRole } from "./permissions";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  type ReactNode,
+} from 'react';
+import { api, redirectToLogin } from '../services/api';
+import type { OrgRole, ProjectRole } from './permissions';
 
 export interface ProjectMembership {
   projectId: string;
@@ -46,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(async () => {
     try {
-      const res = await api.get("/users/me");
+      const res = await api.get('/users/me');
       setUser(res.data);
     } catch (err: any) {
       // If we had a user and just lost them (expired token), send to login.
@@ -69,7 +77,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let timer: ReturnType<typeof setInterval> | null = null;
 
-    const check = () => { void refresh(); };
+    const check = () => {
+      void refresh();
+    };
 
     const start = () => {
       if (timer) return;
@@ -82,37 +92,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const onVisibility = () => {
-      if (document.visibilityState === "visible") {
+      if (document.visibilityState === 'visible') {
         check();
         start();
       } else {
         stop();
       }
     };
-    const onFocus = () => { check(); };
+    const onFocus = () => {
+      check();
+    };
 
-    if (document.visibilityState === "visible") start();
-    document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("focus", onFocus);
+    if (document.visibilityState === 'visible') start();
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('focus', onFocus);
 
     return () => {
       stop();
-      document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("focus", onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('focus', onFocus);
     };
   }, [refresh]);
 
   const login = () => {
-    window.location.href = "/api/auth/login";
+    window.location.href = '/api/auth/login';
   };
 
   const loginWithGoogle = () => {
-    window.location.href = "/api/auth/google/login";
+    window.location.href = '/api/auth/google/login';
   };
 
   const logout = async () => {
     try {
-      await api.post("/auth/logout");
+      await api.post('/auth/logout');
     } catch {
       // Logout failures (network, already-expired session, etc.) shouldn't
       // keep the user stuck on the app. Clear local state either way.
@@ -131,6 +143,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
 }

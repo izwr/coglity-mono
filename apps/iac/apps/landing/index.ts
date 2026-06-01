@@ -1,5 +1,5 @@
-import * as pulumi from "@pulumi/pulumi";
-import * as azure from "@pulumi/azure-native";
+import * as pulumi from '@pulumi/pulumi';
+import * as azure from '@pulumi/azure-native';
 
 export interface LandingArgs {
   resourceGroupName: pulumi.Input<string>;
@@ -15,27 +15,27 @@ export interface LandingArgs {
 }
 
 export function createLanding(args: LandingArgs) {
-  const app = new azure.app.ContainerApp("landing", {
+  const app = new azure.app.ContainerApp('landing', {
     resourceGroupName: args.resourceGroupName,
-    containerAppName: "coglity-landing",
+    containerAppName: 'coglity-landing',
     location: args.location,
     managedEnvironmentId: args.environmentId,
     configuration: {
-      activeRevisionsMode: "Single",
+      activeRevisionsMode: 'Single',
       ingress: {
         external: true,
         targetPort: 80,
-        transport: "auto",
+        transport: 'auto',
         customDomains: [
           {
-            name: "coglity.com",
+            name: 'coglity.com',
             certificateId: args.landingRootCertificateId,
-            bindingType: "SniEnabled",
+            bindingType: 'SniEnabled',
           },
           {
-            name: "www.coglity.com",
+            name: 'www.coglity.com',
             certificateId: args.landingWwwCertificateId,
-            bindingType: "SniEnabled",
+            bindingType: 'SniEnabled',
           },
         ],
       },
@@ -49,15 +49,15 @@ export function createLanding(args: LandingArgs) {
     template: {
       containers: [
         {
-          name: "landing",
+          name: 'landing',
           image: pulumi.interpolate`${args.acrLoginServer}/coglity-landing:${args.imageTag}`,
-          resources: { cpu: 0.25, memory: "0.5Gi" },
+          resources: { cpu: 0.25, memory: '0.5Gi' },
         },
       ],
       scale: { minReplicas: 1, maxReplicas: 2 },
     },
     identity: {
-      type: "UserAssigned",
+      type: 'UserAssigned',
       userAssignedIdentities: [args.acrIdentityId],
     },
   });

@@ -10,8 +10,5 @@ export async function finalizeRun(
 ): Promise<void> {
   const specContent = spec.rawContent;
   await fs.writeFile(path.join(runDir, 'spec.md'), specContent);
-  await fs.writeFile(
-    path.join(runDir, 'result.json'),
-    JSON.stringify(result, null, 2),
-  );
+  await fs.writeFile(path.join(runDir, 'result.json'), JSON.stringify(result, null, 2));
 }

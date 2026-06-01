@@ -68,7 +68,9 @@ export class SetupClaudeCommand extends Command {
     this.context.stdout.write(`  MCP server: ${mcpEntryPath}\n`);
     this.context.stdout.write(`  Tools:      run_web_test, dry_run, list_runs, get_run_result\n\n`);
     this.context.stdout.write(`  Stop hook:  prompt-based (evaluates if changes need testing)\n`);
-    this.context.stdout.write(`              Trivial changes (docs, comments, config) pass through.\n`);
+    this.context.stdout.write(
+      `              Trivial changes (docs, comments, config) pass through.\n`,
+    );
     this.context.stdout.write(`              UI/API/logic changes trigger a test suggestion.\n\n`);
     this.context.stdout.write(`Restart Claude Code to pick up the changes.\n`);
   }

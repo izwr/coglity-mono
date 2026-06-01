@@ -55,7 +55,6 @@ const coreOut = {
     'aiFoundryProjectEndpoint',
   ) as pulumi.Output<string>,
   aiServicesAccountId: coreStack.requireOutput('aiServicesAccountId') as pulumi.Output<string>,
-  aiServicesApiKey: coreStack.requireOutput('aiServicesApiKey') as pulumi.Output<string>,
   aiServicesLocation: coreStack.requireOutput('aiServicesLocation') as pulumi.Output<string>,
   speechServicesAccountId: coreStack.requireOutput('speechServicesAccountId') as pulumi.Output<string>,
   speechServicesLocation: coreStack.requireOutput('speechServicesLocation') as pulumi.Output<string>,
@@ -94,6 +93,8 @@ const azureTenantId = config.requireSecret('azureTenantId');
 const googleClientId = config.requireSecret('googleClientId');
 const googleClientSecret = config.requireSecret('googleClientSecret');
 const executorWebhookSecret = config.requireSecret('executorWebhookSecret');
+const openaiApiKey = config.requireSecret('openaiApiKey');
+const openaiBaseUrl = config.requireSecret('openaiBaseUrl');
 
 // ── Backend ────────────────────────────────────────────────────────
 
@@ -110,8 +111,8 @@ const backend = createBackend({
   storageAccountId: coreOut.storageAccountId,
   knowledgeSourcesContainerName: 'knowledge-sources',
   recordingsContainerName: 'test-run-recordings',
-  aiServicesApiKey: coreOut.aiServicesApiKey,
-  aiFoundryProjectEndpoint: coreOut.aiFoundryProjectEndpoint,
+  openaiApiKey,
+  openaiBaseUrl,
   sessionSecret,
   azureClientId,
   azureClientSecret,

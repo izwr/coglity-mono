@@ -285,33 +285,7 @@ const aiServices = new azure.cognitiveservices.Account('coglity-ai', {
   },
 });
 
-const aiServicesKeys = pulumi
-  .all([resourceGroup.name, aiServices.name])
-  .apply(([rgName, accountName]) =>
-    azure.cognitiveservices.listAccountKeysOutput({
-      resourceGroupName: rgName,
-      accountName,
-    }),
-  );
-
-// ── 11. AI Model Deployments ───────────────────────────────────────
-
-new azure.cognitiveservices.Deployment('gpt-5.4-mini', {
-  resourceGroupName: resourceGroup.name,
-  accountName: aiServices.name,
-  deploymentName: 'gpt-5.4-mini',
-  properties: {
-    model: {
-      format: 'OpenAI',
-      name: 'gpt-5.4-mini',
-      version: '2026-03-17',
-    },
-    versionUpgradeOption: 'OnceCurrentVersionExpired',
-  },
-  sku: { name: 'GlobalStandard', capacity: 10 },
-});
-
-// ── 12. AI Foundry Hub + Project ──────���───────────────────────────
+// ── 11. AI Foundry Hub + Project ───────────────────────────────────
 
 const aiHub = new azure.machinelearningservices.Workspace('coglity-ai-hub', {
   resourceGroupName: resourceGroup.name,
@@ -343,7 +317,7 @@ const aiFoundryProjectEndpoint = pulumi
       `https://${aiName}.services.ai.azure.com/api/projects/${projName}/openai/v1/`,
   );
 
-// ── 13. Speech Services Account (Central India) ───────────────────
+// ── 12. Speech Services Account (Central India) ───────────────────
 
 const speechServices = new azure.cognitiveservices.Account('coglity-speech', {
   resourceGroupName: resourceGroup.name,
@@ -397,7 +371,6 @@ export const landingWwwCertificateId = landingWwwCert.containerAppCert.id;
 export const aiServicesEndpoint = aiServices.properties.apply((p) => p.endpoint!);
 export { aiFoundryProjectEndpoint };
 export const aiServicesAccountId = aiServices.id;
-export const aiServicesApiKey = pulumi.secret(aiServicesKeys.apply((k) => k.key1!));
 export const aiServicesLocation = aiLocation;
 
 export const speechServicesAccountId = speechServices.id;

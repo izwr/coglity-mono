@@ -3,7 +3,8 @@ import type Anthropic from '@anthropic-ai/sdk';
 export const PLANNER_TOOLS: Anthropic.Tool[] = [
   {
     name: 'click',
-    description: 'Click on an element. Use Playwright locator syntax based on the accessibility tree (e.g. role=button[name="Submit"], role=link[name="Home"]).',
+    description:
+      'Click on an element. Use Playwright locator syntax based on the accessibility tree (e.g. role=button[name="Submit"], role=link[name="Home"]).',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -65,14 +66,19 @@ export const PLANNER_TOOLS: Anthropic.Tool[] = [
       type: 'object' as const,
       properties: {
         selector: { type: 'string', description: 'Playwright locator for the element' },
-        state: { type: 'string', enum: ['visible', 'hidden', 'attached', 'detached'], description: 'Target state (default: visible)' },
+        state: {
+          type: 'string',
+          enum: ['visible', 'hidden', 'attached', 'detached'],
+          description: 'Target state (default: visible)',
+        },
       },
       required: ['selector'],
     },
   },
   {
     name: 'done',
-    description: 'Signal that the current test step has been completed. Call this once you believe the step goal is achieved.',
+    description:
+      'Signal that the current test step has been completed. Call this once you believe the step goal is achieved.',
     input_schema: {
       type: 'object' as const,
       properties: {

@@ -1,7 +1,11 @@
 import { z } from 'zod';
 
 export const clickInputSchema = z.object({
-  selector: z.string().describe('Playwright locator string for the element (e.g. role=button[name="Submit"], text=Click me)'),
+  selector: z
+    .string()
+    .describe(
+      'Playwright locator string for the element (e.g. role=button[name="Submit"], text=Click me)',
+    ),
 });
 
 export const fillInputSchema = z.object({

@@ -1,8 +1,8 @@
-import axios from "axios";
+import axios from 'axios';
 
 export const api = axios.create({
-  baseURL: "/api",
-  headers: { "Content-Type": "application/json" },
+  baseURL: '/api',
+  headers: { 'Content-Type': 'application/json' },
 });
 
 /**
@@ -13,7 +13,7 @@ export const api = axios.create({
 let redirecting = false;
 export function redirectToLogin(): void {
   if (redirecting) return;
-  if (window.location.pathname === "/login") return;
+  if (window.location.pathname === '/login') return;
   redirecting = true;
   const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
   window.location.href = `/login?returnTo=${returnTo}`;
@@ -22,11 +22,9 @@ export function redirectToLogin(): void {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    const reqUrl: string = error.config?.url ?? "";
+    const reqUrl: string = error.config?.url ?? '';
     const isAuthCheck =
-      reqUrl.includes("/auth/") ||
-      reqUrl === "/users/me" ||
-      reqUrl.startsWith("/users/me?");
+      reqUrl.includes('/auth/') || reqUrl === '/users/me' || reqUrl.startsWith('/users/me?');
     if (error.response?.status === 401 && !isAuthCheck) {
       redirectToLogin();
     }

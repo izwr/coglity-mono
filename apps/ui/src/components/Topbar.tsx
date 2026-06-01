@@ -1,6 +1,6 @@
-import { Link, useLocation } from "react-router-dom";
-import { useBreadcrumbs, type Crumb } from "../context/BreadcrumbsContext";
-import { Fragment } from "react";
+import { Link, useLocation } from 'react-router-dom';
+import { useBreadcrumbs, type Crumb } from '../context/BreadcrumbsContext';
+import { Fragment } from 'react';
 
 function IconSearch() {
   return (
@@ -46,7 +46,7 @@ export function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
             <Fragment key={i}>
               {i > 0 && <span className="sep">/</span>}
               {last || !c.to ? (
-                <span className={last ? "cur" : ""}>{c.label}</span>
+                <span className={last ? 'cur' : ''}>{c.label}</span>
               ) : (
                 <Link to={c.to}>{c.label}</Link>
               )}
@@ -68,23 +68,23 @@ export function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
 }
 
 function defaultCrumbsFor(pathname: string): Crumb[] {
-  const segs = pathname.split("/").filter(Boolean);
-  if (segs.length === 0) return [{ label: "Dashboard" }];
+  const segs = pathname.split('/').filter(Boolean);
+  if (segs.length === 0) return [{ label: 'Dashboard' }];
   const labels: Record<string, string> = {
-    dashboard: "Dashboard",
-    "test-cases": "Test cases",
-    "test-suites": "Suites",
-    "scheduled-test-suites": "Runs",
-    "bot-connections": "Bots",
-    "knowledge-sources": "Knowledge",
-    bugs: "Bugs",
-    tags: "Tags",
-    reporting: "Reports",
-    search: "Search",
-    generate: "Generate",
+    dashboard: 'Dashboard',
+    'test-cases': 'Test cases',
+    'test-suites': 'Suites',
+    'scheduled-test-suites': 'Runs',
+    'bot-connections': 'Bots',
+    'knowledge-sources': 'Knowledge',
+    bugs: 'Bugs',
+    tags: 'Tags',
+    reporting: 'Reports',
+    search: 'Search',
+    generate: 'Generate',
   };
   return segs.map((s, i) => ({
     label: labels[s] ?? s,
-    to: i === segs.length - 1 ? undefined : "/" + segs.slice(0, i + 1).join("/"),
+    to: i === segs.length - 1 ? undefined : '/' + segs.slice(0, i + 1).join('/'),
   }));
 }

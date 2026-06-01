@@ -1,23 +1,39 @@
-import { type Router as RouterType, Router } from "express";
-import { eq, and, desc, asc, sql } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
+import { type Router as RouterType, Router } from 'express';
+import { eq, and, desc, asc, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import {
-  scheduledTestSuites, insertScheduledTestSuiteSchema,
-  scheduledTestCases, updateScheduledTestCaseSchema,
-  testSuites, testCases, users, bugs,
-} from "@coglity/shared/schema";
-import { db as rootDb } from "../db";
+  scheduledTestSuites,
+  insertScheduledTestSuiteSchema,
+  scheduledTestCases,
+  updateScheduledTestCaseSchema,
+  testSuites,
+  testCases,
+  users,
+  bugs,
+} from '@coglity/shared/schema';
+import { db as rootDb } from '../db';
 
 const router: RouterType = Router({ mergeParams: true });
 
 type DbHandle = typeof rootDb;
 
-const createdByUser = alias(users, "createdByUser");
-const assignedToUser = alias(users, "assignedToUser");
+const createdByUser = alias(users, 'createdByUser');
+const assignedToUser = alias(users, 'assignedToUser');
 
 async function buildSuiteDTO(
   db: DbHandle,
-  row: { id: string; testSuiteId: string; startDate: Date; endDate: Date; createdBy: string | null; createdAt: Date; updatedAt: Date; projectId: string; testSuiteName: string | null; createdByName: string | null },
+  row: {
+    id: string;
+    testSuiteId: string;
+    startDate: Date;
+    endDate: Date;
+    createdBy: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    projectId: string;
+    testSuiteName: string | null;
+    createdByName: string | null;
+  },
 ) {
   const [stats] = await db
     .select({
@@ -27,13 +43,30 @@ async function buildSuiteDTO(
     })
     .from(scheduledTestCases)
     .where(eq(scheduledTestCases.scheduledTestSuiteId, row.id));
-  return { ...row, caseCount: stats?.total ?? 0, passedCount: stats?.passed ?? 0, failedCount: stats?.failed ?? 0 };
+  return {
+    ...row,
+    caseCount: stats?.total ?? 0,
+    passedCount: stats?.passed ?? 0,
+    failedCount: stats?.failed ?? 0,
+  };
 }
 
 async function buildCaseDTO(
   db: DbHandle,
   projectId: string,
-  sc: { id: string; scheduledTestSuiteId: string; testCaseId: string; assignedTo: string | null; actualResults: string; state: string; linkedBugIds: string[]; createdAt: Date; updatedAt: Date; projectId: string; assignedToName: string | null },
+  sc: {
+    id: string;
+    scheduledTestSuiteId: string;
+    testCaseId: string;
+    assignedTo: string | null;
+    actualResults: string;
+    state: string;
+    linkedBugIds: string[];
+    createdAt: Date;
+    updatedAt: Date;
+    projectId: string;
+    assignedToName: string | null;
+  },
 ) {
   const [tc] = await db
     .select({
@@ -92,16 +125,21 @@ function suitesBaseQuery(db: DbHandle) {
     .leftJoin(createdByUser, eq(scheduledTestSuites.createdBy, createdByUser.id));
 }
 
-router.get("/", async (req, res) => {
+router.get('/', async (req, res) => {
   const db = (req.db ?? rootDb) as DbHandle;
   const projectId = req.projectId!;
-  const sortBy = typeof req.query.sortBy === "string" ? req.query.sortBy : "createdAt";
-  const sortDir = req.query.sortDir === "asc" ? "asc" : "desc";
-  const page = Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1);
-  const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit ?? "10"), 10) || 10));
+  const sortBy = typeof req.query.sortBy === 'string' ? req.query.sortBy : 'createdAt';
+  const sortDir = req.query.sortDir === 'asc' ? 'asc' : 'desc';
+  const page = Math.max(1, parseInt(String(req.query.page ?? '1'), 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit ?? '10'), 10) || 10));
 
-  const sortColumn = sortBy === "startDate" ? scheduledTestSuites.startDate : sortBy === "endDate" ? scheduledTestSuites.endDate : scheduledTestSuites.createdAt;
-  const orderFn = sortDir === "asc" ? asc : desc;
+  const sortColumn =
+    sortBy === 'startDate'
+      ? scheduledTestSuites.startDate
+      : sortBy === 'endDate'
+        ? scheduledTestSuites.endDate
+        : scheduledTestSuites.createdAt;
+  const orderFn = sortDir === 'asc' ? asc : desc;
 
   const [{ count: total }] = await db
     .select({ count: sql<number>`cast(count(*) as int)` })
@@ -119,14 +157,17 @@ router.get("/", async (req, res) => {
   res.json({ data, total, page, limit });
 });
 
-router.get("/:id", async (req, res) => {
+router.get('/:id', async (req, res) => {
   const db = (req.db ?? rootDb) as DbHandle;
   const projectId = req.projectId!;
   const [row] = await suitesBaseQuery(db).where(
-    and(eq(scheduledTestSuites.id, req.params.id as string), eq(scheduledTestSuites.projectId, projectId)),
+    and(
+      eq(scheduledTestSuites.id, req.params.id as string),
+      eq(scheduledTestSuites.projectId, projectId),
+    ),
   );
   if (!row) {
-    res.status(404).json({ error: "Scheduled test suite not found" });
+    res.status(404).json({ error: 'Scheduled test suite not found' });
     return;
   }
   const suite = await buildSuiteDTO(db, row);
@@ -159,7 +200,7 @@ router.get("/:id", async (req, res) => {
   res.json({ ...suite, scheduledCases: cases });
 });
 
-router.post("/", async (req, res) => {
+router.post('/', async (req, res) => {
   const db = (req.db ?? rootDb) as DbHandle;
   const projectId = req.projectId!;
   const parsed = insertScheduledTestSuiteSchema.safeParse({
@@ -180,7 +221,9 @@ router.post("/", async (req, res) => {
   const activeCases = await db
     .select({ id: testCases.id })
     .from(testCases)
-    .where(and(eq(testCases.testSuiteId, parsed.data.testSuiteId), eq(testCases.projectId, projectId)));
+    .where(
+      and(eq(testCases.testSuiteId, parsed.data.testSuiteId), eq(testCases.projectId, projectId)),
+    );
 
   if (activeCases.length > 0) {
     await db.insert(scheduledTestCases).values(
@@ -197,7 +240,7 @@ router.post("/", async (req, res) => {
   res.status(201).json(suite);
 });
 
-router.put("/:id", async (req, res) => {
+router.put('/:id', async (req, res) => {
   const db = (req.db ?? rootDb) as DbHandle;
   const projectId = req.projectId!;
   const parsed = insertScheduledTestSuiteSchema.partial().safeParse({
@@ -212,31 +255,41 @@ router.put("/:id", async (req, res) => {
   const [updated] = await db
     .update(scheduledTestSuites)
     .set({ ...parsed.data, updatedAt: new Date() })
-    .where(and(eq(scheduledTestSuites.id, req.params.id as string), eq(scheduledTestSuites.projectId, projectId)))
+    .where(
+      and(
+        eq(scheduledTestSuites.id, req.params.id as string),
+        eq(scheduledTestSuites.projectId, projectId),
+      ),
+    )
     .returning();
   if (!updated) {
-    res.status(404).json({ error: "Scheduled test suite not found" });
+    res.status(404).json({ error: 'Scheduled test suite not found' });
     return;
   }
   const [row] = await suitesBaseQuery(db).where(eq(scheduledTestSuites.id, updated.id));
   res.json(await buildSuiteDTO(db, row));
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete('/:id', async (req, res) => {
   const db = (req.db ?? rootDb) as DbHandle;
   const projectId = req.projectId!;
   const [deleted] = await db
     .delete(scheduledTestSuites)
-    .where(and(eq(scheduledTestSuites.id, req.params.id as string), eq(scheduledTestSuites.projectId, projectId)))
+    .where(
+      and(
+        eq(scheduledTestSuites.id, req.params.id as string),
+        eq(scheduledTestSuites.projectId, projectId),
+      ),
+    )
     .returning({ id: scheduledTestSuites.id });
   if (!deleted) {
-    res.status(404).json({ error: "Scheduled test suite not found" });
+    res.status(404).json({ error: 'Scheduled test suite not found' });
     return;
   }
   res.status(204).send();
 });
 
-router.get("/:suiteId/cases/:caseId", async (req, res) => {
+router.get('/:suiteId/cases/:caseId', async (req, res) => {
   const db = (req.db ?? rootDb) as DbHandle;
   const projectId = req.projectId!;
   const [row] = await db
@@ -255,15 +308,23 @@ router.get("/:suiteId/cases/:caseId", async (req, res) => {
     })
     .from(scheduledTestCases)
     .leftJoin(assignedToUser, eq(scheduledTestCases.assignedTo, assignedToUser.id))
-    .where(and(eq(scheduledTestCases.id, req.params.caseId as string), eq(scheduledTestCases.projectId, projectId)));
+    .where(
+      and(
+        eq(scheduledTestCases.id, req.params.caseId as string),
+        eq(scheduledTestCases.projectId, projectId),
+      ),
+    );
 
   if (!row) {
-    res.status(404).json({ error: "Scheduled test case not found" });
+    res.status(404).json({ error: 'Scheduled test case not found' });
     return;
   }
 
   const [suite] = await suitesBaseQuery(db).where(
-    and(eq(scheduledTestSuites.id, req.params.suiteId as string), eq(scheduledTestSuites.projectId, projectId)),
+    and(
+      eq(scheduledTestSuites.id, req.params.suiteId as string),
+      eq(scheduledTestSuites.projectId, projectId),
+    ),
   );
   const caseDTO = await buildCaseDTO(db, projectId, row);
   res.json({
@@ -274,7 +335,7 @@ router.get("/:suiteId/cases/:caseId", async (req, res) => {
   });
 });
 
-router.put("/:suiteId/cases/:caseId", async (req, res) => {
+router.put('/:suiteId/cases/:caseId', async (req, res) => {
   const db = (req.db ?? rootDb) as DbHandle;
   const projectId = req.projectId!;
   const parsed = updateScheduledTestCaseSchema.safeParse(req.body);
@@ -285,10 +346,15 @@ router.put("/:suiteId/cases/:caseId", async (req, res) => {
   const [updated] = await db
     .update(scheduledTestCases)
     .set({ ...parsed.data, updatedAt: new Date() })
-    .where(and(eq(scheduledTestCases.id, req.params.caseId as string), eq(scheduledTestCases.projectId, projectId)))
+    .where(
+      and(
+        eq(scheduledTestCases.id, req.params.caseId as string),
+        eq(scheduledTestCases.projectId, projectId),
+      ),
+    )
     .returning();
   if (!updated) {
-    res.status(404).json({ error: "Scheduled test case not found" });
+    res.status(404).json({ error: 'Scheduled test case not found' });
     return;
   }
 

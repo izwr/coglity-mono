@@ -1,9 +1,13 @@
-import { BlobServiceClient } from "@azure/storage-blob";
-import { ChainedTokenCredential, AzureCliCredential, ManagedIdentityCredential } from "@azure/identity";
-import crypto from "crypto";
+import { BlobServiceClient } from '@azure/storage-blob';
+import {
+  ChainedTokenCredential,
+  AzureCliCredential,
+  ManagedIdentityCredential,
+} from '@azure/identity';
+import crypto from 'crypto';
 
-const account = process.env.AZURE_STORAGE_ACCOUNT ?? "";
-const containerName = process.env.AZURE_STORAGE_CONTAINER ?? "knowledge-sources";
+const account = process.env.AZURE_STORAGE_ACCOUNT ?? '';
+const containerName = process.env.AZURE_STORAGE_CONTAINER ?? 'knowledge-sources';
 const credential = new ChainedTokenCredential(
   new AzureCliCredential(),
   new ManagedIdentityCredential(),
@@ -11,7 +15,7 @@ const credential = new ChainedTokenCredential(
 
 function getContainerClient() {
   if (!account) {
-    throw new Error("AZURE_STORAGE_ACCOUNT is not set");
+    throw new Error('AZURE_STORAGE_ACCOUNT is not set');
   }
   const blobServiceClient = new BlobServiceClient(
     `https://${account}.blob.core.windows.net`,
@@ -25,10 +29,10 @@ export async function uploadBlob(
   metadata?: Record<string, string>,
 ): Promise<{ url: string; blobName: string }> {
   const container = getContainerClient();
-  await container.createIfNotExists({ access: "blob" });
+  await container.createIfNotExists({ access: 'blob' });
 
-  const ext = file.originalname.split(".").pop() ?? "";
-  const blobName = `${crypto.randomUUID()}${ext ? `.${ext}` : ""}`;
+  const ext = file.originalname.split('.').pop() ?? '';
+  const blobName = `${crypto.randomUUID()}${ext ? `.${ext}` : ''}`;
   const blockBlob = container.getBlockBlobClient(blobName);
 
   await blockBlob.uploadData(file.buffer, {
@@ -44,7 +48,7 @@ export async function deleteBlob(blobUrl: string): Promise<void> {
   try {
     const container = getContainerClient();
     const url = new URL(blobUrl);
-    const blobName = url.pathname.split("/").pop();
+    const blobName = url.pathname.split('/').pop();
     if (blobName) {
       await container.getBlockBlobClient(blobName).deleteIfExists();
     }

@@ -1,48 +1,61 @@
-import { pgTable, uuid, text, timestamp, pgEnum, jsonb, integer, varchar } from "drizzle-orm/pg-core";
-import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import { z } from "zod/v4";
-import { users } from "./users";
-import { testCases } from "./testCases";
-import { botConnections } from "./botConnections";
-import { projects } from "./projects";
+import {
+  pgTable,
+  uuid,
+  text,
+  timestamp,
+  pgEnum,
+  jsonb,
+  integer,
+  varchar,
+} from 'drizzle-orm/pg-core';
+import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
+import { z } from 'zod/v4';
+import { users } from './users';
+import { testCases } from './testCases';
+import { botConnections } from './botConnections';
+import { projects } from './projects';
 
-export const testRunStateEnum = pgEnum("test_run_state", [
-  "queued",
-  "running",
-  "passed",
-  "failed",
-  "errored",
-  "cancelled",
+export const testRunStateEnum = pgEnum('test_run_state', [
+  'queued',
+  'running',
+  'passed',
+  'failed',
+  'errored',
+  'cancelled',
 ]);
 
 export type TranscriptTurn = {
-  role: "tester" | "sut" | "system";
+  role: 'tester' | 'sut' | 'system';
   text: string;
   ts: number;
 };
 
 export type TestRunProperties = Record<string, string | number>;
 
-export const testRuns = pgTable("test_runs", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
-  testCaseId: uuid("test_case_id").notNull().references(() => testCases.id, { onDelete: "cascade" }),
-  botConnectionId: uuid("bot_connection_id").references(() => botConnections.id),
-  state: testRunStateEnum("state").default("queued").notNull(),
-  verdict: text("verdict").default("").notNull(),
-  transcript: jsonb("transcript").$type<TranscriptTurn[]>().default([]).notNull(),
-  error: text("error").default("").notNull(),
-  recordingUrl: text("recording_url").default("").notNull(),
-  recordingBlobName: text("recording_blob_name").default("").notNull(),
-  recordingDurationMs: integer("recording_duration_ms").default(0).notNull(),
-  properties: jsonb("properties").$type<TestRunProperties>().default({}).notNull(),
-  language: varchar("language", { length: 10 }).default("en-US").notNull(),
-  environment: varchar("environment", { length: 50 }).default("quiet").notNull(),
-  batchId: uuid("batch_id"),
-  startedAt: timestamp("started_at", { withTimezone: true }),
-  finishedAt: timestamp("finished_at", { withTimezone: true }),
-  createdBy: uuid("created_by").references(() => users.id),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+export const testRuns = pgTable('test_runs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  projectId: uuid('project_id')
+    .notNull()
+    .references(() => projects.id, { onDelete: 'cascade' }),
+  testCaseId: uuid('test_case_id')
+    .notNull()
+    .references(() => testCases.id, { onDelete: 'cascade' }),
+  botConnectionId: uuid('bot_connection_id').references(() => botConnections.id),
+  state: testRunStateEnum('state').default('queued').notNull(),
+  verdict: text('verdict').default('').notNull(),
+  transcript: jsonb('transcript').$type<TranscriptTurn[]>().default([]).notNull(),
+  error: text('error').default('').notNull(),
+  recordingUrl: text('recording_url').default('').notNull(),
+  recordingBlobName: text('recording_blob_name').default('').notNull(),
+  recordingDurationMs: integer('recording_duration_ms').default(0).notNull(),
+  properties: jsonb('properties').$type<TestRunProperties>().default({}).notNull(),
+  language: varchar('language', { length: 10 }).default('en-US').notNull(),
+  environment: varchar('environment', { length: 50 }).default('quiet').notNull(),
+  batchId: uuid('batch_id'),
+  startedAt: timestamp('started_at', { withTimezone: true }),
+  finishedAt: timestamp('finished_at', { withTimezone: true }),
+  createdBy: uuid('created_by').references(() => users.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const insertTestRunSchema = createInsertSchema(testRuns).omit({
@@ -55,12 +68,12 @@ export const insertTestRunSchema = createInsertSchema(testRuns).omit({
 export const selectTestRunSchema = createSelectSchema(testRuns);
 
 export const updateTestRunSchema = z.object({
-  state: z.enum(["queued", "running", "passed", "failed", "errored", "cancelled"]).optional(),
+  state: z.enum(['queued', 'running', 'passed', 'failed', 'errored', 'cancelled']).optional(),
   verdict: z.string().max(10000).optional(),
   transcript: z
     .array(
       z.object({
-        role: z.enum(["tester", "sut", "system"]),
+        role: z.enum(['tester', 'sut', 'system']),
         text: z.string(),
         ts: z.number(),
       }),

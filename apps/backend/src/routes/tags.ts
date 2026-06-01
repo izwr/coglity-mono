@@ -1,15 +1,15 @@
-import { type Router as RouterType, Router } from "express";
-import { eq, and } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
-import { tags, insertTagSchema, users } from "@coglity/shared/schema";
-import { db as rootDb } from "../db";
+import { type Router as RouterType, Router } from 'express';
+import { eq, and } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import { tags, insertTagSchema, users } from '@coglity/shared/schema';
+import { db as rootDb } from '../db';
 
 const router: RouterType = Router({ mergeParams: true });
 
 type DbHandle = typeof rootDb;
 
-const createdByUser = alias(users, "createdByUser");
-const updatedByUser = alias(users, "updatedByUser");
+const createdByUser = alias(users, 'createdByUser');
+const updatedByUser = alias(users, 'updatedByUser');
 
 const tagColumns = {
   id: tags.id,
@@ -32,25 +32,29 @@ function tagsBaseQuery(db: DbHandle) {
     .leftJoin(updatedByUser, eq(tags.updatedBy, updatedByUser.id));
 }
 
-router.get("/", async (req, res) => {
+router.get('/', async (req, res) => {
   const db = (req.db ?? rootDb) as DbHandle;
   const projectId = req.projectId!;
-  const results = await tagsBaseQuery(db).where(eq(tags.projectId, projectId)).orderBy(tags.createdAt);
+  const results = await tagsBaseQuery(db)
+    .where(eq(tags.projectId, projectId))
+    .orderBy(tags.createdAt);
   res.json(results);
 });
 
-router.get("/:id", async (req, res) => {
+router.get('/:id', async (req, res) => {
   const db = (req.db ?? rootDb) as DbHandle;
   const projectId = req.projectId!;
-  const [tag] = await tagsBaseQuery(db).where(and(eq(tags.id, req.params.id as string), eq(tags.projectId, projectId)));
+  const [tag] = await tagsBaseQuery(db).where(
+    and(eq(tags.id, req.params.id as string), eq(tags.projectId, projectId)),
+  );
   if (!tag) {
-    res.status(404).json({ error: "Tag not found" });
+    res.status(404).json({ error: 'Tag not found' });
     return;
   }
   res.json(tag);
 });
 
-router.post("/", async (req, res) => {
+router.post('/', async (req, res) => {
   const db = (req.db ?? rootDb) as DbHandle;
   const projectId = req.projectId!;
   const parsed = insertTagSchema.safeParse(req.body);
@@ -67,7 +71,7 @@ router.post("/", async (req, res) => {
   res.status(201).json(tag);
 });
 
-router.put("/:id", async (req, res) => {
+router.put('/:id', async (req, res) => {
   const db = (req.db ?? rootDb) as DbHandle;
   const projectId = req.projectId!;
   const parsed = insertTagSchema.safeParse(req.body);
@@ -82,14 +86,14 @@ router.put("/:id", async (req, res) => {
     .where(and(eq(tags.id, req.params.id as string), eq(tags.projectId, projectId)))
     .returning();
   if (!updated) {
-    res.status(404).json({ error: "Tag not found" });
+    res.status(404).json({ error: 'Tag not found' });
     return;
   }
   const [tag] = await tagsBaseQuery(db).where(eq(tags.id, updated.id));
   res.json(tag);
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete('/:id', async (req, res) => {
   const db = (req.db ?? rootDb) as DbHandle;
   const projectId = req.projectId!;
   const [deleted] = await db
@@ -97,7 +101,7 @@ router.delete("/:id", async (req, res) => {
     .where(and(eq(tags.id, req.params.id as string), eq(tags.projectId, projectId)))
     .returning({ id: tags.id });
   if (!deleted) {
-    res.status(404).json({ error: "Tag not found" });
+    res.status(404).json({ error: 'Tag not found' });
     return;
   }
   res.status(204).send();

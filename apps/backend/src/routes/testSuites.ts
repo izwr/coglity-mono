@@ -1,13 +1,20 @@
-import { type Router as RouterType, Router } from "express";
-import { eq, and, or, ilike, desc, asc, sql, inArray } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
-import { testSuites, insertTestSuiteSchema, tags, entityTags, users, type EntityTagEntityType } from "@coglity/shared/schema";
-import { db as rootDb } from "../db";
+import { type Router as RouterType, Router } from 'express';
+import { eq, and, or, ilike, desc, asc, sql, inArray } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import {
+  testSuites,
+  insertTestSuiteSchema,
+  tags,
+  entityTags,
+  users,
+  type EntityTagEntityType,
+} from '@coglity/shared/schema';
+import { db as rootDb } from '../db';
 
 const router: RouterType = Router({ mergeParams: true });
 
-const createdByUser = alias(users, "createdByUser");
-const updatedByUser = alias(users, "updatedByUser");
+const createdByUser = alias(users, 'createdByUser');
+const updatedByUser = alias(users, 'updatedByUser');
 
 type DbHandle = typeof rootDb;
 
@@ -32,9 +39,9 @@ async function syncEntityTags(
     .where(and(eq(entityTags.entityId, entityId), eq(entityTags.entityType, entityType)));
 
   if (tagIds.length > 0) {
-    await db.insert(entityTags).values(
-      tagIds.map((tagId) => ({ entityId, tagId, entityType, createdBy: userId })),
-    );
+    await db
+      .insert(entityTags)
+      .values(tagIds.map((tagId) => ({ entityId, tagId, entityType, createdBy: userId })));
   }
 }
 
@@ -60,15 +67,15 @@ function suitesBaseQuery(db: DbHandle) {
 }
 
 // List
-router.get("/", async (req, res) => {
+router.get('/', async (req, res) => {
   const db = (req.db ?? rootDb) as DbHandle;
   const projectId = req.projectId!;
-  const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
-  const tagId = typeof req.query.tagId === "string" ? req.query.tagId : "";
-  const sortBy = typeof req.query.sortBy === "string" ? req.query.sortBy : "createdAt";
-  const sortDir = req.query.sortDir === "asc" ? "asc" : "desc";
-  const page = Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1);
-  const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit ?? "10"), 10) || 10));
+  const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+  const tagId = typeof req.query.tagId === 'string' ? req.query.tagId : '';
+  const sortBy = typeof req.query.sortBy === 'string' ? req.query.sortBy : 'createdAt';
+  const sortDir = req.query.sortDir === 'asc' ? 'asc' : 'desc';
+  const page = Math.max(1, parseInt(String(req.query.page ?? '1'), 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit ?? '10'), 10) || 10));
 
   let tagFilterIds: string[] | null = null;
   if (tagId) {
@@ -79,7 +86,7 @@ router.get("/", async (req, res) => {
       .where(
         and(
           eq(entityTags.tagId, tagId),
-          eq(entityTags.entityType, "test_suite"),
+          eq(entityTags.entityType, 'test_suite'),
           eq(testSuites.projectId, projectId),
         ),
       );
@@ -92,13 +99,20 @@ router.get("/", async (req, res) => {
 
   const conditions = [eq(testSuites.projectId, projectId)];
   if (search) {
-    conditions.push(or(ilike(testSuites.name, `%${search}%`), ilike(testSuites.description, `%${search}%`))!);
+    conditions.push(
+      or(ilike(testSuites.name, `%${search}%`), ilike(testSuites.description, `%${search}%`))!,
+    );
   }
   if (tagFilterIds) conditions.push(inArray(testSuites.id, tagFilterIds));
   const where = and(...conditions);
 
-  const sortColumn = sortBy === "name" ? testSuites.name : sortBy === "updatedAt" ? testSuites.updatedAt : testSuites.createdAt;
-  const orderFn = sortDir === "asc" ? asc : desc;
+  const sortColumn =
+    sortBy === 'name'
+      ? testSuites.name
+      : sortBy === 'updatedAt'
+        ? testSuites.updatedAt
+        : testSuites.createdAt;
+  const orderFn = sortDir === 'asc' ? asc : desc;
 
   const [{ count: total }] = await db
     .select({ count: sql<number>`cast(count(*) as int)` })
@@ -115,7 +129,7 @@ router.get("/", async (req, res) => {
   const result = await Promise.all(
     suites.map(async (suite) => ({
       ...suite,
-      tags: await getTagsForEntity(db, suite.id, "test_suite"),
+      tags: await getTagsForEntity(db, suite.id, 'test_suite'),
     })),
   );
 
@@ -123,21 +137,21 @@ router.get("/", async (req, res) => {
 });
 
 // Get by ID
-router.get("/:id", async (req, res) => {
+router.get('/:id', async (req, res) => {
   const db = (req.db ?? rootDb) as DbHandle;
   const projectId = req.projectId!;
   const [suite] = await suitesBaseQuery(db).where(
     and(eq(testSuites.id, req.params.id as string), eq(testSuites.projectId, projectId)),
   );
   if (!suite) {
-    res.status(404).json({ error: "Test suite not found" });
+    res.status(404).json({ error: 'Test suite not found' });
     return;
   }
-  res.json({ ...suite, tags: await getTagsForEntity(db, suite.id, "test_suite") });
+  res.json({ ...suite, tags: await getTagsForEntity(db, suite.id, 'test_suite') });
 });
 
 // Create
-router.post("/", async (req, res) => {
+router.post('/', async (req, res) => {
   const db = (req.db ?? rootDb) as DbHandle;
   const projectId = req.projectId!;
   const { tagIds, ...body } = req.body;
@@ -152,14 +166,14 @@ router.post("/", async (req, res) => {
     .values({ ...parsed.data, projectId, createdBy: userId, updatedBy: userId })
     .returning();
   if (Array.isArray(tagIds) && tagIds.length > 0) {
-    await syncEntityTags(db, inserted.id, "test_suite", tagIds, userId);
+    await syncEntityTags(db, inserted.id, 'test_suite', tagIds, userId);
   }
   const [suite] = await suitesBaseQuery(db).where(eq(testSuites.id, inserted.id));
-  res.status(201).json({ ...suite, tags: await getTagsForEntity(db, suite.id, "test_suite") });
+  res.status(201).json({ ...suite, tags: await getTagsForEntity(db, suite.id, 'test_suite') });
 });
 
 // Update
-router.put("/:id", async (req, res) => {
+router.put('/:id', async (req, res) => {
   const db = (req.db ?? rootDb) as DbHandle;
   const projectId = req.projectId!;
   const { tagIds, ...body } = req.body;
@@ -175,29 +189,34 @@ router.put("/:id", async (req, res) => {
     .where(and(eq(testSuites.id, req.params.id as string), eq(testSuites.projectId, projectId)))
     .returning();
   if (!updated) {
-    res.status(404).json({ error: "Test suite not found" });
+    res.status(404).json({ error: 'Test suite not found' });
     return;
   }
   if (Array.isArray(tagIds)) {
-    await syncEntityTags(db, updated.id, "test_suite", tagIds, userId);
+    await syncEntityTags(db, updated.id, 'test_suite', tagIds, userId);
   }
   const [suite] = await suitesBaseQuery(db).where(eq(testSuites.id, updated.id));
-  res.json({ ...suite, tags: await getTagsForEntity(db, suite.id, "test_suite") });
+  res.json({ ...suite, tags: await getTagsForEntity(db, suite.id, 'test_suite') });
 });
 
 // Delete
-router.delete("/:id", async (req, res) => {
+router.delete('/:id', async (req, res) => {
   const db = (req.db ?? rootDb) as DbHandle;
   const projectId = req.projectId!;
   await db
     .delete(entityTags)
-    .where(and(eq(entityTags.entityId, req.params.id as string), eq(entityTags.entityType, "test_suite")));
+    .where(
+      and(
+        eq(entityTags.entityId, req.params.id as string),
+        eq(entityTags.entityType, 'test_suite'),
+      ),
+    );
   const [deleted] = await db
     .delete(testSuites)
     .where(and(eq(testSuites.id, req.params.id as string), eq(testSuites.projectId, projectId)))
     .returning({ id: testSuites.id });
   if (!deleted) {
-    res.status(404).json({ error: "Test suite not found" });
+    res.status(404).json({ error: 'Test suite not found' });
     return;
   }
   res.status(204).send();

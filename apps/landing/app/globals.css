@@ -1,20 +1,20 @@
 :root {
-  --teal: #0D9488;
-  --teal-50: #F0FDFA;
-  --teal-100: #CCFBF1;
-  --teal-700: #0F766E;
-  --teal-800: #115E59;
-  --ink: #0A0A0A;
-  --ink-2: #1C1917;
-  --ink-3: #44403C;
-  --muted: #78716C;
-  --muted-2: #A8A29E;
-  --line: #EDEAE4;
-  --bg: #FAF9F6;
-  --bg-2: #F5F3EE;
-  --surface: #FFFFFF;
-  --green: #15803D;
-  --red: #B91C1C;
+  --teal: #0d9488;
+  --teal-50: #f0fdfa;
+  --teal-100: #ccfbf1;
+  --teal-700: #0f766e;
+  --teal-800: #115e59;
+  --ink: #0a0a0a;
+  --ink-2: #1c1917;
+  --ink-3: #44403c;
+  --muted: #78716c;
+  --muted-2: #a8a29e;
+  --line: #edeae4;
+  --bg: #faf9f6;
+  --bg-2: #f5f3ee;
+  --surface: #ffffff;
+  --green: #15803d;
+  --red: #b91c1c;
 }
 
 *,
@@ -980,14 +980,10 @@ h2.disp em {
 }
 
 .big-cta::before {
-  content: "";
+  content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(
-    circle at 30% 40%,
-    rgba(13, 148, 136, 0.18),
-    transparent 60%
-  );
+  background: radial-gradient(circle at 30% 40%, rgba(13, 148, 136, 0.18), transparent 60%);
 }
 
 .big-cta .inner {

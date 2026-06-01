@@ -12,9 +12,7 @@ const FAKE_ACTIONS: PlaywrightAction[] = [
   { tool: 'click', selector: 'a[href="#/active"]' },
 ];
 
-export async function fakeRun(
-  onEvent: RunEventEmitter,
-): Promise<RunResult> {
+export async function fakeRun(onEvent: RunEventEmitter): Promise<RunResult> {
   const spec: ParsedSpec = {
     name: 'Guest checkout flow',
     url: 'https://demo.playwright.dev/todomvc',
@@ -61,7 +59,11 @@ export async function fakeRun(
   onEvent({ kind: 'judge.start' });
   await sleep(1200);
 
-  const verdict = { outcome: 'pass' as const, reasoning: 'All steps completed. Final state shows both todos with correct completion states matching the spec.' };
+  const verdict = {
+    outcome: 'pass' as const,
+    reasoning:
+      'All steps completed. Final state shows both todos with correct completion states matching the spec.',
+  };
   onEvent({ kind: 'judge.end', verdict });
 
   const result: RunResult = {

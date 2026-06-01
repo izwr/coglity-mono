@@ -42,9 +42,7 @@ export const plannerAgent = {
     let totalOutput = 0;
     let summary = '';
 
-    const messages: Anthropic.MessageParam[] = [
-      { role: 'user', content: buildUserMessage(input) },
-    ];
+    const messages: Anthropic.MessageParam[] = [{ role: 'user', content: buildUserMessage(input) }];
 
     for (let turn = 0; turn < MAX_ACTIONS_PER_STEP; turn++) {
       callbacks.onThinking();
@@ -60,10 +58,11 @@ export const plannerAgent = {
       totalInput += response.usage.input_tokens;
       totalOutput += response.usage.output_tokens;
 
-      await ctx.trace.writeSidecar(
-        `planner-step${input.stepIndex}-turn${turn}.json`,
-        { request: messages.slice(-2), response: response.content, usage: response.usage },
-      );
+      await ctx.trace.writeSidecar(`planner-step${input.stepIndex}-turn${turn}.json`, {
+        request: messages.slice(-2),
+        response: response.content,
+        usage: response.usage,
+      });
 
       const toolUses = extractToolUseBlocks(response.content);
 

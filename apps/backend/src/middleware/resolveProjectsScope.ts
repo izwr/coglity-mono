@@ -1,8 +1,8 @@
-import type { Request, Response, NextFunction } from "express";
-import { and, eq, inArray } from "drizzle-orm";
-import { projects, projectMembers } from "@coglity/shared/schema";
-import { db } from "../db";
-import { resolveOrgRole } from "../services/rbac";
+import type { Request, Response, NextFunction } from 'express';
+import { and, eq, inArray } from 'drizzle-orm';
+import { projects, projectMembers } from '@coglity/shared/schema';
+import { db } from '../db';
+import { resolveOrgRole } from '../services/rbac';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -11,17 +11,21 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  * has read access to in the current org. Sets req.projectIdsScope.
  * Must run after resolveOrg.
  */
-export async function resolveProjectsScope(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function resolveProjectsScope(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
   const userId = req.session?.userId;
   const orgId = req.organizationId;
   if (!userId || !orgId) {
-    res.status(401).json({ error: "Organization context not resolved" });
+    res.status(401).json({ error: 'Organization context not resolved' });
     return;
   }
 
-  const raw = typeof req.query.projectIds === "string" ? req.query.projectIds : "";
+  const raw = typeof req.query.projectIds === 'string' ? req.query.projectIds : '';
   const requested = raw
-    .split(",")
+    .split(',')
     .map((s) => s.trim())
     .filter((s) => UUID_RE.test(s));
 
@@ -33,12 +37,12 @@ export async function resolveProjectsScope(req: Request, res: Response, next: Ne
 
   const orgRole = await resolveOrgRole(userId, orgId);
   if (!orgRole) {
-    res.status(404).json({ error: "Organization not found" });
+    res.status(404).json({ error: 'Organization not found' });
     return;
   }
 
   let accessible: string[];
-  if (orgRole === "super_admin") {
+  if (orgRole === 'super_admin') {
     const rows = await db
       .select({ id: projects.id })
       .from(projects)

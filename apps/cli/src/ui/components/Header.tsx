@@ -13,7 +13,9 @@ export function Header({ name, url, runId }: HeaderProps) {
   return (
     <Box flexDirection="column" marginBottom={1}>
       <Box>
-        <Text bold color={colors.brand}>coglity</Text>
+        <Text bold color={colors.brand}>
+          coglity
+        </Text>
         <Text> web test</Text>
       </Box>
       <Box>
@@ -21,12 +23,12 @@ export function Header({ name, url, runId }: HeaderProps) {
         <Text bold>{name}</Text>
       </Box>
       <Box>
-        <Text dimColor>url  </Text>
+        <Text dimColor>url </Text>
         <Text>{url}</Text>
       </Box>
       {runId && (
         <Box>
-          <Text dimColor>run  </Text>
+          <Text dimColor>run </Text>
           <Text>{runId}</Text>
         </Box>
       )}

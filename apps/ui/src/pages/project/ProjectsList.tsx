@@ -1,18 +1,18 @@
-import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { useCurrentOrg } from "../../context/OrgContext";
-import { useCan } from "../../context/permissions";
-import { projectService, type ProjectRow } from "../../services/projectService";
-import { Button } from "../../components/ui/Button";
-import { PageHead } from "../../components/ui/PageHead";
-import { useSetBreadcrumbs } from "../../context/BreadcrumbsContext";
+import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useCurrentOrg } from '../../context/OrgContext';
+import { useCan } from '../../context/permissions';
+import { projectService, type ProjectRow } from '../../services/projectService';
+import { Button } from '../../components/ui/Button';
+import { PageHead } from '../../components/ui/PageHead';
+import { useSetBreadcrumbs } from '../../context/BreadcrumbsContext';
 
 export function ProjectsList() {
-  useSetBreadcrumbs([{ label: "Projects" }]);
+  useSetBreadcrumbs([{ label: 'Projects' }]);
   const { org } = useCurrentOrg();
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const canCreate = useCan("project.create");
+  const canCreate = useCan('project.create');
 
   const load = useCallback(async () => {
     if (!org) return;
@@ -34,16 +34,24 @@ export function ProjectsList() {
   return (
     <div className="page">
       <PageHead
-        title={<><em className="italic-teal">Projects</em></>}
+        title={
+          <>
+            <em className="italic-teal">Projects</em>
+          </>
+        }
         subtitle="Projects group your test suites, runs, bugs and knowledge."
-        actions={canCreate && (
-          <Link to={`/orgs/${org.organizationId}/projects/new`}>
-            <Button>
-              <svg className="ico" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>
-              New project
-            </Button>
-          </Link>
-        )}
+        actions={
+          canCreate && (
+            <Link to={`/orgs/${org.organizationId}/projects/new`}>
+              <Button>
+                <svg className="ico" viewBox="0 0 24 24">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                New project
+              </Button>
+            </Link>
+          )
+        }
       />
       {loading ? (
         <p className="ts-empty">Loading…</p>
@@ -58,7 +66,9 @@ export function ProjectsList() {
                   <div className="ts-card-name">{p.name}</div>
                 </Link>
                 {p.description && <div className="ts-card-desc">{p.description}</div>}
-                <div className="ts-card-meta">Created {new Date(p.createdAt).toLocaleDateString()}</div>
+                <div className="ts-card-meta">
+                  Created {new Date(p.createdAt).toLocaleDateString()}
+                </div>
               </div>
             </div>
           ))}

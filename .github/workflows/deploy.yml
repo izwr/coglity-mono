@@ -237,6 +237,13 @@ jobs:
           command: refresh
           stack-name: ${{ secrets.PULUMI_ORG }}/coglity-apps/apps-prod
           work-dir: apps/iac/apps
+          config-map: |
+            coglity-apps:openaiBaseUrl:
+              value: ${{ secrets.OPENAI_BASE_URL }}
+              secret: true
+            coglity-apps:openaiApiKey:
+              value: ${{ secrets.OPENAI_API_KEY }}
+              secret: true
         env:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
           ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
@@ -250,6 +257,13 @@ jobs:
           command: up
           stack-name: ${{ secrets.PULUMI_ORG }}/coglity-apps/apps-prod
           work-dir: apps/iac/apps
+          config-map: |
+            coglity-apps:openaiBaseUrl:
+              value: ${{ secrets.OPENAI_BASE_URL }}
+              secret: true
+            coglity-apps:openaiApiKey:
+              value: ${{ secrets.OPENAI_API_KEY }}
+              secret: true
         env:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
           ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}

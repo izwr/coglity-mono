@@ -38,9 +38,7 @@ export class WebTestCommand extends Command {
       judgeModel: this.judgeModel,
     };
 
-    const runner: RunFn = this.fake
-      ? (_spec, _opts, onEvent) => fakeRun(onEvent)
-      : runSpec;
+    const runner: RunFn = this.fake ? (_spec, _opts, onEvent) => fakeRun(onEvent) : runSpec;
 
     if (this.json) {
       await runner(spec, opts, (event) => {

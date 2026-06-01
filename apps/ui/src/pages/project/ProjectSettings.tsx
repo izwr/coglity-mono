@@ -1,22 +1,26 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useCurrentOrg } from "../../context/OrgContext";
-import { useAuth } from "../../context/AuthContext";
-import { projectService } from "../../services/projectService";
-import { Button } from "../../components/ui/Button";
-import { PageHead } from "../../components/ui/PageHead";
-import { useSetBreadcrumbs } from "../../context/BreadcrumbsContext";
-import { ProjectFilter, useSelectedProjectIds, useSingleProjectId } from "../../components/ProjectFilter";
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useCurrentOrg } from '../../context/OrgContext';
+import { useAuth } from '../../context/AuthContext';
+import { projectService } from '../../services/projectService';
+import { Button } from '../../components/ui/Button';
+import { PageHead } from '../../components/ui/PageHead';
+import { useSetBreadcrumbs } from '../../context/BreadcrumbsContext';
+import {
+  ProjectFilter,
+  useSelectedProjectIds,
+  useSingleProjectId,
+} from '../../components/ProjectFilter';
 
 export function ProjectSettings() {
-  useSetBreadcrumbs([{ label: "Project" }, { label: "Settings" }]);
+  useSetBreadcrumbs([{ label: 'Project' }, { label: 'Settings' }]);
   const { org } = useCurrentOrg();
   const selectedIds = useSelectedProjectIds();
   const projectId = useSingleProjectId();
   const { refresh } = useAuth();
   const navigate = useNavigate();
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,16 +32,21 @@ export function ProjectSettings() {
       return;
     }
     let cancelled = false;
-    projectService.get(org.organizationId, projectId).then((data) => {
-      if (cancelled) return;
-      setName(data.name);
-      setDescription(data.description);
-      setLoaded(true);
-    }).catch(() => {
-      if (cancelled) return;
-      setLoaded(false);
-    });
-    return () => { cancelled = true; };
+    projectService
+      .get(org.organizationId, projectId)
+      .then((data) => {
+        if (cancelled) return;
+        setName(data.name);
+        setDescription(data.description);
+        setLoaded(true);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setLoaded(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [org, projectId]);
 
   if (!org) return null;
@@ -50,7 +59,7 @@ export function ProjectSettings() {
       await projectService.update(org.organizationId, projectId, { name, description });
       await refresh();
     } catch (err: any) {
-      setError(err.response?.data?.message ?? "Failed to save");
+      setError(err.response?.data?.message ?? 'Failed to save');
     } finally {
       setSaving(false);
     }
@@ -63,14 +72,18 @@ export function ProjectSettings() {
       await refresh();
       navigate(`/orgs/${org.organizationId}/projects`);
     } catch (err: any) {
-      setError(err.response?.data?.message ?? "Failed to delete");
+      setError(err.response?.data?.message ?? 'Failed to delete');
     }
   }
 
   return (
     <div className="page">
       <PageHead
-        title={<><em className="italic-teal">Project</em> settings</>}
+        title={
+          <>
+            <em className="italic-teal">Project</em> settings
+          </>
+        }
         subtitle="Rename the project or delete it (removes all its content)."
       />
 
@@ -80,12 +93,16 @@ export function ProjectSettings() {
 
       {selectedIds.length === 0 ? (
         <div className="empty">
-          <div className="title">Pick a <em className="italic-teal">project</em> to edit.</div>
+          <div className="title">
+            Pick a <em className="italic-teal">project</em> to edit.
+          </div>
           <div className="sub">Use the filter above to select a single project.</div>
         </div>
       ) : selectedIds.length > 1 ? (
         <div className="empty">
-          <div className="title">Pick <em className="italic-teal">exactly one</em> project.</div>
+          <div className="title">
+            Pick <em className="italic-teal">exactly one</em> project.
+          </div>
           <div className="sub">Project settings apply to a single project narrow the filter.</div>
         </div>
       ) : !loaded ? (
@@ -99,23 +116,38 @@ export function ProjectSettings() {
             </div>
             <div className="ts-form-field">
               <label>Description</label>
-              <textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
+              <textarea
+                rows={3}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
             </div>
             {error && <p className="ts-form-error">{error}</p>}
             <div className="ts-form-actions">
-              <Button onClick={save} disabled={saving}>Save</Button>
+              <Button onClick={save} disabled={saving}>
+                Save
+              </Button>
             </div>
           </div>
-          <div className="ts-form" style={{ borderTop: "1px solid var(--border)", marginTop: "2rem", paddingTop: "1rem" }}>
+          <div
+            className="ts-form"
+            style={{ borderTop: '1px solid var(--border)', marginTop: '2rem', paddingTop: '1rem' }}
+          >
             <div className="ts-form-title">Danger zone</div>
             <p>Delete this project and all its content.</p>
             {confirmDelete ? (
               <div className="ts-delete-confirm">
-                <Button variant="danger" onClick={remove}>Confirm delete</Button>
-                <Button variant="ghost" onClick={() => setConfirmDelete(false)}>Cancel</Button>
+                <Button variant="danger" onClick={remove}>
+                  Confirm delete
+                </Button>
+                <Button variant="ghost" onClick={() => setConfirmDelete(false)}>
+                  Cancel
+                </Button>
               </div>
             ) : (
-              <Button variant="danger" onClick={() => setConfirmDelete(true)}>Delete project</Button>
+              <Button variant="danger" onClick={() => setConfirmDelete(true)}>
+                Delete project
+              </Button>
             )}
           </div>
         </>

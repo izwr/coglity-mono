@@ -1,5 +1,5 @@
-import { Navigate, Outlet, useLocation } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 export function ProtectedRoute() {
   const { isLoading, isAuthenticated, user } = useAuth();
@@ -18,7 +18,7 @@ export function ProtectedRoute() {
   }
 
   // Users with no org memberships must go through onboarding.
-  const atOnboarding = location.pathname.startsWith("/onboarding");
+  const atOnboarding = location.pathname.startsWith('/onboarding');
   if (user && user.organizations.length === 0 && !atOnboarding) {
     return <Navigate to="/onboarding" replace />;
   }

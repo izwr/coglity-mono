@@ -14,12 +14,8 @@ export function toAnthropicTools(defs: ToolDef[]): Anthropic.Tool[] {
   }));
 }
 
-export function extractToolUseBlocks(
-  content: Anthropic.ContentBlock[],
-): Anthropic.ToolUseBlock[] {
-  return content.filter(
-    (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use',
-  );
+export function extractToolUseBlocks(content: Anthropic.ContentBlock[]): Anthropic.ToolUseBlock[] {
+  return content.filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
 }
 
 export function extractTextContent(content: Anthropic.ContentBlock[]): string {

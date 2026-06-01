@@ -1,30 +1,31 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import { organizationService } from "../services/organizationService";
-import { inviteService } from "../services/inviteService";
-import { Button } from "../components/ui/Button";
-import { CoglityLogo } from "../components/CoglityLogo";
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { organizationService } from '../services/organizationService';
+import { inviteService } from '../services/inviteService';
+import { Button } from '../components/ui/Button';
+import { CoglityLogo } from '../components/CoglityLogo';
 
-type Mode = "pick" | "create" | "invite";
+type Mode = 'pick' | 'create' | 'invite';
 
 export function Onboarding() {
   const { user, refresh } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [mode, setMode] = useState<Mode>(searchParams.get("invite") ? "invite" : "pick");
-  const [orgName, setOrgName] = useState("");
-  const [projectName, setProjectName] = useState("");
-  const [projectDesc, setProjectDesc] = useState("");
-  const [token, setToken] = useState(searchParams.get("invite") ?? "");
+  const [mode, setMode] = useState<Mode>(searchParams.get('invite') ? 'invite' : 'pick');
+  const [orgName, setOrgName] = useState('');
+  const [projectName, setProjectName] = useState('');
+  const [projectDesc, setProjectDesc] = useState('');
+  const [token, setToken] = useState(searchParams.get('invite') ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user && user.organizations.length > 0 && !searchParams.get("invite")) {
+    if (user && user.organizations.length > 0 && !searchParams.get('invite')) {
       const org = user.organizations[0];
       const project = org.projects[0];
-      if (project) navigate(`/orgs/${org.organizationId}/projects/${project.projectId}`, { replace: true });
+      if (project)
+        navigate(`/orgs/${org.organizationId}/projects/${project.projectId}`, { replace: true });
       else navigate(`/orgs/${org.organizationId}`, { replace: true });
     }
   }, [user, navigate, searchParams]);
@@ -33,7 +34,7 @@ export function Onboarding() {
     e.preventDefault();
     setError(null);
     if (!orgName.trim() || !projectName.trim()) {
-      setError("Organization name and first project name are required.");
+      setError('Organization name and first project name are required.');
       return;
     }
     setSubmitting(true);
@@ -45,7 +46,11 @@ export function Onboarding() {
       await refresh();
       navigate(`/orgs/${res.organization.id}/projects/${res.project.id}`, { replace: true });
     } catch (err: any) {
-      setError(err.response?.data?.error ? JSON.stringify(err.response.data.error) : "Failed to create organization");
+      setError(
+        err.response?.data?.error
+          ? JSON.stringify(err.response.data.error)
+          : 'Failed to create organization',
+      );
     } finally {
       setSubmitting(false);
     }
@@ -55,7 +60,7 @@ export function Onboarding() {
     e.preventDefault();
     setError(null);
     if (!token.trim()) {
-      setError("Invite token required");
+      setError('Invite token required');
       return;
     }
     setSubmitting(true);
@@ -65,8 +70,9 @@ export function Onboarding() {
       navigate(`/orgs/${res.organizationId}/projects/${res.projectId}`, { replace: true });
     } catch (err: any) {
       const code = err.response?.data?.error;
-      if (code === "INVITE_INVALID") setError("This invite is invalid, expired, or not for your email.");
-      else setError(err.response?.data?.message ?? "Failed to accept invite");
+      if (code === 'INVITE_INVALID')
+        setError('This invite is invalid, expired, or not for your email.');
+      else setError(err.response?.data?.message ?? 'Failed to accept invite');
     } finally {
       setSubmitting(false);
     }
@@ -77,17 +83,21 @@ export function Onboarding() {
       <div className="onboarding-card">
         <div className="sidebar-brand" style={{ padding: 0, marginBottom: 20 }}>
           <CoglityLogo className="sidebar-mark" size={22} />
-          <div className="sidebar-wordmark">Cog<em>lity</em></div>
+          <div className="sidebar-wordmark">
+            Cog<em>lity</em>
+          </div>
         </div>
         <h1>Welcome to Coglity</h1>
         <p className="onboarding-sub">Let's get you set up.</p>
-        {mode === "pick" && (
+        {mode === 'pick' && (
           <div className="onboarding-picker">
-            <Button onClick={() => setMode("create")}>Create a new organization</Button>
-            <Button variant="ghost" onClick={() => setMode("invite")}>I have an invite code</Button>
+            <Button onClick={() => setMode('create')}>Create a new organization</Button>
+            <Button variant="ghost" onClick={() => setMode('invite')}>
+              I have an invite code
+            </Button>
           </div>
         )}
-        {mode === "create" && (
+        {mode === 'create' && (
           <form className="ts-form" onSubmit={submitCreate}>
             <div className="ts-form-title">Create organization</div>
             <div className="ts-form-field">
@@ -122,12 +132,16 @@ export function Onboarding() {
             </div>
             {error && <p className="ts-form-error">{error}</p>}
             <div className="ts-form-actions">
-              <Button type="button" variant="ghost" onClick={() => setMode("pick")}>Back</Button>
-              <Button type="submit" disabled={submitting}>{submitting ? "Creating…" : "Create"}</Button>
+              <Button type="button" variant="ghost" onClick={() => setMode('pick')}>
+                Back
+              </Button>
+              <Button type="submit" disabled={submitting}>
+                {submitting ? 'Creating…' : 'Create'}
+              </Button>
             </div>
           </form>
         )}
-        {mode === "invite" && (
+        {mode === 'invite' && (
           <form className="ts-form" onSubmit={submitInvite}>
             <div className="ts-form-title">Accept invite</div>
             <div className="ts-form-field">
@@ -143,8 +157,12 @@ export function Onboarding() {
             </div>
             {error && <p className="ts-form-error">{error}</p>}
             <div className="ts-form-actions">
-              <Button type="button" variant="ghost" onClick={() => setMode("pick")}>Back</Button>
-              <Button type="submit" disabled={submitting}>{submitting ? "Accepting…" : "Accept"}</Button>
+              <Button type="button" variant="ghost" onClick={() => setMode('pick')}>
+                Back
+              </Button>
+              <Button type="submit" disabled={submitting}>
+                {submitting ? 'Accepting…' : 'Accept'}
+              </Button>
             </div>
           </form>
         )}

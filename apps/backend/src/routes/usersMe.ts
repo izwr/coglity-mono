@@ -1,8 +1,14 @@
-import { Router, type Router as RouterType } from "express";
-import { and, eq, or, sql } from "drizzle-orm";
-import { users, organizationMembers, organizations, projects, projectMembers } from "@coglity/shared/schema";
-import { db } from "../db";
-import { requireAuth } from "../middleware/requireAuth";
+import { Router, type Router as RouterType } from 'express';
+import { and, eq, or, sql } from 'drizzle-orm';
+import {
+  users,
+  organizationMembers,
+  organizations,
+  projects,
+  projectMembers,
+} from '@coglity/shared/schema';
+import { db } from '../db';
+import { requireAuth } from '../middleware/requireAuth';
 
 const router: RouterType = Router();
 
@@ -10,7 +16,7 @@ const router: RouterType = Router();
  * Returns the current user with their full org + project memberships.
  * The frontend uses this as its single bootstrap call after login.
  */
-router.get("/", requireAuth, async (req, res) => {
+router.get('/', requireAuth, async (req, res) => {
   const userId = req.session.userId!;
   const [user] = await db
     .select({
@@ -22,7 +28,7 @@ router.get("/", requireAuth, async (req, res) => {
     .from(users)
     .where(eq(users.id, userId));
   if (!user) {
-    res.status(404).json({ error: "User not found" });
+    res.status(404).json({ error: 'User not found' });
     return;
   }
 
@@ -41,12 +47,19 @@ router.get("/", requireAuth, async (req, res) => {
 
   // For each org, list projects: super_admin gets all projects in org;
   // member gets only projects they have an explicit project_members row for.
-  const orgIdToProjects = new Map<string, { projectId: string; projectName: string; role: "admin" | "writer" | "read" | null }[]>();
+  const orgIdToProjects = new Map<
+    string,
+    { projectId: string; projectName: string; role: 'admin' | 'writer' | 'read' | null }[]
+  >();
   memberships.forEach((m) => orgIdToProjects.set(m.organizationId, []));
 
   if (orgIds.length > 0) {
-    const superAdminOrgIds = memberships.filter((m) => m.orgRole === "super_admin").map((m) => m.organizationId);
-    const memberOrgIds = memberships.filter((m) => m.orgRole !== "super_admin").map((m) => m.organizationId);
+    const superAdminOrgIds = memberships
+      .filter((m) => m.orgRole === 'super_admin')
+      .map((m) => m.organizationId);
+    const memberOrgIds = memberships
+      .filter((m) => m.orgRole !== 'super_admin')
+      .map((m) => m.organizationId);
 
     if (superAdminOrgIds.length > 0) {
       const allProjects = await db
@@ -56,11 +69,7 @@ router.get("/", requireAuth, async (req, res) => {
           organizationId: projects.organizationId,
         })
         .from(projects)
-        .where(
-          or(
-            ...superAdminOrgIds.map((oid) => eq(projects.organizationId, oid)),
-          ),
-        );
+        .where(or(...superAdminOrgIds.map((oid) => eq(projects.organizationId, oid))));
       for (const p of allProjects) {
         orgIdToProjects.get(p.organizationId)?.push({
           projectId: p.projectId,

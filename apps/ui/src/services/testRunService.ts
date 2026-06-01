@@ -1,5 +1,5 @@
-import type { TestRun } from "@coglity/shared";
-import { api } from "./api";
+import type { TestRun } from '@coglity/shared';
+import { api } from './api';
 
 export interface TestRunWithUser extends TestRun {
   createdByName: string | null;
@@ -7,7 +7,11 @@ export interface TestRunWithUser extends TestRun {
 }
 
 export const testRunService = {
-  async listByTestCase(orgId: string, projectId: string, testCaseId: string): Promise<TestRunWithUser[]> {
+  async listByTestCase(
+    orgId: string,
+    projectId: string,
+    testCaseId: string,
+  ): Promise<TestRunWithUser[]> {
     const { data } = await api.get<{ data: TestRunWithUser[] }>(
       `/organizations/${orgId}/projects/${projectId}/test-runs`,
       { params: { testCaseId } },
@@ -64,7 +68,7 @@ export const testRunService = {
     if (!orgId || projectIds.length === 0) return { data: [], total: 0 };
     const { data } = await api.get<{ data: TestRunWithUser[]; total: number }>(
       `/organizations/${orgId}/test-runs`,
-      { params: { ...params, projectIds: projectIds.join(",") } },
+      { params: { ...params, projectIds: projectIds.join(',') } },
     );
     return data;
   },

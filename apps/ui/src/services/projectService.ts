@@ -1,4 +1,4 @@
-import { api } from "./api";
+import { api } from './api';
 
 export interface ProjectRow {
   id: string;
@@ -7,7 +7,7 @@ export interface ProjectRow {
   description: string;
   createdAt: string;
   updatedAt: string;
-  role?: "admin" | "writer" | "read";
+  role?: 'admin' | 'writer' | 'read';
 }
 
 export interface ProjectMemberRow {
@@ -15,7 +15,7 @@ export interface ProjectMemberRow {
   email: string;
   displayName: string;
   avatarUrl: string | null;
-  role: "admin" | "writer" | "read";
+  role: 'admin' | 'writer' | 'read';
   createdAt: string;
 }
 
@@ -28,7 +28,10 @@ export const projectService = {
     const { data } = await api.post(`/organizations/${orgId}/projects`, body);
     return data;
   },
-  async get(orgId: string, projectId: string): Promise<Omit<ProjectRow, "role"> & { role: "super_admin" | "admin" | "writer" | "read" }> {
+  async get(
+    orgId: string,
+    projectId: string,
+  ): Promise<Omit<ProjectRow, 'role'> & { role: 'super_admin' | 'admin' | 'writer' | 'read' }> {
     const { data } = await api.get(`/organizations/${orgId}/projects/${projectId}`);
     return data;
   },
@@ -43,7 +46,12 @@ export const projectService = {
     const { data } = await api.get(`/organizations/${orgId}/projects/${projectId}/members`);
     return data.data;
   },
-  async updateMemberRole(orgId: string, projectId: string, userId: string, role: "admin" | "writer" | "read") {
+  async updateMemberRole(
+    orgId: string,
+    projectId: string,
+    userId: string,
+    role: 'admin' | 'writer' | 'read',
+  ) {
     await api.patch(`/organizations/${orgId}/projects/${projectId}/members/${userId}`, { role });
   },
   async removeMember(orgId: string, projectId: string, userId: string) {

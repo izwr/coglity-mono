@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from "react";
-import { SUPPORTED_LANGUAGES, SUPPORTED_ENVIRONMENTS } from "@coglity/shared";
-import { testRunService, type TestRunWithUser } from "../services/testRunService";
-import { Chip, type ChipVariant } from "./ui/Chip";
-import { TestRunPanel } from "./TestRunPanel";
+import { useEffect, useRef, useState } from 'react';
+import { SUPPORTED_LANGUAGES, SUPPORTED_ENVIRONMENTS } from '@coglity/shared';
+import { testRunService, type TestRunWithUser } from '../services/testRunService';
+import { Chip, type ChipVariant } from './ui/Chip';
+import { TestRunPanel } from './TestRunPanel';
 
 interface Props {
   orgId: string;
@@ -11,21 +11,21 @@ interface Props {
   onAllTerminal?: (runs: TestRunWithUser[]) => void;
 }
 
-const TERMINAL_STATES = new Set(["passed", "failed", "errored", "cancelled"]);
+const TERMINAL_STATES = new Set(['passed', 'failed', 'errored', 'cancelled']);
 
 const STATE_CHIP: Record<string, { variant: ChipVariant; label: string }> = {
-  queued:    { variant: "info", label: "Q" },
-  running:   { variant: "teal", label: "R" },
-  passed:    { variant: "pass", label: "P" },
-  failed:    { variant: "fail", label: "F" },
-  errored:   { variant: "warn", label: "E" },
-  cancelled: { variant: "neutral", label: "C" },
+  queued: { variant: 'info', label: 'Q' },
+  running: { variant: 'teal', label: 'R' },
+  passed: { variant: 'pass', label: 'P' },
+  failed: { variant: 'fail', label: 'F' },
+  errored: { variant: 'warn', label: 'E' },
+  cancelled: { variant: 'neutral', label: 'C' },
 };
 
 export function BatchRunPanel({ orgId, projectId, batchId, onAllTerminal }: Props) {
   const [runs, setRuns] = useState<TestRunWithUser[]>([]);
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
-  const [error, setError] = useState<string>("");
+  const [error, setError] = useState<string>('');
   const notifiedRef = useRef(false);
 
   useEffect(() => {
@@ -49,7 +49,7 @@ export function BatchRunPanel({ orgId, projectId, batchId, onAllTerminal }: Prop
         timer = window.setTimeout(tick, 2000);
       } catch (e) {
         if (cancelled) return;
-        setError(e instanceof Error ? e.message : "Failed to load runs");
+        setError(e instanceof Error ? e.message : 'Failed to load runs');
       }
     };
     tick();
@@ -64,9 +64,9 @@ export function BatchRunPanel({ orgId, projectId, batchId, onAllTerminal }: Prop
 
   const total = runs.length;
   const completed = runs.filter((r) => TERMINAL_STATES.has(r.state)).length;
-  const passed = runs.filter((r) => r.state === "passed").length;
-  const failed = runs.filter((r) => r.state === "failed").length;
-  const errored = runs.filter((r) => r.state === "errored").length;
+  const passed = runs.filter((r) => r.state === 'passed').length;
+  const failed = runs.filter((r) => r.state === 'failed').length;
+  const errored = runs.filter((r) => r.state === 'errored').length;
 
   const languages = [...new Set(runs.map((r) => r.language))].sort();
   const environments = [...new Set(runs.map((r) => r.environment))].sort();
@@ -76,7 +76,15 @@ export function BatchRunPanel({ orgId, projectId, batchId, onAllTerminal }: Prop
 
   return (
     <div style={containerStyle}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          marginBottom: 12,
+          flexWrap: 'wrap',
+        }}
+      >
         <span style={{ fontSize: 14, fontWeight: 600 }}>Batch Run</span>
         <span className="muted" style={{ fontSize: 12 }}>
           {completed}/{total} complete
@@ -86,7 +94,7 @@ export function BatchRunPanel({ orgId, projectId, batchId, onAllTerminal }: Prop
         {errored > 0 && <Chip variant="warn">{errored} errored</Chip>}
       </div>
 
-      <div style={{ overflowX: "auto", marginBottom: 12 }}>
+      <div style={{ overflowX: 'auto', marginBottom: 12 }}>
         <table style={tableStyle}>
           <thead>
             <tr>
@@ -106,16 +114,25 @@ export function BatchRunPanel({ orgId, projectId, batchId, onAllTerminal }: Prop
                 </td>
                 {environments.map((env) => {
                   const run = getRunForCell(lang, env);
-                  if (!run) return <td key={env} style={tdStyle}>-</td>;
+                  if (!run)
+                    return (
+                      <td key={env} style={tdStyle}>
+                        -
+                      </td>
+                    );
                   const chip = STATE_CHIP[run.state] ?? STATE_CHIP.queued;
                   return (
                     <td key={env} style={tdStyle}>
                       <button
                         style={cellBtnStyle}
                         onClick={() => setExpandedRunId(expandedRunId === run.id ? null : run.id)}
-                        title={`${run.state}${run.verdict ? `: ${run.verdict.slice(0, 80)}` : ""}`}
+                        title={`${run.state}${run.verdict ? `: ${run.verdict.slice(0, 80)}` : ''}`}
                       >
-                        <Chip variant={chip.variant} dot={run.state === "running"} pulse={run.state === "running"}>
+                        <Chip
+                          variant={chip.variant}
+                          dot={run.state === 'running'}
+                          pulse={run.state === 'running'}
+                        >
                           {chip.label}
                         </Chip>
                       </button>
@@ -128,54 +145,52 @@ export function BatchRunPanel({ orgId, projectId, batchId, onAllTerminal }: Prop
         </table>
       </div>
 
-      {expandedRunId && (
-        <TestRunPanel orgId={orgId} projectId={projectId} runId={expandedRunId} />
-      )}
+      {expandedRunId && <TestRunPanel orgId={orgId} projectId={projectId} runId={expandedRunId} />}
     </div>
   );
 }
 
 const containerStyle: React.CSSProperties = {
-  border: "1px solid var(--line)",
+  border: '1px solid var(--line)',
   borderRadius: 12,
   padding: 16,
-  background: "var(--bg-1)",
+  background: 'var(--bg-1)',
   marginBottom: 16,
 };
 
 const tableStyle: React.CSSProperties = {
-  borderCollapse: "collapse",
-  width: "100%",
+  borderCollapse: 'collapse',
+  width: '100%',
   fontSize: 13,
 };
 
 const thStyle: React.CSSProperties = {
-  textAlign: "center",
-  padding: "6px 10px",
+  textAlign: 'center',
+  padding: '6px 10px',
   fontSize: 11,
   fontWeight: 600,
-  color: "var(--muted)",
-  borderBottom: "1px solid var(--line)",
+  color: 'var(--muted)',
+  borderBottom: '1px solid var(--line)',
 };
 
 const tdLabelStyle: React.CSSProperties = {
-  padding: "6px 10px",
+  padding: '6px 10px',
   fontSize: 12,
   fontWeight: 600,
-  color: "var(--ink)",
-  borderBottom: "1px solid var(--line)",
-  whiteSpace: "nowrap",
+  color: 'var(--ink)',
+  borderBottom: '1px solid var(--line)',
+  whiteSpace: 'nowrap',
 };
 
 const tdStyle: React.CSSProperties = {
-  textAlign: "center",
-  padding: "6px 10px",
-  borderBottom: "1px solid var(--line)",
+  textAlign: 'center',
+  padding: '6px 10px',
+  borderBottom: '1px solid var(--line)',
 };
 
 const cellBtnStyle: React.CSSProperties = {
-  background: "none",
-  border: "none",
-  cursor: "pointer",
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
   padding: 0,
 };

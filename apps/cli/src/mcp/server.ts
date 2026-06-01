@@ -52,9 +52,18 @@ export function createServer(opts: McpServerOptions = {}): McpServer {
     `Run a Coglity web test against a live website. Launches a Chromium browser (auto-installed on first use), executes each step using an AI planner agent that reads the page's accessibility tree and performs browser actions (click, fill, navigate, etc.), then evaluates the final page state with a judge agent that returns pass/fail/inconclusive with reasoning. Returns a structured result with the verdict, per-step outcomes (status, duration, actions taken, errors), and the path to the run directory containing screenshots, accessibility snapshots, and full LLM traces. Typical execution takes 15-60 seconds depending on step count and page complexity.`,
     {
       spec: z.string().describe(SPEC_FORMAT_DESCRIPTION),
-      headed: z.boolean().optional().describe('Run browser in headed mode with visible UI. Defaults to false (headless).'),
-      plannerModel: z.string().optional().describe('Override the planner LLM model. Defaults to claude-sonnet-4-6.'),
-      judgeModel: z.string().optional().describe('Override the judge LLM model. Defaults to claude-haiku-4-5.'),
+      headed: z
+        .boolean()
+        .optional()
+        .describe('Run browser in headed mode with visible UI. Defaults to false (headless).'),
+      plannerModel: z
+        .string()
+        .optional()
+        .describe('Override the planner LLM model. Defaults to claude-sonnet-4-6.'),
+      judgeModel: z
+        .string()
+        .optional()
+        .describe('Override the judge LLM model. Defaults to claude-haiku-4-5.'),
     },
     async ({ spec, headed, plannerModel, judgeModel }) => {
       try {
@@ -62,11 +71,7 @@ export function createServer(opts: McpServerOptions = {}): McpServer {
         const events: RunEvent[] = [];
         const onEvent: RunEventEmitter = (e) => events.push(e);
 
-        const result = await runner(
-          parsed,
-          { headed, plannerModel, judgeModel },
-          onEvent,
-        );
+        const result = await runner(parsed, { headed, plannerModel, judgeModel }, onEvent);
 
         return { content: [{ type: 'text', text: formatRunResult(result, events) }] };
       } catch (err) {
@@ -105,7 +110,12 @@ export function createServer(opts: McpServerOptions = {}): McpServer {
     'list_runs',
     `List recent Coglity web test runs from the .coglity/runs/ directory in the current working directory. Returns run IDs (ISO timestamps), the spec that was tested, the verdict (pass/fail/inconclusive), and total duration. Runs are sorted newest-first. Use this to review test history, find failing runs, or locate a specific run ID for detailed inspection with get_run_result.`,
     {
-      limit: z.number().int().positive().optional().describe('Maximum number of runs to return. Defaults to 20.'),
+      limit: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe('Maximum number of runs to return. Defaults to 20.'),
     },
     async ({ limit }) => {
       try {
@@ -114,7 +124,14 @@ export function createServer(opts: McpServerOptions = {}): McpServer {
         try {
           entries = await fs.readdir(runsDir);
         } catch {
-          return { content: [{ type: 'text', text: 'No runs found. The .coglity/runs/ directory does not exist yet.' }] };
+          return {
+            content: [
+              {
+                type: 'text',
+                text: 'No runs found. The .coglity/runs/ directory does not exist yet.',
+              },
+            ],
+          };
         }
 
         entries.sort().reverse();
@@ -161,7 +178,9 @@ export function createServer(opts: McpServerOptions = {}): McpServer {
           raw = await fs.readFile(resultPath, 'utf-8');
         } catch {
           return {
-            content: [{ type: 'text', text: `Run not found: ${runId}\nExpected path: ${resultPath}` }],
+            content: [
+              { type: 'text', text: `Run not found: ${runId}\nExpected path: ${resultPath}` },
+            ],
             isError: true,
           };
         }
@@ -192,7 +211,10 @@ function formatRunResult(result: RunResult, events: RunEvent[]): string {
     lines.push(`${step.index + 1}. ${step.text} — ${status} (${step.durationMs}ms)`);
 
     const actions = events
-      .filter((e): e is RunEvent & { kind: 'step.action' } => e.kind === 'step.action' && e.index === step.index)
+      .filter(
+        (e): e is RunEvent & { kind: 'step.action' } =>
+          e.kind === 'step.action' && e.index === step.index,
+      )
       .map((e) => formatAction(e.action));
 
     if (actions.length > 0) {
@@ -231,12 +253,18 @@ function formatDetailedResult(result: RunResult, dir: string): string {
 
 function formatAction(action: PlaywrightAction): string {
   switch (action.tool) {
-    case 'click': return `click "${action.selector}"`;
-    case 'fill': return `fill "${action.selector}" "${action.value}"`;
-    case 'goto': return `goto ${action.url}`;
-    case 'press': return `press ${action.key}`;
-    case 'select': return `select "${action.value}" in "${action.selector}"`;
-    case 'wait_for': return `wait_for "${action.selector}"`;
+    case 'click':
+      return `click "${action.selector}"`;
+    case 'fill':
+      return `fill "${action.selector}" "${action.value}"`;
+    case 'goto':
+      return `goto ${action.url}`;
+    case 'press':
+      return `press ${action.key}`;
+    case 'select':
+      return `select "${action.value}" in "${action.selector}"`;
+    case 'wait_for':
+      return `wait_for "${action.selector}"`;
   }
 }
 
