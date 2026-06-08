@@ -16,3 +16,4 @@ export * from './botConnections';
 export * from './knowledgeSources';
 export * from './sessions';
 export * from './testRuns';
+export * from './waitlist';

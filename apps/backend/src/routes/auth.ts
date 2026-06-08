@@ -1,7 +1,7 @@
 import { Router, type IRouter } from 'express';
 import crypto from 'node:crypto';
 import { db } from '../db';
-import { users } from '@coglity/shared/schema';
+import { users, waitlist } from '@coglity/shared/schema';
 import { eq } from 'drizzle-orm';
 
 const router: IRouter = Router();
@@ -21,6 +21,17 @@ const GOOGLE_REDIRECT_URI =
   process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3001/api/auth/google/callback';
 const GOOGLE_AUTHORIZE_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+
+// Allowlist of emails permitted to sign in during gradual onboarding.
+// Add emails here to grant access.
+const ALLOWED_EMAILS: string[] = [
+  'janib3332@gmail.com',
+];
+
+function isEmailAllowed(email: string): boolean {
+  if (ALLOWED_EMAILS.length === 0) return true;
+  return ALLOWED_EMAILS.some((allowed) => allowed.toLowerCase() === email.toLowerCase());
+}
 
 // GET /api/auth/login redirect to Microsoft
 router.get('/login', (req, res) => {
@@ -98,6 +109,15 @@ router.get('/callback', async (req, res) => {
     const entraId = payload.oid;
     const email = payload.preferred_username || payload.email || '';
     const displayName = payload.name || email;
+
+    if (!isEmailAllowed(email)) {
+      await db
+        .insert(waitlist)
+        .values({ email, displayName, provider: 'microsoft' })
+        .onConflictDoNothing();
+      res.redirect(`${CLIENT_URL}/login?error=waitlist`);
+      return;
+    }
 
     // Upsert user
     const [user] = await db
@@ -200,6 +220,15 @@ router.get('/google/callback', async (req, res) => {
     const email = payload.email || '';
     const displayName = payload.name || email;
     const avatarUrl = payload.picture || null;
+
+    if (!isEmailAllowed(email)) {
+      await db
+        .insert(waitlist)
+        .values({ email, displayName, provider: 'google' })
+        .onConflictDoNothing();
+      res.redirect(`${CLIENT_URL}/login?error=waitlist`);
+      return;
+    }
 
     const [user] = await db
       .insert(users)

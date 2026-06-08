@@ -124,7 +124,14 @@ export function Login() {
               : "Invite your QA team we'll generate starter test cases from your bot."}
           </p>
 
-          {error && <div className="auth-error">Authentication failed. Please try again.</div>}
+          {error === 'waitlist' ? (
+            <div className="auth-error" style={{ background: 'var(--surface-2, #f0f4f8)', borderColor: 'var(--teal, #0ea5e9)' }}>
+              We're gradually onboarding users right now. We've noted your interest and will
+              reach out once a spot opens up. Thanks for your patience!
+            </div>
+          ) : error ? (
+            <div className="auth-error">Authentication failed. Please try again.</div>
+          ) : null}
 
           <div className="col">
             <button className="auth-sso primary" onClick={login}>
