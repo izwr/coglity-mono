@@ -1,6 +1,6 @@
 config:
   coglity-apps:globalResourcePrefix: r7k3
-  coglity-apps:enableFunctionRunFromPackage: "false"
+  coglity-apps:enableFunctionRunFromPackage: 'true'
   # ── Stack reference ──
   coglity-apps:coreStack: izwr/coglity-core/core-prod
   # ── ACR ──
