@@ -339,6 +339,40 @@ const speechServicesKeys = pulumi
     }),
   );
 
+// ── 13. Azure AI Search ───────────────────────────────────────────
+
+const searchService = new azure.search.Service('coglity-search', {
+  resourceGroupName: resourceGroup.name,
+  location,
+  searchServiceName: `${dashedGlobalResourcePrefix}coglity-search`,
+  sku: { name: 'basic' },
+  replicaCount: 1,
+  partitionCount: 1,
+});
+
+// ── 14. Knowledge Index Queue ─────────────────────────────────────
+
+new azure.servicebus.Queue('knowledge-index-jobs', {
+  resourceGroupName: resourceGroup.name,
+  namespaceName: serviceBusNamespace.name,
+  queueName: 'knowledge-index-jobs',
+  lockDuration: 'PT10M',
+  maxDeliveryCount: 3,
+});
+
+// ── 15. Computer Vision (OCR for screenshots) ────────────────────
+
+const visionAccount = new azure.cognitiveservices.Account('coglity-vision', {
+  resourceGroupName: resourceGroup.name,
+  location,
+  accountName: `${dashedGlobalResourcePrefix}coglity-vision`,
+  kind: 'ComputerVision',
+  sku: { name: 'S1' },
+  properties: {
+    publicNetworkAccess: 'Enabled',
+  },
+});
+
 // ── Exports ────────────────────────────────────────────────────────
 
 export const resourceGroupName = resourceGroup.name;
@@ -382,3 +416,12 @@ export const storageAccountId = storageAccount.id;
 export const serviceBusNamespaceId = serviceBusNamespace.id;
 export { storageConnectionString };
 export const appInsightsConnectionString = appInsights.connectionString;
+
+export const searchServiceEndpoint = searchService.name.apply(
+  (n) => `https://${n}.search.windows.net`,
+);
+export const searchServiceId = searchService.id;
+export const knowledgeIndexQueueName = 'knowledge-index-jobs';
+
+export const visionEndpoint = visionAccount.properties.apply((p) => p.endpoint!);
+export const visionAccountId = visionAccount.id;

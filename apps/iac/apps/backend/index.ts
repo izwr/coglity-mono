@@ -26,6 +26,9 @@ export interface BackendArgs {
   acrLoginServer: pulumi.Input<string>;
   acrIdentityId: pulumi.Input<string>;
   imageTag: string;
+  searchServiceEndpoint: pulumi.Input<string>;
+  searchServiceId: pulumi.Input<string>;
+  knowledgeIndexQueueName: string;
 }
 
 export function createBackend(args: BackendArgs) {
@@ -94,6 +97,9 @@ export function createBackend(args: BackendArgs) {
             { name: 'AZURE_SERVICE_BUS_QUEUE_NAME', value: args.serviceBusQueueName },
             { name: 'COOKIE_DOMAIN', value: 'studio.coglity.com' },
             { name: 'NODE_TLS_REJECT_UNAUTHORIZED', value: '0' },
+            { name: 'AZURE_SEARCH_ENDPOINT', value: args.searchServiceEndpoint },
+            { name: 'AZURE_SEARCH_INDEX_NAME', value: 'knowledge-sources' },
+            { name: 'AZURE_SERVICE_BUS_INDEX_QUEUE_NAME', value: args.knowledgeIndexQueueName },
           ],
         },
       ],
@@ -121,6 +127,15 @@ export function createBackend(args: BackendArgs) {
     principalType: 'ServicePrincipal',
     roleDefinitionId: pulumi.interpolate`/subscriptions/${azure.authorization.getClientConfigOutput().apply((c) => c.subscriptionId)}/providers/Microsoft.Authorization/roleDefinitions/${storageRoleId}`,
     scope: args.storageAccountId,
+  });
+
+  // Search Index Data Reader role
+  const searchReaderRoleId = '1407120a-92aa-4202-b7e9-c0e197c71c8f';
+  new azure.authorization.RoleAssignment('backend-search-reader', {
+    principalId: app.identity.apply((id) => id!.principalId!),
+    principalType: 'ServicePrincipal',
+    roleDefinitionId: pulumi.interpolate`/subscriptions/${azure.authorization.getClientConfigOutput().apply((c) => c.subscriptionId)}/providers/Microsoft.Authorization/roleDefinitions/${searchReaderRoleId}`,
+    scope: args.searchServiceId,
   });
 
   const fqdn = app.configuration.apply((c) => c!.ingress!.fqdn!);

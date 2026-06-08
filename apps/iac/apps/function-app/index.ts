@@ -21,6 +21,10 @@ export interface FunctionAppArgs {
   backendFqdn: pulumi.Input<string>;
   executorWebhookSecret: pulumi.Input<string>;
   appInsightsConnectionString: pulumi.Input<string>;
+  searchServiceEndpoint: pulumi.Input<string>;
+  searchServiceId: pulumi.Input<string>;
+  visionEndpoint: pulumi.Input<string>;
+  visionAccountId: pulumi.Input<string>;
 }
 
 export function createFunctionApp(args: FunctionAppArgs) {
@@ -75,6 +79,12 @@ export function createFunctionApp(args: FunctionAppArgs) {
         { name: 'EXECUTOR_MAX_TURNS', value: '12' },
         { name: 'EXECUTOR_SILENCE_MS', value: '8000' },
         { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: args.appInsightsConnectionString },
+        { name: 'AZURE_SEARCH_ENDPOINT', value: args.searchServiceEndpoint },
+        { name: 'AZURE_SEARCH_INDEX_NAME', value: 'knowledge-sources' },
+        { name: 'AZURE_OPENAI_EMBEDDING_ENDPOINT', value: args.aiServicesEndpoint },
+        { name: 'AZURE_OPENAI_EMBEDDING_DEPLOYMENT', value: 'text-embedding-3-large' },
+        { name: 'AZURE_VISION_ENDPOINT', value: args.visionEndpoint },
+        { name: 'AZURE_STORAGE_KNOWLEDGE_CONTAINER', value: 'knowledge-sources' },
       ],
     },
   });
@@ -104,6 +114,24 @@ export function createFunctionApp(args: FunctionAppArgs) {
     principalType: 'ServicePrincipal',
     roleDefinitionId: pulumi.interpolate`/subscriptions/${azure.authorization.getClientConfigOutput().apply((c) => c.subscriptionId)}/providers/Microsoft.Authorization/roleDefinitions/${storageBlobRoleId}`,
     scope: args.storageAccountId,
+  });
+
+  // Search Index Data Contributor role
+  const searchContributorRoleId = '8bbe4f3e-f2e7-44f3-97f8-01c6ba709eb6';
+  new azure.authorization.RoleAssignment('executor-search-contributor', {
+    principalId: functionApp.identity.apply((id) => id!.principalId!),
+    principalType: 'ServicePrincipal',
+    roleDefinitionId: pulumi.interpolate`/subscriptions/${azure.authorization.getClientConfigOutput().apply((c) => c.subscriptionId)}/providers/Microsoft.Authorization/roleDefinitions/${searchContributorRoleId}`,
+    scope: args.searchServiceId,
+  });
+
+  // Cognitive Services User role on Computer Vision
+  const cogServicesUserRoleId = 'a97b65f3-24c7-4388-baec-2e87135dc908';
+  new azure.authorization.RoleAssignment('executor-vision-user', {
+    principalId: functionApp.identity.apply((id) => id!.principalId!),
+    principalType: 'ServicePrincipal',
+    roleDefinitionId: pulumi.interpolate`/subscriptions/${azure.authorization.getClientConfigOutput().apply((c) => c.subscriptionId)}/providers/Microsoft.Authorization/roleDefinitions/${cogServicesUserRoleId}`,
+    scope: args.visionAccountId,
   });
 
   return {

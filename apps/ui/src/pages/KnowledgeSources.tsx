@@ -269,7 +269,7 @@ export function KnowledgeSources() {
       <PageHead
         title={
           <>
-            Knowledge <em className="italic-teal">sources</em>
+            Knowledge <em className="italic-teal">documents</em>
           </>
         }
         subtitle="Reference documents, screens and URLs for your AI test author."
@@ -288,7 +288,7 @@ export function KnowledgeSources() {
               <svg className="ico" viewBox="0 0 24 24">
                 <path d="M12 5v14M5 12h14" />
               </svg>
-              Add source
+              Add file
             </Button>
           )
         }
@@ -514,14 +514,14 @@ export function KnowledgeSources() {
       ) : total === 0 && !filterType && !showForm ? (
         <div className="empty">
           <div className="title">
-            No knowledge <em className="italic-teal">sources</em> yet.
+            No knowledge <em className="italic-teal">documents</em> yet.
           </div>
           <div className="sub">
-            Add PDFs, screens, Figma files or URLs. Coglity uses them as context when generating
-            test cases.
+            Add PDFs, screens, Figma files or URLs. Coglity indexes them and uses them as context
+            when generating test cases.
           </div>
           <Button variant="primary" onClick={() => setShowForm(true)}>
-            Add source
+            Add file
           </Button>
         </div>
       ) : (

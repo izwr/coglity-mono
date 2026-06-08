@@ -62,6 +62,13 @@ const coreOut = {
   appInsightsConnectionString: coreStack.requireOutput(
     'appInsightsConnectionString',
   ) as pulumi.Output<string>,
+  searchServiceEndpoint: coreStack.requireOutput('searchServiceEndpoint') as pulumi.Output<string>,
+  searchServiceId: coreStack.requireOutput('searchServiceId') as pulumi.Output<string>,
+  knowledgeIndexQueueName: coreStack.requireOutput(
+    'knowledgeIndexQueueName',
+  ) as pulumi.Output<string>,
+  visionEndpoint: coreStack.requireOutput('visionEndpoint') as pulumi.Output<string>,
+  visionAccountId: coreStack.requireOutput('visionAccountId') as pulumi.Output<string>,
 };
 
 const acrLoginServer = config.require('acrLoginServer');
@@ -123,6 +130,9 @@ const backend = createBackend({
   acrLoginServer,
   acrIdentityId: acrIdentity.id,
   imageTag: backendImageTag,
+  searchServiceEndpoint: coreOut.searchServiceEndpoint,
+  searchServiceId: coreOut.searchServiceId,
+  knowledgeIndexQueueName: 'knowledge-index-jobs',
 });
 
 // ── UI ─────────────────────────────────────────────────────────────
@@ -178,6 +188,10 @@ const executor = createFunctionApp({
   backendFqdn: backend.fqdn,
   executorWebhookSecret,
   appInsightsConnectionString: coreOut.appInsightsConnectionString,
+  searchServiceEndpoint: coreOut.searchServiceEndpoint,
+  searchServiceId: coreOut.searchServiceId,
+  visionEndpoint: coreOut.visionEndpoint,
+  visionAccountId: coreOut.visionAccountId,
 });
 
 // ── Exports ────────────────────────────────────────────────────────

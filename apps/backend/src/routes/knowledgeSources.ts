@@ -5,7 +5,8 @@ import multer from 'multer';
 import { knowledgeSources, insertKnowledgeSourceSchema, users } from '@coglity/shared/schema';
 import { db as rootDb } from '../db';
 import { uploadBlob, deleteBlob } from '../lib/blobStorage';
-import { checkIndexStatus } from '../lib/searchClient';
+import { deleteChunksByBlob } from '../lib/searchClient';
+import { sendToIndexQueue } from '../lib/indexQueue';
 
 const router: RouterType = Router({ mergeParams: true });
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
@@ -110,23 +111,6 @@ router.get('/:id', async (req, res) => {
     res.status(404).json({ error: 'Knowledge source not found' });
     return;
   }
-
-  if (row.status === 'pending' || row.status === 'processing') {
-    const blobName = extractBlobName(row.url);
-    if (blobName) {
-      const indexStatus = await checkIndexStatus(blobName);
-      if (indexStatus.indexed) {
-        await db
-          .update(knowledgeSources)
-          .set({ status: 'indexed', chunkCount: indexStatus.chunkCount, indexedAt: new Date() })
-          .where(eq(knowledgeSources.id, row.id));
-        const [updated] = await baseQuery(db).where(eq(knowledgeSources.id, row.id));
-        res.json(updated);
-        return;
-      }
-    }
-  }
-
   res.json(row);
 });
 
@@ -134,9 +118,11 @@ router.post('/', upload.single('file'), async (req, res) => {
   const db = (req.db ?? rootDb) as DbHandle;
   const projectId = req.projectId!;
   let fileUrl = '';
+  let blobName = '';
   if (req.file) {
     const blob = await uploadBlob(req.file, { projectId });
     fileUrl = blob.url;
+    blobName = blob.blobName;
   }
 
   const body = {
@@ -152,10 +138,30 @@ router.post('/', upload.single('file'), async (req, res) => {
     return;
   }
   const userId = req.session.userId;
+  const hasContent = blobName || parsed.data.sourceType === 'url';
   const [inserted] = await db
     .insert(knowledgeSources)
-    .values({ ...parsed.data, projectId, createdBy: userId, updatedBy: userId })
+    .values({
+      ...parsed.data,
+      projectId,
+      createdBy: userId,
+      updatedBy: userId,
+      status: hasContent ? 'processing' : 'pending',
+    })
     .returning();
+
+  if (hasContent) {
+    sendToIndexQueue({
+      knowledgeSourceId: inserted.id,
+      projectId,
+      blobName,
+      blobUrl: fileUrl,
+      sourceType: parsed.data.sourceType,
+      fileName: req.file?.originalname ?? parsed.data.name,
+      url: parsed.data.sourceType === 'url' ? parsed.data.url : undefined,
+    }).catch((err) => console.error('[knowledge-sources] queue send failed:', err));
+  }
+
   const [row] = await baseQuery(db).where(eq(knowledgeSources.id, inserted.id));
   res.status(201).json(row);
 });
@@ -178,12 +184,16 @@ router.put('/:id', upload.single('file'), async (req, res) => {
   }
 
   let fileUrl = '';
+  let blobName = '';
+  let oldBlobName: string | undefined;
   if (req.file) {
     if (existing.url && existing.url.includes('blob.core.windows.net')) {
+      oldBlobName = extractBlobName(existing.url) ?? undefined;
       await deleteBlob(existing.url);
     }
     const blob = await uploadBlob(req.file, { projectId });
     fileUrl = blob.url;
+    blobName = blob.blobName;
   }
 
   const body = {
@@ -206,7 +216,7 @@ router.put('/:id', upload.single('file'), async (req, res) => {
       updatedBy: userId,
       updatedAt: new Date(),
       ...(req.file
-        ? { status: 'pending' as const, chunkCount: 0, indexedAt: null, errorMessage: null }
+        ? { status: 'processing' as const, chunkCount: 0, indexedAt: null, errorMessage: null }
         : {}),
     })
     .where(
@@ -216,6 +226,20 @@ router.put('/:id', upload.single('file'), async (req, res) => {
       ),
     )
     .returning();
+
+  if (req.file && blobName) {
+    sendToIndexQueue({
+      knowledgeSourceId: updated.id,
+      projectId,
+      blobName,
+      blobUrl: fileUrl,
+      sourceType: parsed.data.sourceType,
+      fileName: req.file.originalname ?? parsed.data.name,
+      url: parsed.data.sourceType === 'url' ? parsed.data.url : undefined,
+      oldBlobName,
+    }).catch((err) => console.error('[knowledge-sources] queue send failed:', err));
+  }
+
   const [row] = await baseQuery(db).where(eq(knowledgeSources.id, updated.id));
   res.json(row);
 });
@@ -248,6 +272,10 @@ router.delete('/:id', async (req, res) => {
   }
 
   if (existing?.url && existing.url.includes('blob.core.windows.net')) {
+    const blobName = extractBlobName(existing.url);
+    if (blobName) {
+      deleteChunksByBlob(blobName).catch(() => {});
+    }
     await deleteBlob(existing.url);
   }
 

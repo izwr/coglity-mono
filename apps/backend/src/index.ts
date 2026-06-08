@@ -30,6 +30,7 @@ import knowledgeSourcesRouter from './routes/knowledgeSources';
 import orgContentListsRouter from './routes/orgContentLists';
 import testRunsRouter from './routes/testRuns';
 import testRunsCallbackRouter from './routes/testRunsCallback';
+import knowledgeSourcesCallbackRouter from './routes/knowledgeSourcesCallback';
 import testRunDownloadRouter from './routes/testRunDownload';
 
 const app = express();
@@ -50,6 +51,7 @@ app.use('/api/auth', authRouter);
 
 // ── Internal webhooks (no session, shared-secret auth inside) ─
 app.use('/api/internal/test-runs', testRunsCallbackRouter);
+app.use('/api/internal/knowledge-sources', knowledgeSourcesCallbackRouter);
 
 // ── Authenticated, non-scoped ─────────────────────────────────
 app.use('/api/users/me', usersMeRouter);

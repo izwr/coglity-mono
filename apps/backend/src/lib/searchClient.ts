@@ -18,6 +18,7 @@ function isConfigured(): boolean {
 }
 
 function getSearchClient(): SearchClient<{
+  chunk_id: string;
   content: string;
   projectId: string;
   metadata_storage_name: string;
@@ -46,6 +47,27 @@ export async function checkIndexStatus(
     return { indexed: count > 0, chunkCount: count };
   } catch {
     return { indexed: false, chunkCount: 0 };
+  }
+}
+
+export async function deleteChunksByBlob(blobName: string): Promise<void> {
+  if (!isConfigured()) return;
+  try {
+    const client = getSearchClient();
+    const results = await client.search('*', {
+      filter: `metadata_storage_name eq '${blobName}'`,
+      select: ['chunk_id'],
+      top: 1000,
+    });
+    const keys: { chunk_id: string }[] = [];
+    for await (const result of results.results) {
+      keys.push({ chunk_id: result.document.chunk_id });
+    }
+    if (keys.length > 0) {
+      await client.deleteDocuments(keys as never[]);
+    }
+  } catch {
+    // best-effort cleanup
   }
 }
 
