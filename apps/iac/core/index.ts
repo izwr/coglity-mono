@@ -356,7 +356,7 @@ new azure.servicebus.Queue('knowledge-index-jobs', {
   resourceGroupName: resourceGroup.name,
   namespaceName: serviceBusNamespace.name,
   queueName: 'knowledge-index-jobs',
-  lockDuration: 'PT10M',
+  lockDuration: 'PT5M',
   maxDeliveryCount: 3,
 });
 
