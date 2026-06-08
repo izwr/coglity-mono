@@ -80,7 +80,7 @@ export const knowledgeSourceService = {
       const { data } = await api.post<KnowledgeSourceWithUser>(
         `/organizations/${orgId}/projects/${projectId}/knowledge-sources`,
         buildFormData(payload),
-        { headers: { 'Content-Type': 'multipart/form-data' } },
+        { headers: { 'Content-Type': undefined } },
       );
       return data;
     }
@@ -101,7 +101,7 @@ export const knowledgeSourceService = {
       const { data } = await api.put<KnowledgeSourceWithUser>(
         `/organizations/${orgId}/projects/${projectId}/knowledge-sources/${id}`,
         buildFormData(payload),
-        { headers: { 'Content-Type': 'multipart/form-data' } },
+        { headers: { 'Content-Type': undefined } },
       );
       return data;
     }
