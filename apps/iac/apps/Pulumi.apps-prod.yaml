@@ -25,3 +25,9 @@ config:
     secure: AAABAAEvk07W+uysGp4BjK4rfPrWVhQye1nOZMY7SfTEn6KNrtP+3rLUAqZMs+3cNOVmTuAiyUD/q2L95m0m4CUdGA==
   coglity-apps:executorWebhookSecret:
     secure: AAABADo8vMbEbZL0hFlbXLQQI8O6I/ombBm9ctjjWjGG1ZgH2CaMAj3F2KzX/1zJ
+  coglity-apps:twilioAccountSid:
+    secure: AAABAN9uRkmHlROgv9obQGgeqEOfnkARiCbMK5CbJF0KpNgGd2pQbIOSHvVXvZQHHlCjjzjN8JjYDJKatXj1mv0g
+  coglity-apps:twilioAuthToken:
+    secure: AAABAB/Qgw5Rx5+TyT7VciunHUZxA3NyBz3TeG7qc3MUi4JxSdXp3CCJUPciVo6mxn/etM9bR4GlyKtD7RF0FQ==
+  coglity-apps:twilioFromNumber: "+14352204584"
+  coglity-apps:twilioWsPort: "8765"

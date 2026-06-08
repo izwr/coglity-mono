@@ -102,6 +102,10 @@ const googleClientSecret = config.requireSecret('googleClientSecret');
 const executorWebhookSecret = config.requireSecret('executorWebhookSecret');
 const openaiApiKey = config.requireSecret('openaiApiKey');
 const openaiBaseUrl = config.requireSecret('openaiBaseUrl');
+const twilioAccountSid = config.requireSecret('twilioAccountSid');
+const twilioAuthToken = config.requireSecret('twilioAuthToken');
+const twilioFromNumber = config.require('twilioFromNumber');
+const twilioWsPort = config.get('twilioWsPort') ?? '8765';
 
 // ── Backend ────────────────────────────────────────────────────────
 
@@ -192,6 +196,10 @@ const executor = createFunctionApp({
   searchServiceId: coreOut.searchServiceId,
   visionEndpoint: coreOut.visionEndpoint,
   visionAccountId: coreOut.visionAccountId,
+  twilioAccountSid,
+  twilioAuthToken,
+  twilioFromNumber,
+  twilioWsPort,
 });
 
 // ── Exports ────────────────────────────────────────────────────────

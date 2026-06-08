@@ -25,6 +25,10 @@ export interface FunctionAppArgs {
   searchServiceId: pulumi.Input<string>;
   visionEndpoint: pulumi.Input<string>;
   visionAccountId: pulumi.Input<string>;
+  twilioAccountSid: pulumi.Input<string>;
+  twilioAuthToken: pulumi.Input<string>;
+  twilioFromNumber: pulumi.Input<string>;
+  twilioWsPort: pulumi.Input<string>;
 }
 
 export function createFunctionApp(args: FunctionAppArgs) {
@@ -85,6 +89,14 @@ export function createFunctionApp(args: FunctionAppArgs) {
         { name: 'AZURE_OPENAI_EMBEDDING_DEPLOYMENT', value: 'text-embedding-3-large' },
         { name: 'AZURE_VISION_ENDPOINT', value: args.visionEndpoint },
         { name: 'AZURE_STORAGE_KNOWLEDGE_CONTAINER', value: 'knowledge-sources' },
+        { name: 'TWILIO_ACCOUNT_SID', value: args.twilioAccountSid },
+        { name: 'TWILIO_AUTH_TOKEN', value: args.twilioAuthToken },
+        { name: 'TWILIO_FROM_NUMBER', value: args.twilioFromNumber },
+        { name: 'TWILIO_WS_PORT', value: args.twilioWsPort },
+        {
+          name: 'TWILIO_STREAM_BASE_URL',
+          value: pulumi.interpolate`wss://${dashedGlobalResourcePrefix}coglity-executor.azurewebsites.net`,
+        },
       ],
     },
   });
