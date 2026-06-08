@@ -129,7 +129,7 @@ export function createFunctionApp(args: FunctionAppArgs) {
   });
 
   // Search Index Data Contributor role
-  const searchContributorRoleId = '8bbe4f3e-f2e7-44f3-97f8-01c6ba709eb6';
+  const searchContributorRoleId = '8ebe5a00-799e-43f5-93ac-243d3dce84a7';
   new azure.authorization.RoleAssignment('executor-search-contributor', {
     principalId: functionApp.identity.apply((id) => id!.principalId!),
     principalType: 'ServicePrincipal',
