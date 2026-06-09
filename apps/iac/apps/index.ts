@@ -200,6 +200,8 @@ const executor = createFunctionApp({
   twilioAuthToken,
   twilioFromNumber,
   twilioWsPort,
+  openaiApiKey,
+  openaiBaseUrl,
 });
 
 // ── Exports ────────────────────────────────────────────────────────

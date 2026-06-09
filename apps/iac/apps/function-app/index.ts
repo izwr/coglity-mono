@@ -29,6 +29,8 @@ export interface FunctionAppArgs {
   twilioAuthToken: pulumi.Input<string>;
   twilioFromNumber: pulumi.Input<string>;
   twilioWsPort: pulumi.Input<string>;
+  openaiApiKey: pulumi.Input<string>;
+  openaiBaseUrl: pulumi.Input<string>;
 }
 
 export function createFunctionApp(args: FunctionAppArgs) {
@@ -93,6 +95,8 @@ export function createFunctionApp(args: FunctionAppArgs) {
         { name: 'TWILIO_AUTH_TOKEN', value: args.twilioAuthToken },
         { name: 'TWILIO_FROM_NUMBER', value: args.twilioFromNumber },
         { name: 'TWILIO_WS_PORT', value: args.twilioWsPort },
+        { name: 'OPENAI_API_KEY', value: args.openaiApiKey },
+        { name: 'OPENAI_BASE_URL', value: args.openaiBaseUrl },
         {
           name: 'TWILIO_STREAM_BASE_URL',
           value: pulumi.interpolate`wss://${dashedGlobalResourcePrefix}coglity-executor.azurewebsites.net`,

@@ -31,3 +31,7 @@ config:
     secure: AAABAB/Qgw5Rx5+TyT7VciunHUZxA3NyBz3TeG7qc3MUi4JxSdXp3CCJUPciVo6mxn/etM9bR4GlyKtD7RF0FQ==
   coglity-apps:twilioFromNumber: "+14352204584"
   coglity-apps:twilioWsPort: "8765"
+  coglity-apps:openaiBaseUrl:
+    secure: AAABAIEPI8gViWQHJsD+g/qCzOnQ4P89Es6iQyx7YaQp3PMFhdrJJqQZhyOE3nrkOaT6kr5dy7Gl8g68Vw==
+  coglity-apps:openaiApiKey:
+    secure: AAABAEZV8jmHOVYt3hquJ4pjuTVWORLCysr2jTe95xuou2bosXsWNLxCsrnzr1QGAFT5KRsBshZx/wEvlqI=
