@@ -54,16 +54,18 @@ router.get('/', async (req, res) => {
   const projectId = req.projectId!;
   const testCaseId = typeof req.query.testCaseId === 'string' ? req.query.testCaseId : '';
   const batchId = typeof req.query.batchId === 'string' ? req.query.batchId : '';
-  const pageSize = typeof req.query.pageSize === 'number' ? req.query.pageSize : 10;
+  const pageSize =
+    typeof req.query.pageSize === 'string' && /^\d+$/.test(req.query.pageSize)
+      ? Number(req.query.pageSize)
+      : 10;
+  const rawOffset = typeof req.query.offset === 'string' ? req.query.offset : undefined;
   let offset = 0;
-  if (
-    req.query.offset === undefined ||
-    req.query.offset === null ||
-    typeof req.query.offset !== 'number'
-  ) {
-    res.status(400).json({ error: 'Invalid offset' });
-  } else {
-    offset = req.query.offset;
+  if (rawOffset !== undefined) {
+    if (!/^\d+$/.test(rawOffset)) {
+      res.status(400).json({ error: 'Invalid offset' });
+      return;
+    }
+    offset = Number(rawOffset);
   }
 
   const conditions = [eq(testRuns.projectId, projectId)];
