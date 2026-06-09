@@ -75,6 +75,7 @@ export function BugDetail() {
   const navigate = useNavigate();
   const { org } = useCurrentOrg();
   useSetBreadcrumbs([{ label: 'Bugs', to: '/bugs' }, { label: 'Bug detail' }]);
+  const orgId = org?.organizationId;
 
   const [bug, setBug] = useState<BugWithDetails | null>(null);
   const [allTags, setAllTags] = useState<Tag[]>([]);
@@ -100,11 +101,11 @@ export function BugDetail() {
   });
 
   useEffect(() => {
-    if (!id || !projectId || !org) return;
+    if (!id || !projectId || !orgId) return;
     Promise.all([
-      bugService.getById(org.organizationId, projectId, id),
-      tagService.getAll(org.organizationId, [projectId]),
-      userService.getAll(org.organizationId, projectId),
+      bugService.getById(orgId, projectId, id),
+      tagService.getAll(orgId, [projectId]),
+      userService.getAll(orgId, projectId),
     ])
       .then(([bugData, tagsData, usersData]) => {
         setBug(bugData);
@@ -118,7 +119,7 @@ export function BugDetail() {
       .finally(() => {
         setLoading(false);
       });
-  }, [id, projectId, org]);
+  }, [id, projectId, orgId]);
 
   const populateFields = (d: BugWithDetails) => {
     reset({

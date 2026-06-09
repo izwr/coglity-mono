@@ -104,6 +104,7 @@ export function ScheduledTestCaseDetail() {
     },
     { label: 'Case' },
   ]);
+  const orgId = org?.organizationId;
 
   const [sc, setSc] = useState<ScheduledTestCaseDetailDTO | null>(null);
   const [loading, setLoading] = useState(true);
@@ -119,11 +120,11 @@ export function ScheduledTestCaseDetail() {
   const [editLinkedBugIds, setEditLinkedBugIds] = useState<string[]>([]);
 
   useEffect(() => {
-    if (!suiteId || !caseId || !projectId || !org) return;
+    if (!suiteId || !caseId || !projectId || !orgId) return;
     Promise.all([
-      scheduledTestSuiteService.getCase(org.organizationId, projectId, suiteId, caseId),
-      userService.getAll(org.organizationId, projectId),
-      bugService.getAll(org.organizationId, [projectId], { limit: 100 }),
+      scheduledTestSuiteService.getCase(orgId, projectId, suiteId, caseId),
+      userService.getAll(orgId, projectId),
+      bugService.getAll(orgId, [projectId], { limit: 100 }),
     ])
       .then(([caseData, usersData, bugsRes]) => {
         setSc(caseData);
@@ -134,7 +135,7 @@ export function ScheduledTestCaseDetail() {
         navigate(`/scheduled-test-suites/${projectId}/${suiteId}`);
       })
       .finally(() => setLoading(false));
-  }, [suiteId, caseId, projectId, org]);
+  }, [suiteId, caseId, projectId, orgId]);
 
   const populateEditFields = (data: ScheduledTestCaseDetailDTO) => {
     setEditState(data.state);

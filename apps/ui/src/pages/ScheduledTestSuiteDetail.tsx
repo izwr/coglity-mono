@@ -35,6 +35,7 @@ export function ScheduledTestSuiteDetail() {
   const navigate = useNavigate();
   const { org } = useCurrentOrg();
   useSetBreadcrumbs([{ label: 'Runs', to: '/scheduled-test-suites' }, { label: 'Run detail' }]);
+  const orgId = org?.organizationId;
 
   const [suite, setSuite] = useState<SuiteDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,16 +43,16 @@ export function ScheduledTestSuiteDetail() {
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!id || !projectId || !org) return;
+    if (!id || !projectId || !orgId) return;
     scheduledTestSuiteService
-      .getById(org.organizationId, projectId, id)
+      .getById(orgId, projectId, id)
       .then((d) => {
         setSuite(d);
         setSelectedCaseId(d.scheduledCases[0]?.id ?? null);
       })
       .catch(() => navigate('/scheduled-test-suites'))
       .finally(() => setLoading(false));
-  }, [id, projectId, org]);
+  }, [id, projectId, orgId]);
 
   const fmtDate = (d: string) => new Date(d).toLocaleDateString();
 

@@ -47,6 +47,7 @@ export function TestCaseDetail() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { org } = useCurrentOrg();
   useSetBreadcrumbs([{ label: 'Test cases', to: '/test-cases' }, { label: 'Case' }]);
+  const orgId = org?.organizationId;
 
   const [tc, setTc] = useState<TestCaseWithTags | null>(null);
   const [allTags, setAllTags] = useState<Tag[]>([]);
@@ -78,11 +79,11 @@ export function TestCaseDetail() {
   });
 
   useEffect(() => {
-    if (!id || !projectId || !org) return;
+    if (!id || !projectId || !orgId) return;
     Promise.all([
-      testCaseService.getById(org.organizationId, projectId, id),
-      tagService.getAll(org.organizationId, [projectId]),
-      botConnectionService.getAll(org.organizationId, [projectId], { limit: 100 }),
+      testCaseService.getById(orgId, projectId, id),
+      tagService.getAll(orgId, [projectId]),
+      botConnectionService.getAll(orgId, [projectId], { limit: 100 }),
     ])
       .then(([tcData, tagsData, bcData]) => {
         setTc(tcData);
@@ -96,7 +97,7 @@ export function TestCaseDetail() {
       .finally(() => {
         setLoading(false);
       });
-  }, [id, projectId, org]);
+  }, [id, projectId, orgId]);
 
   const canRun = !!tc && tc.testCaseType === 'voice' && !!tc.botConnectionId && !editing;
 
