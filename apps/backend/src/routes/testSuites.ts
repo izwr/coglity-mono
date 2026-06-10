@@ -32,6 +32,7 @@ async function syncEntityTags(
   entityId: string,
   entityType: EntityTagEntityType,
   tagIds: string[],
+  projectId: string,
   userId?: string,
 ) {
   await db
@@ -39,9 +40,17 @@ async function syncEntityTags(
     .where(and(eq(entityTags.entityId, entityId), eq(entityTags.entityType, entityType)));
 
   if (tagIds.length > 0) {
-    await db
-      .insert(entityTags)
-      .values(tagIds.map((tagId) => ({ entityId, tagId, entityType, createdBy: userId })));
+    // Only link tags that belong to this project so a caller cannot attach (and then read
+    // back the name of) a tag owned by another tenant. entity_tags is not project-scoped.
+    const owned = await db
+      .select({ id: tags.id })
+      .from(tags)
+      .where(and(eq(tags.projectId, projectId), inArray(tags.id, tagIds)));
+    if (owned.length > 0) {
+      await db
+        .insert(entityTags)
+        .values(owned.map(({ id }) => ({ entityId, tagId: id, entityType, createdBy: userId })));
+    }
   }
 }
 
@@ -166,7 +175,7 @@ router.post('/', async (req, res) => {
     .values({ ...parsed.data, projectId, createdBy: userId, updatedBy: userId })
     .returning();
   if (Array.isArray(tagIds) && tagIds.length > 0) {
-    await syncEntityTags(db, inserted.id, 'test_suite', tagIds, userId);
+    await syncEntityTags(db, inserted.id, 'test_suite', tagIds, projectId, userId);
   }
   const [suite] = await suitesBaseQuery(db).where(eq(testSuites.id, inserted.id));
   res.status(201).json({ ...suite, tags: await getTagsForEntity(db, suite.id, 'test_suite') });
@@ -193,7 +202,7 @@ router.put('/:id', async (req, res) => {
     return;
   }
   if (Array.isArray(tagIds)) {
-    await syncEntityTags(db, updated.id, 'test_suite', tagIds, userId);
+    await syncEntityTags(db, updated.id, 'test_suite', tagIds, projectId, userId);
   }
   const [suite] = await suitesBaseQuery(db).where(eq(testSuites.id, updated.id));
   res.json({ ...suite, tags: await getTagsForEntity(db, suite.id, 'test_suite') });
@@ -203,14 +212,10 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   const db = (req.db ?? rootDb) as DbHandle;
   const projectId = req.projectId!;
-  await db
-    .delete(entityTags)
-    .where(
-      and(
-        eq(entityTags.entityId, req.params.id as string),
-        eq(entityTags.entityType, 'test_suite'),
-      ),
-    );
+  // Delete the project-scoped entity FIRST. If it matches 0 rows the caller does
+  // not own this suite, so we must 404 *before* touching the (project-unscoped)
+  // entity_tags join table otherwise a cross-tenant caller could delete another
+  // project's tag links (the 404 commits because withScopedTx only rolls back on 5xx).
   const [deleted] = await db
     .delete(testSuites)
     .where(and(eq(testSuites.id, req.params.id as string), eq(testSuites.projectId, projectId)))
@@ -219,6 +224,14 @@ router.delete('/:id', async (req, res) => {
     res.status(404).json({ error: 'Test suite not found' });
     return;
   }
+  await db
+    .delete(entityTags)
+    .where(
+      and(
+        eq(entityTags.entityId, req.params.id as string),
+        eq(entityTags.entityType, 'test_suite'),
+      ),
+    );
   res.status(204).send();
 });
 

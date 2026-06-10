@@ -10,14 +10,17 @@ const client = postgres(connectionString, {
 });
 
 /**
- * Raw DB client. DO NOT import directly from `apps/backend/src/routes/**`.
- * Route handlers must use `req.db` (set by withScopedTx middleware) so queries
- * run inside a transaction with app.user_id / app.org_id / app.project_id
- * session variables set the RLS policies in 0012_rls_policies.sql depend
- * on those. Queries run via this raw client have no RLS context and return
- * zero rows from any tenant-scoped table.
+ * Raw DB client. Route handlers should use `req.db` (set by the withScopedTx middleware)
+ * so all of a request's queries run inside ONE transaction and commit/roll back together.
  *
- * Importing it from middleware/services is fine they run before the scoped
- * transaction is opened and need unrestricted access.
+ * IMPORTANT — there is NO row-level security. RLS policies were added in
+ * 0012_rls_policies.sql and then dropped again in 0013_disable_rls.sql, so the
+ * app.user_id / app.org_id / app.project_id session variables withScopedTx sets are inert
+ * and do NOT filter any rows. Tenant isolation depends entirely on every query carrying an
+ * explicit `where project_id = …` (or equivalent) clause — a handler that omits it will
+ * read or write across tenants. Audit new handlers accordingly.
+ *
+ * Importing this raw client from middleware/services is fine they run before the scoped
+ * transaction is opened and legitimately need cross-tenant access.
  */
 export const db = drizzle(client, { schema });

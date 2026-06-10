@@ -28,7 +28,12 @@ export function OrgProvider({ children }: { children: ReactNode }) {
   });
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      // On logout, drop the remembered org so the next user to sign in on this browser
+      // doesn't inherit the previous user's last-selected organization.
+      setCurrentOrgId(null);
+      return;
+    }
     const validUrl = urlOrgId && user.organizations.find((m) => m.organizationId === urlOrgId);
     if (validUrl) {
       if (currentOrgId !== urlOrgId) setCurrentOrgId(urlOrgId);

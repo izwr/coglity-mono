@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -107,6 +107,7 @@ export function Bugs() {
     status: '',
   });
   const [page, setPage] = useState(1);
+  const reqIdRef = useRef(0);
 
   const {
     register,
@@ -123,24 +124,30 @@ export function Bugs() {
 
   const fetchBugs = useCallback(async () => {
     if (!org) return;
+    const reqId = ++reqIdRef.current;
     setLoading(true);
     try {
       const res = await bugService.getAll(org.organizationId, projectIds, {
         search: filters.search || undefined,
         state: filters.status || undefined,
+        tagId: filters.tagId || undefined,
         sortBy: filters.sortBy,
         sortDir: filters.sortDir,
         page,
         limit: PAGE_SIZE,
       });
+      if (reqId !== reqIdRef.current) return; // a newer fetch superseded this one
       setBugsList(res.data);
       setTotal(res.total);
     } catch {
+      if (reqId !== reqIdRef.current) return;
       setBugsList([]);
       setTotal(0);
     } finally {
-      setLoading(false);
-      setInitialLoad(false);
+      if (reqId === reqIdRef.current) {
+        setLoading(false);
+        setInitialLoad(false);
+      }
     }
   }, [org, projectIds, filters, page]);
 
@@ -163,6 +170,14 @@ export function Bugs() {
   useEffect(() => {
     fetchBugs();
   }, [fetchBugs]);
+
+  // Reset to page 1 when the project filter changes so a stale page isn't re-requested for a
+  // project set that may have fewer pages (which strands the user on an empty result).
+  const projectIdsKey = projectIds.join(',');
+  useEffect(() => {
+    setPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectIdsKey]);
 
   const handleApplyFilters = (applied: AppliedFilters) => {
     setFilters(applied);

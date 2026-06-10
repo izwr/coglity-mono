@@ -96,7 +96,7 @@ export function createBackend(args: BackendArgs) {
             { name: 'AZURE_SERVICE_BUS_NAMESPACE', value: args.serviceBusNamespaceFqdn },
             { name: 'AZURE_SERVICE_BUS_QUEUE_NAME', value: args.serviceBusQueueName },
             { name: 'COOKIE_DOMAIN', value: 'studio.coglity.com' },
-            { name: 'NODE_TLS_REJECT_UNAUTHORIZED', value: '0' },
+            { name: 'NODE_ENV', value: 'production' },
             { name: 'AZURE_SEARCH_ENDPOINT', value: args.searchServiceEndpoint },
             { name: 'AZURE_SEARCH_INDEX_NAME', value: 'knowledge-sources' },
             { name: 'AZURE_SERVICE_BUS_INDEX_QUEUE_NAME', value: args.knowledgeIndexQueueName },

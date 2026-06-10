@@ -14,6 +14,10 @@ import { db } from '../db';
 
 export type EffectiveProjectRole = 'super_admin' | ProjectRole | null;
 
+// A drizzle handle that may be the raw client or a request-scoped transaction (req.db).
+// Helpers that mutate data accept one so callers can keep writes inside their transaction.
+type DbHandle = typeof db;
+
 class RbacError extends Error {
   constructor(
     public status: number,
@@ -143,8 +147,9 @@ export const PROJECT_ROLE_RANK: Record<'read' | 'writer' | 'admin' | 'super_admi
 export async function ensureNotLastSuperAdmin(
   organizationId: string,
   targetUserId: string,
+  dbh: DbHandle = db,
 ): Promise<void> {
-  const [row] = await db
+  const [row] = await dbh
     .select({ c: count() })
     .from(organizationMembers)
     .where(
@@ -154,7 +159,7 @@ export async function ensureNotLastSuperAdmin(
       ),
     );
   if ((row?.c ?? 0) <= 1) {
-    const [target] = await db
+    const [target] = await dbh
       .select({ orgRole: organizationMembers.orgRole })
       .from(organizationMembers)
       .where(
@@ -177,13 +182,14 @@ export async function ensureNotLastSuperAdmin(
 export async function ensureNotLastProjectAdmin(
   projectId: string,
   targetUserId: string,
+  dbh: DbHandle = db,
 ): Promise<void> {
-  const [row] = await db
+  const [row] = await dbh
     .select({ c: count() })
     .from(projectMembers)
     .where(and(eq(projectMembers.projectId, projectId), eq(projectMembers.role, 'admin')));
   if ((row?.c ?? 0) <= 1) {
-    const [target] = await db
+    const [target] = await dbh
       .select({ role: projectMembers.role })
       .from(projectMembers)
       .where(and(eq(projectMembers.projectId, projectId), eq(projectMembers.userId, targetUserId)))
@@ -194,17 +200,20 @@ export async function ensureNotLastProjectAdmin(
   }
 }
 
-export async function auditRbac(opts: {
-  actorUserId: string;
-  targetUserId?: string | null;
-  organizationId?: string | null;
-  projectId?: string | null;
-  action: RbacAuditAction;
-  fromRole?: string | null;
-  toRole?: string | null;
-  metadata?: Record<string, unknown> | null;
-}): Promise<void> {
-  await db.insert(rbacAuditLog).values({
+export async function auditRbac(
+  opts: {
+    actorUserId: string;
+    targetUserId?: string | null;
+    organizationId?: string | null;
+    projectId?: string | null;
+    action: RbacAuditAction;
+    fromRole?: string | null;
+    toRole?: string | null;
+    metadata?: Record<string, unknown> | null;
+  },
+  dbh: DbHandle = db,
+): Promise<void> {
+  await dbh.insert(rbacAuditLog).values({
     actorUserId: opts.actorUserId,
     targetUserId: opts.targetUserId ?? null,
     organizationId: opts.organizationId ?? null,
@@ -253,13 +262,20 @@ export async function createInvite(opts: {
   return { token, expiresAt, id: row.id };
 }
 
-export async function consumeInvite(opts: {
-  token: string;
-  userId: string;
-  userEmail: string;
-}): Promise<{ organizationId: string; projectId: string; projectRole: ProjectRole }> {
+export async function consumeInvite(
+  opts: {
+    token: string;
+    userId: string;
+    userEmail: string;
+  },
+  dbh: DbHandle = db,
+): Promise<{ organizationId: string; projectId: string; projectRole: ProjectRole }> {
+  // All writes go through `dbh` (the caller's transaction) so that marking the invite
+  // consumed, the org/project membership inserts, and the audit row commit or roll back as a
+  // unit. Using the raw `db` here let a later failure leave the invite consumed-but-unjoined,
+  // permanently locking the invitee out.
   const nowLiteral = sql`now()`;
-  const updated = await db
+  const updated = await dbh
     .update(invites)
     .set({ consumedAt: new Date(), consumedByUserId: opts.userId })
     .where(
@@ -282,7 +298,7 @@ export async function consumeInvite(opts: {
 
   const invite = updated[0];
 
-  await db
+  await dbh
     .insert(organizationMembers)
     .values({
       organizationId: invite.organizationId,
@@ -292,7 +308,7 @@ export async function consumeInvite(opts: {
     })
     .onConflictDoNothing();
 
-  await db
+  await dbh
     .insert(projectMembers)
     .values({
       projectId: invite.projectId,
@@ -307,15 +323,18 @@ export async function consumeInvite(opts: {
 
   invalidateOrgCache(opts.userId, invite.organizationId);
 
-  await auditRbac({
-    actorUserId: opts.userId,
-    targetUserId: opts.userId,
-    organizationId: invite.organizationId,
-    projectId: invite.projectId,
-    action: 'consume_invite',
-    toRole: invite.projectRole,
-    metadata: { inviteId: invite.id },
-  });
+  await auditRbac(
+    {
+      actorUserId: opts.userId,
+      targetUserId: opts.userId,
+      organizationId: invite.organizationId,
+      projectId: invite.projectId,
+      action: 'consume_invite',
+      toRole: invite.projectRole,
+      metadata: { inviteId: invite.id },
+    },
+    dbh,
+  );
 
   return {
     organizationId: invite.organizationId,

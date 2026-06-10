@@ -8,6 +8,9 @@ declare global {
       projectId?: string;
       projectRole?: 'admin' | 'writer' | 'read' | 'super_admin';
       projectIdsScope?: string[];
+      // Subset of projectIdsScope the caller has writer+ access to (used to decide whether
+      // secret fields like bot-connection config may be returned in multi-project lists).
+      writableProjectIdsScope?: string[];
       db?: typeof db;
     }
   }

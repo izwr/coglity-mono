@@ -41,7 +41,12 @@ router.post('/', requireAuth, async (req, res) => {
     return;
   }
   try {
-    const result = await consumeInvite({ token: parsed.data.token, userId, userEmail: email });
+    // Pass the request transaction so the invite-consume + membership inserts + audit are
+    // atomic (req.db is set by withInviteAcceptTx; consumeInvite falls back to raw db if absent).
+    const result = await consumeInvite(
+      { token: parsed.data.token, userId, userEmail: email },
+      req.db,
+    );
     res.status(200).json(result);
   } catch (err) {
     if (err instanceof RbacError) {

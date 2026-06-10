@@ -50,6 +50,7 @@ export interface BugListParams {
   severity?: string;
   bugType?: string;
   assignedTo?: string;
+  tagId?: string;
   sortBy?: string;
   sortDir?: string;
   page?: number;

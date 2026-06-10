@@ -201,7 +201,7 @@ export function ScheduledTestCaseDetail() {
           <Button
             variant="ghost"
             className="tc-back-btn"
-            onClick={() => navigate(`/scheduled-test-suites/${suiteId}`)}
+            onClick={() => navigate(`/scheduled-test-suites/${projectId}/${suiteId}`)}
           >
             <svg
               width="16"

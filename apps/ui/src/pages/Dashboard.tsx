@@ -215,7 +215,7 @@ export function Dashboard() {
                     {recentCases.map((c) => (
                       <tr
                         key={c.id}
-                        onClick={() => navigate(`/test-cases/${c.id}`)}
+                        onClick={() => navigate(`/test-cases/${c.projectId}/${c.id}`)}
                         style={{ cursor: 'pointer' }}
                       >
                         <td>{c.title}</td>

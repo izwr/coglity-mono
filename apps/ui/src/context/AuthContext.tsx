@@ -57,13 +57,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await api.get('/users/me');
       setUser(res.data);
     } catch (err: any) {
-      // If we had a user and just lost them (expired token), send to login.
-      // Skip if the request failed for another reason (network, 500, etc.) we
-      // don't want to yank the page mid-outage. 401 is the expiry signal.
-      if (err?.response?.status === 401 && userRef.current) {
-        redirectToLogin();
+      // 401 is the only genuine "your session is gone" signal: drop the user (and redirect to
+      // login if they were signed in). For any other failure network blip, 5xx, backend
+      // restart keep the current user so the heartbeat (every 60s + on focus/visibility)
+      // can't yank a validly-logged-in user, and their in-progress form, to /login.
+      if (err?.response?.status === 401) {
+        if (userRef.current) redirectToLogin();
+        setUser(null);
       }
-      setUser(null);
     }
   }, []);
 

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { testSuiteService, type TestSuiteWithTags } from '../services/testSuiteService';
 import {
@@ -28,6 +28,7 @@ export function ScheduledTestSuites() {
   const [loading, setLoading] = useState(true);
   const [initialLoad, setInitialLoad] = useState(true);
   const [page, setPage] = useState(1);
+  const reqIdRef = useRef(0);
 
   const [showForm, setShowForm] = useState(false);
   const [allSuites, setAllSuites] = useState<TestSuiteWithTags[]>([]);
@@ -39,6 +40,7 @@ export function ScheduledTestSuites() {
 
   const fetchItems = useCallback(async () => {
     if (!org) return;
+    const reqId = ++reqIdRef.current;
     setLoading(true);
     try {
       const res = await scheduledTestSuiteService.getAll(org.organizationId, projectIds, {
@@ -47,20 +49,32 @@ export function ScheduledTestSuites() {
         sortBy: 'createdAt',
         sortDir: 'desc',
       });
+      if (reqId !== reqIdRef.current) return; // a newer fetch superseded this one
       setItems(res.data);
       setTotal(res.total);
     } catch {
+      if (reqId !== reqIdRef.current) return;
       setItems([]);
       setTotal(0);
     } finally {
-      setLoading(false);
-      setInitialLoad(false);
+      if (reqId === reqIdRef.current) {
+        setLoading(false);
+        setInitialLoad(false);
+      }
     }
   }, [org, projectIds, page]);
 
   useEffect(() => {
     fetchItems();
   }, [fetchItems]);
+
+  // Reset to page 1 when the project filter changes so a stale page isn't re-requested for a
+  // project set that may have fewer pages (which strands the user on an empty result).
+  const projectIdsKey = projectIds.join(',');
+  useEffect(() => {
+    setPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectIdsKey]);
   useEffect(() => {
     if (!org) return;
     testSuiteService
@@ -91,8 +105,10 @@ export function ScheduledTestSuites() {
     try {
       const created = await scheduledTestSuiteService.create(org.organizationId, formProjectId, {
         testSuiteId: selectedSuiteId,
-        startDate: new Date(startDate).toISOString(),
-        endDate: new Date(endDate).toISOString(),
+        // Interpret the date-only inputs as LOCAL midnight. `new Date('YYYY-MM-DD')` parses as
+        // UTC midnight, which renders as the previous day for users west of UTC on round-trip.
+        startDate: new Date(`${startDate}T00:00:00`).toISOString(),
+        endDate: new Date(`${endDate}T00:00:00`).toISOString(),
       });
       closeForm();
       navigate(`/scheduled-test-suites/${formProjectId}/${created.id}`);

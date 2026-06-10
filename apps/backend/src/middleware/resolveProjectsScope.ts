@@ -31,6 +31,7 @@ export async function resolveProjectsScope(
 
   if (requested.length === 0) {
     req.projectIdsScope = [];
+    req.writableProjectIdsScope = [];
     next();
     return;
   }
@@ -42,15 +43,17 @@ export async function resolveProjectsScope(
   }
 
   let accessible: string[];
+  let writable: string[];
   if (orgRole === 'super_admin') {
     const rows = await db
       .select({ id: projects.id })
       .from(projects)
       .where(and(inArray(projects.id, requested), eq(projects.organizationId, orgId)));
     accessible = rows.map((r) => r.id);
+    writable = accessible; // super_admin can write to every project in the org
   } else {
     const rows = await db
-      .select({ id: projectMembers.projectId })
+      .select({ id: projectMembers.projectId, role: projectMembers.role })
       .from(projectMembers)
       .innerJoin(projects, eq(projectMembers.projectId, projects.id))
       .where(
@@ -61,8 +64,10 @@ export async function resolveProjectsScope(
         ),
       );
     accessible = rows.map((r) => r.id);
+    writable = rows.filter((r) => r.role === 'writer' || r.role === 'admin').map((r) => r.id);
   }
 
   req.projectIdsScope = accessible;
+  req.writableProjectIdsScope = writable;
   next();
 }

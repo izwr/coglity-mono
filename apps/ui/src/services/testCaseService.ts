@@ -47,6 +47,7 @@ export interface PaginatedResponse<T> {
 export interface TestCaseListParams {
   search?: string;
   testSuiteId?: string;
+  tagId?: string;
   status?: string;
   sortBy?: string;
   sortDir?: string;

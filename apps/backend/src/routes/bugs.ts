@@ -34,15 +34,24 @@ async function syncEntityTags(
   entityId: string,
   entityType: EntityTagEntityType,
   tagIds: string[],
+  projectId: string,
   userId?: string,
 ) {
   await db
     .delete(entityTags)
     .where(and(eq(entityTags.entityId, entityId), eq(entityTags.entityType, entityType)));
   if (tagIds.length > 0) {
-    await db
-      .insert(entityTags)
-      .values(tagIds.map((tagId) => ({ entityId, tagId, entityType, createdBy: userId })));
+    // Only link tags owned by this project so a caller cannot attach (and read back the
+    // name of) another tenant's tag. entity_tags is not project-scoped.
+    const owned = await db
+      .select({ id: tags.id })
+      .from(tags)
+      .where(and(eq(tags.projectId, projectId), inArray(tags.id, tagIds)));
+    if (owned.length > 0) {
+      await db
+        .insert(entityTags)
+        .values(owned.map(({ id }) => ({ entityId, tagId: id, entityType, createdBy: userId })));
+    }
   }
 }
 
@@ -183,7 +192,7 @@ router.post('/', async (req, res) => {
     .values({ ...parsed.data, projectId, createdBy: userId })
     .returning();
   if (Array.isArray(tagIds) && tagIds.length > 0) {
-    await syncEntityTags(db, inserted.id, 'bug' as EntityTagEntityType, tagIds, userId);
+    await syncEntityTags(db, inserted.id, 'bug' as EntityTagEntityType, tagIds, projectId, userId);
   }
   const [bug] = await bugsBaseQuery(db).where(eq(bugs.id, inserted.id));
   res
@@ -210,7 +219,14 @@ router.put('/:id', async (req, res) => {
     return;
   }
   if (Array.isArray(tagIds)) {
-    await syncEntityTags(db, updated.id, 'bug' as EntityTagEntityType, tagIds, req.session.userId);
+    await syncEntityTags(
+      db,
+      updated.id,
+      'bug' as EntityTagEntityType,
+      tagIds,
+      projectId,
+      req.session.userId,
+    );
   }
   const [bug] = await bugsBaseQuery(db).where(eq(bugs.id, updated.id));
   res.json({ ...bug, tags: await getTagsForEntity(db, bug.id, 'bug' as EntityTagEntityType) });
@@ -224,15 +240,6 @@ router.post('/:id/comments', async (req, res) => {
     res.status(400).json({ error: 'Comment text is required' });
     return;
   }
-  const [existing] = await db
-    .select()
-    .from(bugs)
-    .where(and(eq(bugs.id, req.params.id as string), eq(bugs.projectId, projectId)));
-  if (!existing) {
-    res.status(404).json({ error: 'Bug not found' });
-    return;
-  }
-
   const userId = req.session.userId;
   let createdByName: string | undefined;
   if (userId) {
@@ -251,11 +258,20 @@ router.post('/:id/comments', async (req, res) => {
     createdAt: new Date().toISOString(),
   };
 
-  const updatedComments = [...((existing.comments as BugComment[]) ?? []), newComment];
-  await db
+  // Append at the DB level (jsonb ||) rather than read-modify-writing the whole array, so two
+  // concurrent comment POSTs can't each overwrite the other's append and silently drop one.
+  const [touched] = await db
     .update(bugs)
-    .set({ comments: updatedComments, updatedAt: new Date() })
-    .where(and(eq(bugs.id, req.params.id as string), eq(bugs.projectId, projectId)));
+    .set({
+      comments: sql`COALESCE(${bugs.comments}, '[]'::jsonb) || ${JSON.stringify([newComment])}::jsonb`,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(bugs.id, req.params.id as string), eq(bugs.projectId, projectId)))
+    .returning({ id: bugs.id });
+  if (!touched) {
+    res.status(404).json({ error: 'Bug not found' });
+    return;
+  }
 
   const [bug] = await bugsBaseQuery(db).where(eq(bugs.id, req.params.id as string));
   res
@@ -266,14 +282,9 @@ router.post('/:id/comments', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   const db = (req.db ?? rootDb) as DbHandle;
   const projectId = req.projectId!;
-  await db
-    .delete(entityTags)
-    .where(
-      and(
-        eq(entityTags.entityId, req.params.id as string),
-        eq(entityTags.entityType, 'bug' as EntityTagEntityType),
-      ),
-    );
+  // Delete the project-scoped entity FIRST so a cross-tenant caller (whose scoped
+  // delete matches 0 rows) gets a 404 before we touch the project-unscoped
+  // entity_tags table. See testSuites.ts delete handler for the full rationale.
   const [deleted] = await db
     .delete(bugs)
     .where(and(eq(bugs.id, req.params.id as string), eq(bugs.projectId, projectId)))
@@ -282,6 +293,14 @@ router.delete('/:id', async (req, res) => {
     res.status(404).json({ error: 'Bug not found' });
     return;
   }
+  await db
+    .delete(entityTags)
+    .where(
+      and(
+        eq(entityTags.entityId, req.params.id as string),
+        eq(entityTags.entityType, 'bug' as EntityTagEntityType),
+      ),
+    );
   res.status(204).send();
 });
 

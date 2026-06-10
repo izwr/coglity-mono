@@ -12,6 +12,8 @@ import { tagService } from '../services/tagService';
 import { botConnectionService, type BotConnectionWithUser } from '../services/botConnectionService';
 import { testRunService } from '../services/testRunService';
 import { RunConfigModal, type RunConfig } from '../components/RunConfigModal';
+import { TestRunPanel } from '../components/TestRunPanel';
+import { BatchRunPanel } from '../components/BatchRunPanel';
 import { useSetBreadcrumbs } from '../context/BreadcrumbsContext';
 import { useCurrentOrg } from '../context/OrgContext';
 
@@ -60,6 +62,9 @@ export function TestCaseDetail() {
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [activeBatchId, setActiveBatchId] = useState<string | null>(null);
+  // Whether the active run/batch has reached a terminal state. We keep the panel mounted so
+  // the verdict/transcript stay visible, but re-enable the Run button once it's done.
+  const [runFinished, setRunFinished] = useState(false);
   const [showRunConfig, setShowRunConfig] = useState(false);
   const [runError, setRunError] = useState<string>('');
   const [starting, setStarting] = useState(false);
@@ -109,6 +114,7 @@ export function TestCaseDetail() {
   const handleRunConfigSubmit = async (config: RunConfig) => {
     if (!id || !projectId || !org || !canRun) return;
     setRunError('');
+    setRunFinished(false);
     setStarting(true);
     try {
       const isSingleDefault =
@@ -274,15 +280,19 @@ export function TestCaseDetail() {
           {canRun && (
             <Button
               variant="teal"
-              disabled={starting || !!activeRunId || !!activeBatchId}
+              disabled={starting || ((!!activeRunId || !!activeBatchId) && !runFinished)}
               onClick={startRun}
               title={
-                activeRunId || activeBatchId
+                (activeRunId || activeBatchId) && !runFinished
                   ? 'A run is already in progress'
                   : 'Run this voice test case'
               }
             >
-              {starting ? 'Starting…' : activeRunId || activeBatchId ? 'Running…' : 'Run'}
+              {starting
+                ? 'Starting…'
+                : (activeRunId || activeBatchId) && !runFinished
+                  ? 'Running…'
+                  : 'Run'}
             </Button>
           )}
           {deleteConfirm ? (
@@ -458,6 +468,23 @@ export function TestCaseDetail() {
           onSubmit={handleRunConfigSubmit}
           onCancel={() => setShowRunConfig(false)}
           submitting={starting}
+        />
+      )}
+
+      {orgId && projectId && activeRunId && (
+        <TestRunPanel
+          orgId={orgId}
+          projectId={projectId}
+          runId={activeRunId}
+          onTerminal={() => setRunFinished(true)}
+        />
+      )}
+      {orgId && projectId && activeBatchId && (
+        <BatchRunPanel
+          orgId={orgId}
+          projectId={projectId}
+          batchId={activeBatchId}
+          onAllTerminal={() => setRunFinished(true)}
         />
       )}
 

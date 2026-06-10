@@ -129,14 +129,22 @@ router.get('/callback', async (req, res) => {
       })
       .returning();
 
-    // Populate session
-    req.session.userId = user.id;
-    req.session.entraId = user.entraId ?? undefined;
-    req.session.email = user.email;
-    req.session.displayName = user.displayName;
+    // Regenerate the session id on login to prevent session fixation: any pre-auth session
+    // an attacker may have planted on the victim must not carry over into the authed session.
+    req.session.regenerate((regenErr) => {
+      if (regenErr) {
+        console.error('Session regeneration failed:', regenErr);
+        res.redirect(`${CLIENT_URL}/login?error=server_error`);
+        return;
+      }
+      req.session.userId = user.id;
+      req.session.entraId = user.entraId ?? undefined;
+      req.session.email = user.email;
+      req.session.displayName = user.displayName;
 
-    req.session.save(() => {
-      res.redirect(CLIENT_URL);
+      req.session.save(() => {
+        res.redirect(CLIENT_URL);
+      });
     });
   } catch (err) {
     console.error('OAuth callback error:', err);
@@ -239,13 +247,21 @@ router.get('/google/callback', async (req, res) => {
       })
       .returning();
 
-    req.session.userId = user.id;
-    req.session.googleId = user.googleId ?? undefined;
-    req.session.email = user.email;
-    req.session.displayName = user.displayName;
+    // Regenerate the session id on login to prevent session fixation (see Microsoft callback).
+    req.session.regenerate((regenErr) => {
+      if (regenErr) {
+        console.error('Session regeneration failed:', regenErr);
+        res.redirect(`${CLIENT_URL}/login?error=server_error`);
+        return;
+      }
+      req.session.userId = user.id;
+      req.session.googleId = user.googleId ?? undefined;
+      req.session.email = user.email;
+      req.session.displayName = user.displayName;
 
-    req.session.save(() => {
-      res.redirect(CLIENT_URL);
+      req.session.save(() => {
+        res.redirect(CLIENT_URL);
+      });
     });
   } catch (err) {
     console.error('Google OAuth callback error:', err);

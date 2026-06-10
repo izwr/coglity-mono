@@ -186,6 +186,11 @@ router.post('/session/:id/generate-scenarios', async (req, res) => {
     res.status(404).json({ error: 'Session not found' });
     return;
   }
+  // Don't spend another LLM generation on a session that already produced test cases.
+  if (session.status === 'test_cases_created') {
+    res.status(409).json({ error: 'This session has already produced test cases' });
+    return;
+  }
 
   const followUpQA = session.followUpQA as { question: string; answer: string }[];
   const qaContext =
@@ -290,6 +295,30 @@ router.post('/session/:id/create-test-cases', async (req, res) => {
     return;
   }
 
+  // Atomically claim the session (scenarios_generated -> test_cases_created) before the
+  // expensive LLM call + inserts. This runs inside the request transaction, so a second
+  // concurrent request blocks on the row lock, then sees the wrong status and is rejected
+  // it can no longer double-spend on generation or insert duplicate test cases.
+  const [claimed] = await db
+    .update(aiGenerationSessions)
+    .set({
+      selectedScenarioIndices: parsed.data.selectedIndices,
+      status: 'test_cases_created',
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(aiGenerationSessions.id, req.params.id as string),
+        eq(aiGenerationSessions.projectId, projectId),
+        eq(aiGenerationSessions.status, 'scenarios_generated'),
+      ),
+    )
+    .returning({ id: aiGenerationSessions.id });
+  if (!claimed) {
+    res.status(409).json({ error: 'Test cases have already been created for this session' });
+    return;
+  }
+
   const followUpQA = session.followUpQA as { question: string; answer: string }[];
   const qaContext =
     followUpQA.length > 0
@@ -353,20 +382,6 @@ router.post('/session/:id/create-test-cases', async (req, res) => {
       })),
     )
     .returning();
-
-  await db
-    .update(aiGenerationSessions)
-    .set({
-      selectedScenarioIndices: parsed.data.selectedIndices,
-      status: 'test_cases_created',
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(aiGenerationSessions.id, req.params.id as string),
-        eq(aiGenerationSessions.projectId, projectId),
-      ),
-    );
 
   res.status(201).json(insertedCases);
 });
