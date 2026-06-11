@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Tag } from '@coglity/shared';
 import type { TestSuiteWithTags } from '../services/testSuiteService';
 import { Select } from './ui/Select';
@@ -56,8 +56,15 @@ export function ListToolbar({
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  // Auto-apply on search change
+  // Auto-apply when the (debounced) search changes but NOT on mount: firing on mount would
+  // push the toolbar's default sort (the first sort option) over the page's own initial sort
+  // and race a second fetch against the page's first load.
+  const didMount = useRef(false);
   useEffect(() => {
+    if (!didMount.current) {
+      didMount.current = true;
+      return;
+    }
     const [field, dir] = pendingSort.split('-') as [string, SortDir];
     onApply({
       search,
@@ -67,6 +74,7 @@ export function ListToolbar({
       ...(suites ? { suiteId: pendingSuiteId } : {}),
       ...(statusToggle ? { status: pendingStatus } : {}),
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
   const handleApply = () => {

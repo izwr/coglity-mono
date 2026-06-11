@@ -60,7 +60,9 @@ router.patch(
       res.status(400).json({ error: 'Invalid userId' });
       return;
     }
-    const [existing] = await db
+    // Keep the role check, update, and audit row in one transaction (opened by withScopedTx).
+    const dbh = req.db ?? db;
+    const [existing] = await dbh
       .select({ role: projectMembers.role })
       .from(projectMembers)
       .where(
@@ -73,7 +75,7 @@ router.patch(
     }
     try {
       if (existing.role === 'admin' && parsed.data.role !== 'admin') {
-        await ensureNotLastProjectAdmin(req.projectId!, targetUserId);
+        await ensureNotLastProjectAdmin(req.projectId!, targetUserId, dbh);
       }
     } catch (err) {
       if (err instanceof RbacError) {
@@ -82,21 +84,24 @@ router.patch(
       }
       throw err;
     }
-    await db
+    await dbh
       .update(projectMembers)
       .set({ role: parsed.data.role, updatedAt: new Date() })
       .where(
         and(eq(projectMembers.projectId, req.projectId!), eq(projectMembers.userId, targetUserId)),
       );
-    await auditRbac({
-      actorUserId: req.session.userId!,
-      targetUserId,
-      organizationId: req.organizationId!,
-      projectId: req.projectId!,
-      action: 'change_project_role',
-      fromRole: existing.role,
-      toRole: parsed.data.role,
-    });
+    await auditRbac(
+      {
+        actorUserId: req.session.userId!,
+        targetUserId,
+        organizationId: req.organizationId!,
+        projectId: req.projectId!,
+        action: 'change_project_role',
+        fromRole: existing.role,
+        toRole: parsed.data.role,
+      },
+      dbh,
+    );
     invalidateProjectCache(targetUserId, req.projectId!);
     res.json({ role: parsed.data.role });
   },
@@ -115,7 +120,8 @@ router.delete(
       res.status(400).json({ error: 'Invalid userId' });
       return;
     }
-    const [existing] = await db
+    const dbh = req.db ?? db;
+    const [existing] = await dbh
       .select({ role: projectMembers.role })
       .from(projectMembers)
       .where(
@@ -127,7 +133,7 @@ router.delete(
       return;
     }
     try {
-      await ensureNotLastProjectAdmin(req.projectId!, targetUserId);
+      await ensureNotLastProjectAdmin(req.projectId!, targetUserId, dbh);
     } catch (err) {
       if (err instanceof RbacError) {
         res.status(err.status).json({ error: err.code, message: err.message });
@@ -135,19 +141,22 @@ router.delete(
       }
       throw err;
     }
-    await db
+    await dbh
       .delete(projectMembers)
       .where(
         and(eq(projectMembers.projectId, req.projectId!), eq(projectMembers.userId, targetUserId)),
       );
-    await auditRbac({
-      actorUserId: req.session.userId!,
-      targetUserId,
-      organizationId: req.organizationId!,
-      projectId: req.projectId!,
-      action: 'remove_project_member',
-      fromRole: existing.role,
-    });
+    await auditRbac(
+      {
+        actorUserId: req.session.userId!,
+        targetUserId,
+        organizationId: req.organizationId!,
+        projectId: req.projectId!,
+        action: 'remove_project_member',
+        fromRole: existing.role,
+      },
+      dbh,
+    );
     invalidateProjectCache(targetUserId, req.projectId!);
     res.status(204).send();
   },

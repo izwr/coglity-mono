@@ -29,7 +29,12 @@ export async function uploadBlob(
   metadata?: Record<string, string>,
 ): Promise<{ url: string; blobName: string }> {
   const container = getContainerClient();
-  await container.createIfNotExists({ access: 'blob' });
+  // Private container (no `access` option = no anonymous access). Knowledge-source files
+  // hold customer documents and must never be world-readable by URL; they are read back
+  // server-side via the storage credential, mirroring the test-run recordings container.
+  // NOTE: createIfNotExists does not downgrade an already-public container — an existing
+  // 'knowledge-sources' container must have its public access level set to Private in Azure.
+  await container.createIfNotExists();
 
   const ext = file.originalname.split('.').pop() ?? '';
   const blobName = `${crypto.randomUUID()}${ext ? `.${ext}` : ''}`;

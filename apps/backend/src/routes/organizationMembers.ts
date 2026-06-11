@@ -58,7 +58,10 @@ router.patch(
       res.status(400).json({ error: 'Invalid userId' });
       return;
     }
-    const [existing] = await db
+    // Use the request transaction so the role check, the update, and the audit row commit
+    // (or roll back) together. withScopedTx opens it before this router.
+    const dbh = req.db ?? db;
+    const [existing] = await dbh
       .select({ orgRole: organizationMembers.orgRole })
       .from(organizationMembers)
       .where(
@@ -75,7 +78,7 @@ router.patch(
 
     try {
       if (parsed.data.orgRole !== 'super_admin' && existing.orgRole === 'super_admin') {
-        await ensureNotLastSuperAdmin(req.organizationId!, targetUserId);
+        await ensureNotLastSuperAdmin(req.organizationId!, targetUserId, dbh);
       }
     } catch (err) {
       if (err instanceof RbacError) {
@@ -85,7 +88,7 @@ router.patch(
       throw err;
     }
 
-    await db
+    await dbh
       .update(organizationMembers)
       .set({ orgRole: parsed.data.orgRole, updatedAt: new Date() })
       .where(
@@ -95,14 +98,17 @@ router.patch(
         ),
       );
 
-    await auditRbac({
-      actorUserId: req.session.userId!,
-      targetUserId,
-      organizationId: req.organizationId!,
-      action: 'change_org_role',
-      fromRole: existing.orgRole,
-      toRole: parsed.data.orgRole,
-    });
+    await auditRbac(
+      {
+        actorUserId: req.session.userId!,
+        targetUserId,
+        organizationId: req.organizationId!,
+        action: 'change_org_role',
+        fromRole: existing.orgRole,
+        toRole: parsed.data.orgRole,
+      },
+      dbh,
+    );
     invalidateOrgCache(targetUserId, req.organizationId!);
 
     res.json({ orgRole: parsed.data.orgRole });
@@ -121,7 +127,8 @@ router.delete(
       res.status(400).json({ error: 'Invalid userId' });
       return;
     }
-    const [existing] = await db
+    const dbh = req.db ?? db;
+    const [existing] = await dbh
       .select({ orgRole: organizationMembers.orgRole })
       .from(organizationMembers)
       .where(
@@ -136,7 +143,7 @@ router.delete(
       return;
     }
     try {
-      await ensureNotLastSuperAdmin(req.organizationId!, targetUserId);
+      await ensureNotLastSuperAdmin(req.organizationId!, targetUserId, dbh);
     } catch (err) {
       if (err instanceof RbacError) {
         res.status(err.status).json({ error: err.code, message: err.message });
@@ -145,21 +152,22 @@ router.delete(
       throw err;
     }
 
-    // Cascade-delete their project memberships within this org
-    const orgProjects = await db
+    // Cascade-delete their project memberships within this org. All in one transaction so a
+    // partial failure can't leave the user removed from the org but still on its projects.
+    const orgProjects = await dbh
       .select({ id: projects.id })
       .from(projects)
       .where(eq(projects.organizationId, req.organizationId!));
     if (orgProjects.length > 0) {
       const ids = orgProjects.map((p) => p.id);
       for (const pid of ids) {
-        await db
+        await dbh
           .delete(projectMembers)
           .where(and(eq(projectMembers.projectId, pid), eq(projectMembers.userId, targetUserId)));
       }
     }
 
-    await db
+    await dbh
       .delete(organizationMembers)
       .where(
         and(
@@ -168,13 +176,16 @@ router.delete(
         ),
       );
 
-    await auditRbac({
-      actorUserId: req.session.userId!,
-      targetUserId,
-      organizationId: req.organizationId!,
-      action: 'remove_org_member',
-      fromRole: existing.orgRole,
-    });
+    await auditRbac(
+      {
+        actorUserId: req.session.userId!,
+        targetUserId,
+        organizationId: req.organizationId!,
+        action: 'remove_org_member',
+        fromRole: existing.orgRole,
+      },
+      dbh,
+    );
     invalidateOrgCache(targetUserId, req.organizationId!);
 
     res.status(204).send();

@@ -67,8 +67,23 @@ jobs:
               - "apps/iac/apps/**"
               - "apps/iac/package.json"
 
-  backend:
+  # Gate image builds on a passing type-check so a broken build can't be pushed and deployed.
+  lint:
     needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.ui == 'true' || needs.changes.outputs.landing == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      # Scoped to the apps this workflow builds. (landing's `next lint` is misconfigured and
+      # the cli has unrelated MCP-SDK type-depth errors; gate only on what we ship here.)
+      - name: Type-check (backend + ui)
+        run: bunx turbo run lint --filter=@coglity/backend --filter=@coglity/ui
+
+  backend:
+    needs: [changes, lint]
     if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -100,7 +115,7 @@ jobs:
           imageToDeploy: ${{ env.ACR_LOGIN_SERVER }}/coglity-backend:${{ github.sha }}
 
   ui:
-    needs: changes
+    needs: [changes, lint]
     if: needs.changes.outputs.ui == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -132,7 +147,7 @@ jobs:
           imageToDeploy: ${{ env.ACR_LOGIN_SERVER }}/coglity-ui:${{ github.sha }}
 
   landing:
-    needs: changes
+    needs: [changes, lint]
     if: needs.changes.outputs.landing == 'true'
     runs-on: ubuntu-latest
     permissions:

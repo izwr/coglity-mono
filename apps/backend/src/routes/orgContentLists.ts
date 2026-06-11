@@ -5,6 +5,7 @@ import {
   testSuites,
   testCases,
   tags,
+  entityTags,
   bugs,
   scheduledTestSuites,
   scheduledTestCases,
@@ -13,6 +14,7 @@ import {
   testRuns,
   projects,
   users,
+  type EntityTagEntityType,
 } from '@coglity/shared/schema';
 import { db } from '../db';
 
@@ -41,6 +43,7 @@ router.get('/test-suites', async (req, res) => {
     return;
   }
   const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+  const tagId = typeof req.query.tagId === 'string' ? req.query.tagId : '';
   const { page, limit, sortBy, sortDir } = paging(req);
 
   const conditions = [inArray(testSuites.projectId, ids)];
@@ -48,6 +51,25 @@ router.get('/test-suites', async (req, res) => {
     conditions.push(
       or(ilike(testSuites.name, `%${search}%`), ilike(testSuites.description, `%${search}%`))!,
     );
+  if (tagId) {
+    const tagRows = await db
+      .select({ entityId: entityTags.entityId })
+      .from(entityTags)
+      .innerJoin(testSuites, eq(entityTags.entityId, testSuites.id))
+      .where(
+        and(
+          eq(entityTags.tagId, tagId),
+          eq(entityTags.entityType, 'test_suite'),
+          inArray(testSuites.projectId, ids),
+        ),
+      );
+    const tagged = tagRows.map((r) => r.entityId);
+    if (tagged.length === 0) {
+      res.json({ data: [], total: 0, page, limit });
+      return;
+    }
+    conditions.push(inArray(testSuites.id, tagged));
+  }
   const where = and(...conditions);
 
   const sortCol =
@@ -98,6 +120,8 @@ router.get('/test-cases', async (req, res) => {
   }
   const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
   const status = typeof req.query.status === 'string' ? req.query.status : '';
+  const suiteId = typeof req.query.testSuiteId === 'string' ? req.query.testSuiteId : '';
+  const tagId = typeof req.query.tagId === 'string' ? req.query.tagId : '';
   const { page, limit, sortBy, sortDir } = paging(req);
 
   const testSuiteAlias = alias(testSuites, 'ts');
@@ -107,6 +131,26 @@ router.get('/test-cases', async (req, res) => {
       or(ilike(testCases.title, `%${search}%`), ilike(testSuiteAlias.name, `%${search}%`))!,
     );
   if (status === 'draft' || status === 'active') conditions.push(eq(testCases.status, status));
+  if (suiteId) conditions.push(eq(testCases.testSuiteId, suiteId));
+  if (tagId) {
+    const tagRows = await db
+      .select({ entityId: entityTags.entityId })
+      .from(entityTags)
+      .innerJoin(testCases, eq(entityTags.entityId, testCases.id))
+      .where(
+        and(
+          eq(entityTags.tagId, tagId),
+          eq(entityTags.entityType, 'test_case'),
+          inArray(testCases.projectId, ids),
+        ),
+      );
+    const tagged = tagRows.map((r) => r.entityId);
+    if (tagged.length === 0) {
+      res.json({ data: [], total: 0, page, limit });
+      return;
+    }
+    conditions.push(inArray(testCases.id, tagged));
+  }
   const where = and(...conditions);
 
   const sortCol =
@@ -195,6 +239,7 @@ router.get('/bugs', async (req, res) => {
   const priority = typeof req.query.priority === 'string' ? req.query.priority : '';
   const severity = typeof req.query.severity === 'string' ? req.query.severity : '';
   const bugType = typeof req.query.bugType === 'string' ? req.query.bugType : '';
+  const tagId = typeof req.query.tagId === 'string' ? req.query.tagId : '';
   const { page, limit, sortBy, sortDir } = paging(req);
 
   const conditions = [inArray(bugs.projectId, ids)];
@@ -204,6 +249,25 @@ router.get('/bugs', async (req, res) => {
   if (priority) conditions.push(eq(bugs.priority, priority as any));
   if (severity) conditions.push(eq(bugs.severity, severity as any));
   if (bugType) conditions.push(eq(bugs.bugType, bugType as any));
+  if (tagId) {
+    const tagRows = await db
+      .select({ entityId: entityTags.entityId })
+      .from(entityTags)
+      .innerJoin(bugs, eq(entityTags.entityId, bugs.id))
+      .where(
+        and(
+          eq(entityTags.tagId, tagId),
+          eq(entityTags.entityType, 'bug' as EntityTagEntityType),
+          inArray(bugs.projectId, ids),
+        ),
+      );
+    const tagged = tagRows.map((r) => r.entityId);
+    if (tagged.length === 0) {
+      res.json({ data: [], total: 0, page, limit });
+      return;
+    }
+    conditions.push(inArray(bugs.id, tagged));
+  }
   const where = and(...conditions);
 
   const sortCol =
@@ -379,7 +443,11 @@ router.get('/bot-connections', async (req, res) => {
     .limit(limit)
     .offset((page - 1) * limit);
 
-  res.json({ data, total, page, limit });
+  // `config` holds bot auth secrets. Only return it for projects the caller can write to;
+  // read-only members get it nulled so they cannot exfiltrate credentials from a list view.
+  const writable = new Set(req.writableProjectIdsScope ?? []);
+  const visible = data.map((row) => (writable.has(row.projectId) ? row : { ...row, config: null }));
+  res.json({ data: visible, total, page, limit });
 });
 
 // ── Knowledge sources ─────────────────────────────────

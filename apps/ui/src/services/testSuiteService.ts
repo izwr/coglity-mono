@@ -25,6 +25,7 @@ export interface PaginatedResponse<T> {
 
 export interface ListQueryParams {
   search?: string;
+  tagId?: string;
   sortBy?: string;
   sortDir?: string;
   page?: number;

@@ -56,7 +56,7 @@ router.get('/', async (req, res) => {
   const batchId = typeof req.query.batchId === 'string' ? req.query.batchId : '';
   const pageSize =
     typeof req.query.pageSize === 'string' && /^\d+$/.test(req.query.pageSize)
-      ? Number(req.query.pageSize)
+      ? Math.min(100, Math.max(1, Number(req.query.pageSize)))
       : 10;
   const rawOffset = typeof req.query.offset === 'string' ? req.query.offset : undefined;
   let offset = 0;
@@ -157,11 +157,8 @@ router.post('/', async (req, res) => {
   const languages: string[] = Array.isArray(req.body.languages) ? req.body.languages : [];
   const environments: string[] = Array.isArray(req.body.environments) ? req.body.environments : [];
   const crossProduct = req.body.crossProduct === true;
-  const combinations: Array<{ language: string; environment: string }> = Array.isArray(
-    req.body.combinations,
-  )
-    ? req.body.combinations
-    : [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const combinations: any[] = Array.isArray(req.body.combinations) ? req.body.combinations : [];
 
   // Validate values against supported constants
   const validLangs = new Set(SUPPORTED_LANGUAGES.map((l) => l.code));
@@ -178,6 +175,20 @@ router.post('/', async (req, res) => {
       return;
     }
   }
+  // Explicit combinations are otherwise trusted verbatim each one becomes a billable voice
+  // run + Service Bus message, so they must be validated against the allow-lists too.
+  for (const c of combinations) {
+    if (
+      !c ||
+      typeof c.language !== 'string' ||
+      typeof c.environment !== 'string' ||
+      !validLangs.has(c.language) ||
+      !validEnvs.has(c.environment)
+    ) {
+      res.status(400).json({ error: 'Invalid run combination' });
+      return;
+    }
+  }
 
   let pairs: Array<{ language: string; environment: string }>;
   if (languages.length === 0 && environments.length === 0 && combinations.length === 0) {
@@ -185,11 +196,21 @@ router.post('/', async (req, res) => {
   } else if (crossProduct && languages.length > 0 && environments.length > 0) {
     pairs = languages.flatMap((l) => environments.map((e) => ({ language: l, environment: e })));
   } else if (combinations.length > 0) {
-    pairs = combinations;
+    pairs = combinations.map((c) => ({ language: c.language, environment: c.environment }));
   } else {
     const langs = languages.length > 0 ? languages : ['en-US'];
     const envs = environments.length > 0 ? environments : ['quiet'];
     pairs = langs.flatMap((l) => envs.map((e) => ({ language: l, environment: e })));
+  }
+
+  // Hard cap: each pair is a billable voice run. The most a single request can legitimately
+  // need is the full language×environment cross product; beyond that is abuse/cost runaway.
+  const MAX_RUNS_PER_REQUEST = validLangs.size * validEnvs.size;
+  if (pairs.length > MAX_RUNS_PER_REQUEST) {
+    res
+      .status(400)
+      .json({ error: `Too many run combinations requested (max ${MAX_RUNS_PER_REQUEST})` });
+    return;
   }
 
   const batchId = pairs.length > 1 ? randomUUID() : null;

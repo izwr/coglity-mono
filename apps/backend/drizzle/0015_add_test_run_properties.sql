@@ -1,1 +1,1 @@
-ALTER TABLE "test_runs" ADD COLUMN "properties" jsonb DEFAULT '{}'::jsonb NOT NULL;
+ALTER TABLE "test_runs" ADD COLUMN IF NOT EXISTS "properties" jsonb DEFAULT '{}'::jsonb NOT NULL;

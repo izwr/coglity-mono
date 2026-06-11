@@ -3,10 +3,21 @@ import { eq, and, ilike, desc, asc, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { botConnections, insertBotConnectionSchema, users } from '@coglity/shared/schema';
 import { db as rootDb } from '../db';
+import { PROJECT_ROLE_RANK } from '../services/rbac';
 
 const router: RouterType = Router({ mergeParams: true });
 
 type DbHandle = typeof rootDb;
+
+// `config` is a freeform JSON blob that holds bot auth secrets (tokens, API keys, dial-in
+// numbers). Only writers/admins (who can edit a connection) may read it back; read-only
+// members get it nulled so they cannot exfiltrate live credentials.
+function canSeeConfig(role: Express.Request['projectRole']): boolean {
+  return !!role && PROJECT_ROLE_RANK[role] >= PROJECT_ROLE_RANK.writer;
+}
+function redactConfig<T extends { config?: unknown }>(row: T): T {
+  return { ...row, config: null };
+}
 
 const createdByUser = alias(users, 'createdByUser');
 const updatedByUser = alias(users, 'updatedByUser');
@@ -72,7 +83,8 @@ router.get('/', async (req, res) => {
     .limit(limit)
     .offset(offset);
 
-  res.json({ data, total, page, limit });
+  const visible = canSeeConfig(req.projectRole) ? data : data.map(redactConfig);
+  res.json({ data: visible, total, page, limit });
 });
 
 router.get('/:id', async (req, res) => {
@@ -85,7 +97,7 @@ router.get('/:id', async (req, res) => {
     res.status(404).json({ error: 'Bot connection not found' });
     return;
   }
-  res.json(row);
+  res.json(canSeeConfig(req.projectRole) ? row : redactConfig(row));
 });
 
 router.post('/', async (req, res) => {

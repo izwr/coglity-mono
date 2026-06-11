@@ -58,6 +58,8 @@ export function createFunctionApp(args: FunctionAppArgs) {
     name: `${dashedGlobalResourcePrefix}coglity-executor`,
     kind: 'functionapp,linux',
     serverFarmId: plan.id,
+    // Reject plain-HTTP requests to the executor (it serves webhook/HTTP triggers).
+    httpsOnly: true,
     identity: {
       type: 'SystemAssigned',
     },

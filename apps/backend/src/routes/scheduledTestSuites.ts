@@ -212,6 +212,16 @@ router.post('/', async (req, res) => {
     res.status(400).json({ error: parsed.error.flatten().fieldErrors });
     return;
   }
+  // Verify the referenced suite belongs to this project. Without this a caller could schedule
+  // another tenant's suite, whose name then leaks through the DTO's inner join on test_suites.
+  const [suiteOwned] = await db
+    .select({ id: testSuites.id })
+    .from(testSuites)
+    .where(and(eq(testSuites.id, parsed.data.testSuiteId), eq(testSuites.projectId, projectId)));
+  if (!suiteOwned) {
+    res.status(400).json({ error: 'Test suite not found in this project' });
+    return;
+  }
   const userId = req.session.userId;
   const [inserted] = await db
     .insert(scheduledTestSuites)
@@ -251,6 +261,17 @@ router.put('/:id', async (req, res) => {
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten().fieldErrors });
     return;
+  }
+  // If the caller is reassigning the suite, it must still belong to this project (see POST).
+  if (parsed.data.testSuiteId) {
+    const [suiteOwned] = await db
+      .select({ id: testSuites.id })
+      .from(testSuites)
+      .where(and(eq(testSuites.id, parsed.data.testSuiteId), eq(testSuites.projectId, projectId)));
+    if (!suiteOwned) {
+      res.status(400).json({ error: 'Test suite not found in this project' });
+      return;
+    }
   }
   const [updated] = await db
     .update(scheduledTestSuites)

@@ -3,10 +3,20 @@ import { sql } from 'drizzle-orm';
 import { db } from '../db';
 
 /**
- * Wraps the request in a DB transaction and sets Postgres session variables that
- * RLS policies depend on. `req.db` MUST be used by route handlers (instead of the
- * raw `db` import) otherwise queries run outside the transaction and hit RLS
- * with no context set, returning zero rows.
+ * Wraps the request in a single DB transaction, exposed to handlers as `req.db`.
+ * Route handlers should use `req.db` (NOT the raw `db` import) so all of their writes
+ * commit or roll back together.
+ *
+ * Tenant isolation: this also sets the app.user_id / app.org_id / app.project_id Postgres
+ * session variables, but RLS is currently DISABLED (see 0013_disable_rls.sql) so those
+ * variables gate nothing they are kept only so RLS can be re-enabled later. Isolation
+ * therefore relies ENTIRELY on each handler adding an explicit `where project_id = …`
+ * clause; there is no database-level safety net.
+ *
+ * Commit ordering: the response is buffered and only flushed to the client AFTER the
+ * transaction commits. This prevents reporting success to the client when COMMIT fails,
+ * and releases the pooled connection as soon as the handler finishes rather than holding
+ * it open for the entire (possibly slow) client download.
  */
 export function withScopedTx(req: Request, res: Response, next: NextFunction): void {
   const userId = req.session?.userId;
@@ -15,24 +25,38 @@ export function withScopedTx(req: Request, res: Response, next: NextFunction): v
     return;
   }
 
-  let settled = false;
-  let passThroughError: unknown = undefined;
+  const realEnd = res.end.bind(res) as (...args: any[]) => Response;
+  let ended = false;
+  let aborted = false;
+  let bufferedEndArgs: any[] = [];
+  let resolveDone!: () => void;
+  const handlerDone = new Promise<void>((resolve) => {
+    resolveDone = resolve;
+  });
 
-  const waitForResponse = () =>
-    new Promise<void>((resolve, reject) => {
-      const finish = () => {
-        if (settled) return;
-        settled = true;
-        if (passThroughError) reject(passThroughError);
-        else resolve();
-      };
-      res.once('finish', finish);
-      res.once('close', finish);
-      res.once('error', (err) => {
-        passThroughError = err;
-        finish();
-      });
-    });
+  // Intercept res.end so the commit can happen before the bytes are flushed. For a normal
+  // JSON response res.end has not yet flushed headers, so we capture its args and replay
+  // them post-commit. A streaming response (res.write already sent headers) cannot be
+  // buffered, so we let it through and accept commit-after-flush for those read-only routes.
+  res.end = function (this: Response, ...args: any[]): Response {
+    if (ended) return this;
+    ended = true;
+    if (res.headersSent) {
+      resolveDone();
+      return realEnd(...args);
+    }
+    bufferedEndArgs = args;
+    resolveDone();
+    return this;
+  } as Response['end'];
+
+  // Client disconnected before the handler produced a response — roll back.
+  res.once('close', () => {
+    if (!ended) {
+      aborted = true;
+      resolveDone();
+    }
+  });
 
   db.transaction(async (tx) => {
     await tx.execute(sql`SELECT set_config('app.user_id', ${userId}, true)`);
@@ -44,21 +68,46 @@ export function withScopedTx(req: Request, res: Response, next: NextFunction): v
     }
     req.db = tx as unknown as typeof db;
 
-    const wait = waitForResponse();
     next();
-    await wait;
+    await handlerDone;
 
-    if (res.statusCode >= 500 || passThroughError) {
-      throw passThroughError ?? new Error(`HTTP ${res.statusCode}`);
-    }
-  }).catch((err) => {
-    if (!res.headersSent) {
-      // Distinguish our own rollback-on-5xx from a real caught error.
-      if (err instanceof Error && /^HTTP 5\d\d$/.test(err.message)) {
+    // Roll back (by throwing) on a 5xx or a client abort; 2xx/3xx/4xx commit.
+    if (aborted) throw new RollbackSignal('aborted');
+    if (res.statusCode >= 500) throw new RollbackSignal('http5xx');
+    // Returning commits the transaction.
+  })
+    .then(() => {
+      res.end = realEnd as Response['end'];
+      if (!aborted && !res.writableEnded) {
+        realEnd(...bufferedEndArgs);
+      }
+    })
+    .catch((err) => {
+      res.end = realEnd as Response['end'];
+      // Expected rollback: the handler already built a 4xx/5xx body — flush it as-is.
+      if (err instanceof RollbackSignal) {
+        if (err.kind === 'http5xx' && !res.writableEnded) {
+          realEnd(...bufferedEndArgs);
+        }
         return;
       }
+      // Unexpected error thrown by the transaction body itself.
       console.error('withScopedTx error:', err);
-      res.status(500).json({ error: 'Internal error' });
-    }
-  });
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Internal error' });
+      } else if (!res.writableEnded) {
+        realEnd();
+      }
+    });
+}
+
+/**
+ * Internal marker used to force a transaction rollback when the handler signalled failure
+ * (a 5xx status, or a client abort) without throwing. Kept distinct from real errors so the
+ * catch handler can tell them apart.
+ */
+class RollbackSignal extends Error {
+  constructor(public readonly kind: 'http5xx' | 'aborted') {
+    super(kind);
+  }
 }

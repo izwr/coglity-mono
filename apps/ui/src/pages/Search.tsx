@@ -19,6 +19,12 @@ export function Search() {
   const projectIds = useSelectedProjectIds();
   const effectiveProjectIds =
     projectIds.length > 0 ? projectIds : (org?.projects ?? []).map((p) => p.projectId);
+  // Stable primitive key for the search effect's deps. effectiveProjectIds is a brand-new
+  // array on every render, so depending on it directly hot-loops the effect (each run calls
+  // setCases([]) → re-render → new array identity → re-run), pegging the CPU and, once a
+  // query is typed, firing endless network requests.
+  const effectiveProjectIdsKey = effectiveProjectIds.join(',');
+  const orgId = org?.organizationId;
   const [q, setQ] = useState('');
   const [kind, setKind] = useState<Kind>('all');
   const [cases, setCases] = useState<TestCaseWithTags[]>([]);
@@ -27,14 +33,14 @@ export function Search() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (q.length < 2 || !org || effectiveProjectIds.length === 0) {
+    if (q.length < 2 || !orgId || effectiveProjectIds.length === 0) {
       setCases([]);
       setSuites([]);
       setBugs([]);
       return;
     }
+    let active = true;
     setLoading(true);
-    const orgId = org.organizationId;
     const t = setTimeout(async () => {
       try {
         const [c, s, b] = await Promise.all([
@@ -51,15 +57,23 @@ export function Search() {
             .then((r) => r.data)
             .catch(() => []),
         ]);
+        // Guard against a slow response overwriting newer state after the query changed.
+        if (!active) return;
         setCases(c);
         setSuites(s);
         setBugs(b);
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     }, 250);
-    return () => clearTimeout(t);
-  }, [q, org, effectiveProjectIds]);
+    return () => {
+      active = false;
+      clearTimeout(t);
+    };
+    // effectiveProjectIds is intentionally keyed by effectiveProjectIdsKey (a stable string)
+    // to avoid the per-render array identity change re-running this effect forever.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, orgId, effectiveProjectIdsKey]);
 
   const totalCount = cases.length + suites.length + bugs.length;
   const show = useMemo(
@@ -154,7 +168,7 @@ export function Search() {
                 {cases.map((c) => (
                   <button
                     key={c.id}
-                    onClick={() => nav(`/test-cases/${c.id}`)}
+                    onClick={() => nav(`/test-cases/${c.projectId}/${c.id}`)}
                     style={{
                       display: 'block',
                       width: '100%',
@@ -227,7 +241,7 @@ export function Search() {
                 {bugs.map((b) => (
                   <button
                     key={b.id}
-                    onClick={() => nav(`/bugs/${b.id}`)}
+                    onClick={() => nav(`/bugs/${b.projectId}/${b.id}`)}
                     style={{
                       display: 'block',
                       width: '100%',
