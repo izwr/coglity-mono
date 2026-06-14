@@ -39,7 +39,7 @@ export const aiGenerationSessions = pgTable('ai_generation_sessions', {
 });
 
 export const insertAiGenerationSessionSchema = createInsertSchema(aiGenerationSessions, {
-  userStory: (schema) => schema.min(1, 'User story is required').max(5000),
+  userStory: z.string().min(1, 'User story is required').max(5000),
 }).omit({
   id: true,
   projectId: true,

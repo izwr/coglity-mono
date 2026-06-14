@@ -8,6 +8,15 @@ import type { RunEvent, RunResult, RunEventEmitter, PlaywrightAction } from '../
 import { CoglityError } from '../agents/shared/errors';
 
 type RunFn = typeof runSpec;
+type TextToolResult = {
+  content: Array<{ type: 'text'; text: string }>;
+  isError?: boolean;
+};
+type ToolRegistrar = (
+  name: string,
+  config: { description: string; inputSchema: unknown },
+  cb: (args: any) => TextToolResult | Promise<TextToolResult>,
+) => unknown;
 
 const SPEC_FORMAT_DESCRIPTION = `The test spec as inline markdown with YAML frontmatter and two required sections.
 
@@ -39,33 +48,73 @@ export interface McpServerOptions {
   runner?: RunFn;
 }
 
+const runWebTestInputSchema = {
+  spec: z.string().describe(SPEC_FORMAT_DESCRIPTION),
+  headed: z
+    .boolean()
+    .optional()
+    .describe('Run browser in headed mode with visible UI. Defaults to false (headless).'),
+  plannerModel: z
+    .string()
+    .optional()
+    .describe('Override the planner LLM model. Defaults to claude-sonnet-4-6.'),
+  judgeModel: z
+    .string()
+    .optional()
+    .describe('Override the judge LLM model. Defaults to claude-haiku-4-5.'),
+};
+
+const dryRunInputSchema = {
+  spec: z.string().describe(SPEC_FORMAT_DESCRIPTION),
+};
+
+const listRunsInputSchema = {
+  limit: z
+    .number()
+    .int()
+    .positive()
+    .optional()
+    .describe('Maximum number of runs to return. Defaults to 20.'),
+};
+
+const getRunResultInputSchema = {
+  runId: z.string().describe('The run ID to look up (e.g., "2026-05-03T19-33-21-000Z").'),
+};
+
+interface RunWebTestArgs {
+  spec: string;
+  headed?: boolean;
+  plannerModel?: string;
+  judgeModel?: string;
+}
+
+interface DryRunArgs {
+  spec: string;
+}
+
+interface ListRunsArgs {
+  limit?: number;
+}
+
+interface GetRunResultArgs {
+  runId: string;
+}
+
 export function createServer(opts: McpServerOptions = {}): McpServer {
   const runner = opts.runner ?? runSpec;
 
-  const server = new McpServer(
-    { name: 'coglity', version: '0.0.1' },
-    { capabilities: { tools: {} } },
-  );
+  const server = new McpServer({ name: 'coglity', version: '0.0.1' });
+  const registerTool: ToolRegistrar = (name, config, cb) => {
+    (server.registerTool as any)(name, config, cb);
+  };
 
-  server.tool(
+  registerTool(
     'run_web_test',
-    `Run a Coglity web test against a live website. Launches a Chromium browser (auto-installed on first use), executes each step using an AI planner agent that reads the page's accessibility tree and performs browser actions (click, fill, navigate, etc.), then evaluates the final page state with a judge agent that returns pass/fail/inconclusive with reasoning. Returns a structured result with the verdict, per-step outcomes (status, duration, actions taken, errors), and the path to the run directory containing screenshots, accessibility snapshots, and full LLM traces. Typical execution takes 15-60 seconds depending on step count and page complexity.`,
     {
-      spec: z.string().describe(SPEC_FORMAT_DESCRIPTION),
-      headed: z
-        .boolean()
-        .optional()
-        .describe('Run browser in headed mode with visible UI. Defaults to false (headless).'),
-      plannerModel: z
-        .string()
-        .optional()
-        .describe('Override the planner LLM model. Defaults to claude-sonnet-4-6.'),
-      judgeModel: z
-        .string()
-        .optional()
-        .describe('Override the judge LLM model. Defaults to claude-haiku-4-5.'),
+      description: `Run a Coglity web test against a live website. Launches a Chromium browser (auto-installed on first use), executes each step using an AI planner agent that reads the page's accessibility tree and performs browser actions (click, fill, navigate, etc.), then evaluates the final page state with a judge agent that returns pass/fail/inconclusive with reasoning. Returns a structured result with the verdict, per-step outcomes (status, duration, actions taken, errors), and the path to the run directory containing screenshots, accessibility snapshots, and full LLM traces. Typical execution takes 15-60 seconds depending on step count and page complexity.`,
+      inputSchema: runWebTestInputSchema,
     },
-    async ({ spec, headed, plannerModel, judgeModel }) => {
+    async ({ spec, headed, plannerModel, judgeModel }: RunWebTestArgs) => {
       try {
         const parsed = parseSpecContent(spec, '<mcp>');
         const events: RunEvent[] = [];
@@ -80,13 +129,13 @@ export function createServer(opts: McpServerOptions = {}): McpServer {
     },
   );
 
-  server.tool(
+  registerTool(
     'dry_run',
-    `Parse and validate a Coglity test spec without executing it. Returns the parsed structure including resolved defaults (viewport, timeout) and extracted steps. Use this to verify a spec is well-formed before committing to a full test run, or to inspect what the runner will see. Returns an error with specific field-level details if the spec is malformed (e.g., missing URL, invalid viewport dimensions, missing # Setup or # Steps section).`,
     {
-      spec: z.string().describe(SPEC_FORMAT_DESCRIPTION),
+      description: `Parse and validate a Coglity test spec without executing it. Returns the parsed structure including resolved defaults (viewport, timeout) and extracted steps. Use this to verify a spec is well-formed before committing to a full test run, or to inspect what the runner will see. Returns an error with specific field-level details if the spec is malformed (e.g., missing URL, invalid viewport dimensions, missing # Setup or # Steps section).`,
+      inputSchema: dryRunInputSchema,
     },
-    async ({ spec }) => {
+    async ({ spec }: DryRunArgs) => {
       try {
         const parsed = parseSpecContent(spec, '<dry-run>');
         const summary = {
@@ -106,18 +155,13 @@ export function createServer(opts: McpServerOptions = {}): McpServer {
     },
   );
 
-  server.tool(
+  registerTool(
     'list_runs',
-    `List recent Coglity web test runs from the .coglity/runs/ directory in the current working directory. Returns run IDs (ISO timestamps), the spec that was tested, the verdict (pass/fail/inconclusive), and total duration. Runs are sorted newest-first. Use this to review test history, find failing runs, or locate a specific run ID for detailed inspection with get_run_result.`,
     {
-      limit: z
-        .number()
-        .int()
-        .positive()
-        .optional()
-        .describe('Maximum number of runs to return. Defaults to 20.'),
+      description: `List recent Coglity web test runs from the .coglity/runs/ directory in the current working directory. Returns run IDs (ISO timestamps), the spec that was tested, the verdict (pass/fail/inconclusive), and total duration. Runs are sorted newest-first. Use this to review test history, find failing runs, or locate a specific run ID for detailed inspection with get_run_result.`,
+      inputSchema: listRunsInputSchema,
     },
-    async ({ limit }) => {
+    async ({ limit }: ListRunsArgs) => {
       try {
         const runsDir = path.join(process.cwd(), '.coglity', 'runs');
         let entries: string[];
@@ -162,13 +206,13 @@ export function createServer(opts: McpServerOptions = {}): McpServer {
     },
   );
 
-  server.tool(
+  registerTool(
     'get_run_result',
-    `Get the full result of a specific Coglity test run by its run ID (e.g., '2026-05-03T19-33-21-000Z'). Returns the verdict with reasoning, per-step results (status, duration, errors), the original spec, and the path to the run directory containing screenshots, accessibility snapshots, and LLM trace files. Use this to investigate why a test failed, review the judge's reasoning, or find screenshot paths for visual inspection.`,
     {
-      runId: z.string().describe('The run ID to look up (e.g., "2026-05-03T19-33-21-000Z").'),
+      description: `Get the full result of a specific Coglity test run by its run ID (e.g., '2026-05-03T19-33-21-000Z'). Returns the verdict with reasoning, per-step results (status, duration, errors), the original spec, and the path to the run directory containing screenshots, accessibility snapshots, and LLM trace files. Use this to investigate why a test failed, review the judge's reasoning, or find screenshot paths for visual inspection.`,
+      inputSchema: getRunResultInputSchema,
     },
-    async ({ runId }) => {
+    async ({ runId }: GetRunResultArgs) => {
       try {
         const dir = path.join(process.cwd(), '.coglity', 'runs', runId);
         const resultPath = path.join(dir, 'result.json');

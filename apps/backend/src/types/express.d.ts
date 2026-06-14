@@ -12,6 +12,8 @@ declare global {
       // secret fields like bot-connection config may be returned in multi-project lists).
       writableProjectIdsScope?: string[];
       db?: typeof db;
+      afterCommit?: (callback: () => void | Promise<void>) => void;
+      afterRollback?: (callback: () => void | Promise<void>) => void;
     }
   }
 }

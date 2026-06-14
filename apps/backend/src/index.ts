@@ -28,6 +28,7 @@ import projectUsersRouter from './routes/users';
 import botConnectionsRouter from './routes/botConnections';
 import knowledgeSourcesRouter from './routes/knowledgeSources';
 import orgContentListsRouter from './routes/orgContentLists';
+import statsRouter from './routes/stats';
 import testRunsRouter from './routes/testRuns';
 import testRunsCallbackRouter from './routes/testRunsCallback';
 import knowledgeSourcesCallbackRouter from './routes/knowledgeSourcesCallback';
@@ -91,6 +92,14 @@ projectContent.use('/test-runs', testRunDownloadRouter);
 
 app.use('/api/organizations/:orgId/projects/:projectId', projectContent);
 app.use('/api/organizations/:orgId/projects', projectsRouter);
+// Aggregation-first reporting (dashboard dials, timeseries, breakdowns).
+app.use(
+  '/api/organizations/:orgId/stats',
+  requireAuth,
+  resolveOrg,
+  resolveProjectsScope,
+  statsRouter,
+);
 // Multi-project list endpoints used by the project-filter UI on content pages.
 app.use(
   '/api/organizations/:orgId',

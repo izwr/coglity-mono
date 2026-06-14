@@ -1,79 +1,19 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageHead } from '../components/ui/PageHead';
 import { Chip } from '../components/ui/Chip';
 import { Tabs } from '../components/ui/Tabs';
 import { useSetBreadcrumbs } from '../context/BreadcrumbsContext';
-import { testCaseService, type TestCaseWithTags } from '../services/testCaseService';
-import { testSuiteService, type TestSuiteWithTags } from '../services/testSuiteService';
-import { bugService, type BugWithDetails } from '../services/bugService';
-import { useSelectedProjectIds } from '../components/ProjectFilter';
-import { useCurrentOrg } from '../context/OrgContext';
+import { useEntitySearch } from '../hooks/useEntitySearch';
 
 type Kind = 'all' | 'cases' | 'suites' | 'bugs';
 
 export function Search() {
   useSetBreadcrumbs([{ label: 'Search' }]);
   const nav = useNavigate();
-  const { org } = useCurrentOrg();
-  const projectIds = useSelectedProjectIds();
-  const effectiveProjectIds =
-    projectIds.length > 0 ? projectIds : (org?.projects ?? []).map((p) => p.projectId);
-  // Stable primitive key for the search effect's deps. effectiveProjectIds is a brand-new
-  // array on every render, so depending on it directly hot-loops the effect (each run calls
-  // setCases([]) → re-render → new array identity → re-run), pegging the CPU and, once a
-  // query is typed, firing endless network requests.
-  const effectiveProjectIdsKey = effectiveProjectIds.join(',');
-  const orgId = org?.organizationId;
   const [q, setQ] = useState('');
   const [kind, setKind] = useState<Kind>('all');
-  const [cases, setCases] = useState<TestCaseWithTags[]>([]);
-  const [suites, setSuites] = useState<TestSuiteWithTags[]>([]);
-  const [bugs, setBugs] = useState<BugWithDetails[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (q.length < 2 || !orgId || effectiveProjectIds.length === 0) {
-      setCases([]);
-      setSuites([]);
-      setBugs([]);
-      return;
-    }
-    let active = true;
-    setLoading(true);
-    const t = setTimeout(async () => {
-      try {
-        const [c, s, b] = await Promise.all([
-          testCaseService
-            .getAll(orgId, effectiveProjectIds, { search: q, limit: 8 })
-            .then((r) => r.data)
-            .catch(() => []),
-          testSuiteService
-            .getAll(orgId, effectiveProjectIds, { search: q, limit: 8 })
-            .then((r) => r.data)
-            .catch(() => []),
-          bugService
-            .getAll(orgId, effectiveProjectIds, { search: q, limit: 8 })
-            .then((r) => r.data)
-            .catch(() => []),
-        ]);
-        // Guard against a slow response overwriting newer state after the query changed.
-        if (!active) return;
-        setCases(c);
-        setSuites(s);
-        setBugs(b);
-      } finally {
-        if (active) setLoading(false);
-      }
-    }, 250);
-    return () => {
-      active = false;
-      clearTimeout(t);
-    };
-    // effectiveProjectIds is intentionally keyed by effectiveProjectIdsKey (a stable string)
-    // to avoid the per-render array identity change re-running this effect forever.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, orgId, effectiveProjectIdsKey]);
+  const { cases, suites, bugs, loading } = useEntitySearch(q);
 
   const totalCount = cases.length + suites.length + bugs.length;
   const show = useMemo(

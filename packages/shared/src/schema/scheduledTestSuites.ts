@@ -20,10 +20,13 @@ export const scheduledTestSuites = pgTable('scheduled_test_suites', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
-export const insertScheduledTestSuiteSchema = createInsertSchema(scheduledTestSuites, {
-  startDate: (schema) => schema,
-  endDate: (schema) => schema,
-}).omit({ id: true, projectId: true, createdBy: true, createdAt: true, updatedAt: true });
+export const insertScheduledTestSuiteSchema = createInsertSchema(scheduledTestSuites).omit({
+  id: true,
+  projectId: true,
+  createdBy: true,
+  createdAt: true,
+  updatedAt: true,
+});
 
 export const selectScheduledTestSuiteSchema = createSelectSchema(scheduledTestSuites);
 

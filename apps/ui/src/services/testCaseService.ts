@@ -1,4 +1,4 @@
-import type { TestCase, Tag } from '@coglity/shared';
+import type { TestCase, Tag, CursorPage } from '@coglity/shared';
 import { api } from './api';
 
 export interface TestCaseWithTags extends TestCase {
@@ -55,6 +55,36 @@ export interface TestCaseListParams {
   limit?: number;
 }
 
+/** Row shape of the org-level cursor list (dates arrive as ISO strings). */
+export interface TestCaseListRow {
+  id: string;
+  projectId: string;
+  projectName: string;
+  testSuiteId: string;
+  testSuiteName: string;
+  title: string;
+  status: 'draft' | 'active';
+  testCaseType: 'web' | 'mobile' | 'chat' | 'voice' | 'agent';
+  createdBy: string | null;
+  updatedBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdByName: string | null;
+  updatedByName: string | null;
+}
+
+export interface TestCaseCursorParams {
+  search?: string;
+  testSuiteId?: string;
+  tagId?: string;
+  status?: string;
+  testCaseType?: string;
+  sortBy?: 'createdAt' | 'updatedAt' | 'title';
+  sortDir?: 'asc' | 'desc';
+  cursor?: string;
+  limit?: number;
+}
+
 export const testCaseService = {
   async getAll(
     orgId: string,
@@ -64,6 +94,20 @@ export const testCaseService = {
     if (!orgId || projectIds.length === 0)
       return { data: [], total: 0, page: 1, limit: params?.limit ?? 10 };
     const { data } = await api.get<PaginatedResponse<TestCaseWithTags>>(
+      `/organizations/${orgId}/test-cases`,
+      { params: { ...params, projectIds: projectIds.join(',') } },
+    );
+    return data;
+  },
+
+  async listCursor(
+    orgId: string,
+    projectIds: string[],
+    params?: TestCaseCursorParams,
+  ): Promise<CursorPage<TestCaseListRow>> {
+    if (!orgId || projectIds.length === 0)
+      return { data: [], nextCursor: null, totalCount: { value: 0, isEstimate: false } };
+    const { data } = await api.get<CursorPage<TestCaseListRow>>(
       `/organizations/${orgId}/test-cases`,
       { params: { ...params, projectIds: projectIds.join(',') } },
     );

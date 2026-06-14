@@ -1,6 +1,8 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useBreadcrumbs, type Crumb } from '../context/BreadcrumbsContext';
 import { Fragment } from 'react';
+import { DensityToggle } from './ui/DensityToggle';
+import { useCommandPalette } from '../context/CommandPaletteContext';
 
 function IconSearch() {
   return (
@@ -30,6 +32,7 @@ function IconMenu() {
 export function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
   const { crumbs } = useBreadcrumbs();
   const location = useLocation();
+  const { open: openPalette } = useCommandPalette();
 
   // Fallback when a page hasn't set crumbs yet
   const resolved = crumbs.length > 0 ? crumbs : defaultCrumbsFor(location.pathname);
@@ -55,11 +58,20 @@ export function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
         })}
       </div>
       <div className="topbar-spacer" />
-      <div className="search">
+      <div className="search" role="button" tabIndex={0} onClick={openPalette} onKeyDown={(e) => e.key === 'Enter' && openPalette()} style={{ cursor: 'pointer' }}>
         <IconSearch />
-        <input placeholder="Search tests, runs, bots…" readOnly onFocus={(e) => e.target.blur()} />
+        <input
+          placeholder="Search tests, runs, bots…"
+          readOnly
+          onFocus={(e) => {
+            e.target.blur();
+            openPalette();
+          }}
+          style={{ cursor: 'pointer', pointerEvents: 'none' }}
+        />
         <span className="kbd">⌘K</span>
       </div>
+      <DensityToggle />
       <button className="iconbtn" title="Notifications">
         <IconBell />
       </button>

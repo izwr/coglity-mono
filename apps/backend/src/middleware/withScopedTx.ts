@@ -30,9 +30,18 @@ export function withScopedTx(req: Request, res: Response, next: NextFunction): v
   let aborted = false;
   let bufferedEndArgs: any[] = [];
   let resolveDone!: () => void;
+  const afterCommitCallbacks: Array<() => void | Promise<void>> = [];
+  const afterRollbackCallbacks: Array<() => void | Promise<void>> = [];
   const handlerDone = new Promise<void>((resolve) => {
     resolveDone = resolve;
   });
+
+  req.afterCommit = (callback) => {
+    afterCommitCallbacks.push(callback);
+  };
+  req.afterRollback = (callback) => {
+    afterRollbackCallbacks.push(callback);
+  };
 
   // Intercept res.end so the commit can happen before the bytes are flushed. For a normal
   // JSON response res.end has not yet flushed headers, so we capture its args and replay
@@ -81,9 +90,11 @@ export function withScopedTx(req: Request, res: Response, next: NextFunction): v
       if (!aborted && !res.writableEnded) {
         realEnd(...bufferedEndArgs);
       }
+      void runCallbacks(afterCommitCallbacks, 'afterCommit');
     })
     .catch((err) => {
       res.end = realEnd as Response['end'];
+      void runCallbacks(afterRollbackCallbacks, 'afterRollback');
       // Expected rollback: the handler already built a 4xx/5xx body — flush it as-is.
       if (err instanceof RollbackSignal) {
         if (err.kind === 'http5xx' && !res.writableEnded) {
@@ -99,6 +110,16 @@ export function withScopedTx(req: Request, res: Response, next: NextFunction): v
         realEnd();
       }
     });
+}
+
+async function runCallbacks(callbacks: Array<() => void | Promise<void>>, label: string) {
+  for (const callback of callbacks) {
+    try {
+      await callback();
+    } catch (err) {
+      console.error(`[withScopedTx] ${label} callback failed:`, err);
+    }
+  }
 }
 
 /**

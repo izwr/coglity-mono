@@ -121,7 +121,13 @@ function suitesBaseQuery(db: DbHandle) {
   return db
     .select(suiteColumns)
     .from(scheduledTestSuites)
-    .innerJoin(testSuites, eq(scheduledTestSuites.testSuiteId, testSuites.id))
+    .innerJoin(
+      testSuites,
+      and(
+        eq(scheduledTestSuites.testSuiteId, testSuites.id),
+        eq(testSuites.projectId, scheduledTestSuites.projectId),
+      ),
+    )
     .leftJoin(createdByUser, eq(scheduledTestSuites.createdBy, createdByUser.id));
 }
 
@@ -332,6 +338,7 @@ router.get('/:suiteId/cases/:caseId', async (req, res) => {
     .where(
       and(
         eq(scheduledTestCases.id, req.params.caseId as string),
+        eq(scheduledTestCases.scheduledTestSuiteId, req.params.suiteId as string),
         eq(scheduledTestCases.projectId, projectId),
       ),
     );
@@ -370,6 +377,7 @@ router.put('/:suiteId/cases/:caseId', async (req, res) => {
     .where(
       and(
         eq(scheduledTestCases.id, req.params.caseId as string),
+        eq(scheduledTestCases.scheduledTestSuiteId, req.params.suiteId as string),
         eq(scheduledTestCases.projectId, projectId),
       ),
     )
@@ -395,7 +403,13 @@ router.put('/:suiteId/cases/:caseId', async (req, res) => {
     })
     .from(scheduledTestCases)
     .leftJoin(assignedToUser, eq(scheduledTestCases.assignedTo, assignedToUser.id))
-    .where(eq(scheduledTestCases.id, updated.id));
+    .where(
+      and(
+        eq(scheduledTestCases.id, updated.id),
+        eq(scheduledTestCases.scheduledTestSuiteId, req.params.suiteId as string),
+        eq(scheduledTestCases.projectId, projectId),
+      ),
+    );
 
   res.json(await buildCaseDTO(db, projectId, row));
 });

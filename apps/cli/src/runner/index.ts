@@ -150,7 +150,7 @@ async function executeStep(
         ctx.onEvent({ kind: 'step.action', index, action });
       },
       executeAction: async (action) => {
-        const result = await executeAction(page, action);
+        const result = await executeAction(page, action, spec.timeout);
         return result;
       },
       takeSnapshot: async () => {

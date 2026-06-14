@@ -39,7 +39,9 @@ export async function launchBrowser(
     ...(spec.auth ? { storageState: spec.auth } : {}),
   });
   const page = await context.newPage();
-  await page.goto(spec.url, { waitUntil: 'domcontentloaded' });
+  page.setDefaultTimeout(spec.timeout);
+  page.setDefaultNavigationTimeout(spec.timeout);
+  await page.goto(spec.url, { waitUntil: 'domcontentloaded', timeout: spec.timeout });
   return { browser, context, page };
 }
 
@@ -48,21 +50,25 @@ export async function closeBrowser(session: BrowserSession): Promise<void> {
   await session.browser.close();
 }
 
-export async function executeAction(page: Page, action: PlaywrightAction): Promise<string> {
+export async function executeAction(
+  page: Page,
+  action: PlaywrightAction,
+  timeoutMs: number,
+): Promise<string> {
   try {
     switch (action.tool) {
       case 'click': {
         const el = page.locator(action.selector).first();
-        await el.click({ timeout: 5000 });
+        await el.click({ timeout: timeoutMs });
         return `Clicked "${action.selector}"`;
       }
       case 'fill': {
         const el = page.locator(action.selector).first();
-        await el.fill(action.value, { timeout: 5000 });
+        await el.fill(action.value, { timeout: timeoutMs });
         return `Filled "${action.selector}" with "${action.value}"`;
       }
       case 'goto': {
-        await page.goto(action.url, { waitUntil: 'domcontentloaded' });
+        await page.goto(action.url, { waitUntil: 'domcontentloaded', timeout: timeoutMs });
         return `Navigated to ${action.url}`;
       }
       case 'press': {
@@ -71,12 +77,12 @@ export async function executeAction(page: Page, action: PlaywrightAction): Promi
       }
       case 'select': {
         const el = page.locator(action.selector).first();
-        await el.selectOption(action.value, { timeout: 5000 });
+        await el.selectOption(action.value, { timeout: timeoutMs });
         return `Selected "${action.value}" in "${action.selector}"`;
       }
       case 'wait_for': {
         const el = page.locator(action.selector).first();
-        await el.waitFor({ state: action.state ?? 'visible', timeout: 10000 });
+        await el.waitFor({ state: action.state ?? 'visible', timeout: timeoutMs });
         return `Element "${action.selector}" is ${action.state ?? 'visible'}`;
       }
     }

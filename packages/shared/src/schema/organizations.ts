@@ -35,7 +35,7 @@ export const organizationMembers = pgTable(
 );
 
 export const insertOrganizationSchema = createInsertSchema(organizations, {
-  name: (schema) => schema.min(1, 'Name is required').max(255),
+  name: z.string().min(1, 'Name is required').max(255),
 }).omit({ id: true, createdBy: true, createdAt: true, updatedAt: true });
 
 export const selectOrganizationSchema = createSelectSchema(organizations);

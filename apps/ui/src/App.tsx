@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { OrgProvider } from './context/OrgContext';
@@ -5,39 +6,83 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { RouteGate } from './components/RouteGate';
 import { Layout } from './components/Layout';
 import { Login } from './pages/Login';
-import { Onboarding } from './pages/Onboarding';
-import { Search } from './pages/Search';
-import { Dashboard } from './pages/Dashboard';
-import { TestCases } from './pages/TestCases';
-import { TestCaseDetail } from './pages/TestCaseDetail';
-import { TestSuites } from './pages/TestSuites';
-import { ScheduledTestSuites } from './pages/ScheduledTestSuites';
-import { ScheduledTestSuiteDetail } from './pages/ScheduledTestSuiteDetail';
-import { ScheduledTestCaseDetail } from './pages/ScheduledTestCaseDetail';
-import { Reporting } from './pages/Reporting';
-import { ReportDetail } from './pages/ReportDetail';
-import { Tags } from './pages/Tags';
-import { GenerateTestCases } from './pages/GenerateTestCases';
-import { Bugs } from './pages/Bugs';
-import { BugDetail } from './pages/BugDetail';
-import { BotConnections } from './pages/BotConnections';
-import { KnowledgeSources } from './pages/KnowledgeSources';
-import { OrgMembers } from './pages/org/OrgMembers';
-import { OrgInvites } from './pages/org/OrgInvites';
-import { OrgSettings } from './pages/org/OrgSettings';
-import { OrgTeams } from './pages/org/OrgTeams';
-import { ProjectsList } from './pages/project/ProjectsList';
-import { ProjectCreate } from './pages/project/ProjectCreate';
-import { ProjectDetails } from './pages/project/ProjectDetails';
-import { ProjectSettings } from './pages/project/ProjectSettings';
-import { PreferencesProfile } from './pages/preferences/PreferencesProfile';
-import { PreferencesPrompts } from './pages/preferences/PreferencesPrompts';
+
+// Route-level code splitting: pages are named exports, so each lazy import
+// maps the module onto a default export. Login/Layout/guards stay eager.
+const Onboarding = lazy(() => import('./pages/Onboarding').then((m) => ({ default: m.Onboarding })));
+const Search = lazy(() => import('./pages/Search').then((m) => ({ default: m.Search })));
+const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })));
+const TestCases = lazy(() => import('./pages/TestCases').then((m) => ({ default: m.TestCases })));
+const TestCaseDetail = lazy(() =>
+  import('./pages/TestCaseDetail').then((m) => ({ default: m.TestCaseDetail })),
+);
+const TestSuites = lazy(() => import('./pages/TestSuites').then((m) => ({ default: m.TestSuites })));
+const ScheduledTestSuites = lazy(() =>
+  import('./pages/ScheduledTestSuites').then((m) => ({ default: m.ScheduledTestSuites })),
+);
+const ScheduledTestSuiteDetail = lazy(() =>
+  import('./pages/ScheduledTestSuiteDetail').then((m) => ({ default: m.ScheduledTestSuiteDetail })),
+);
+const ScheduledTestCaseDetail = lazy(() =>
+  import('./pages/ScheduledTestCaseDetail').then((m) => ({ default: m.ScheduledTestCaseDetail })),
+);
+const Reporting = lazy(() => import('./pages/Reporting').then((m) => ({ default: m.Reporting })));
+const ReportDetail = lazy(() =>
+  import('./pages/ReportDetail').then((m) => ({ default: m.ReportDetail })),
+);
+const Tags = lazy(() => import('./pages/Tags').then((m) => ({ default: m.Tags })));
+const GenerateTestCases = lazy(() =>
+  import('./pages/GenerateTestCases').then((m) => ({ default: m.GenerateTestCases })),
+);
+const Bugs = lazy(() => import('./pages/Bugs').then((m) => ({ default: m.Bugs })));
+const BugDetail = lazy(() => import('./pages/BugDetail').then((m) => ({ default: m.BugDetail })));
+const BotConnections = lazy(() =>
+  import('./pages/BotConnections').then((m) => ({ default: m.BotConnections })),
+);
+const KnowledgeSources = lazy(() =>
+  import('./pages/KnowledgeSources').then((m) => ({ default: m.KnowledgeSources })),
+);
+const OrgMembers = lazy(() =>
+  import('./pages/org/OrgMembers').then((m) => ({ default: m.OrgMembers })),
+);
+const OrgInvites = lazy(() =>
+  import('./pages/org/OrgInvites').then((m) => ({ default: m.OrgInvites })),
+);
+const OrgSettings = lazy(() =>
+  import('./pages/org/OrgSettings').then((m) => ({ default: m.OrgSettings })),
+);
+const OrgTeams = lazy(() => import('./pages/org/OrgTeams').then((m) => ({ default: m.OrgTeams })));
+const ProjectsList = lazy(() =>
+  import('./pages/project/ProjectsList').then((m) => ({ default: m.ProjectsList })),
+);
+const ProjectCreate = lazy(() =>
+  import('./pages/project/ProjectCreate').then((m) => ({ default: m.ProjectCreate })),
+);
+const ProjectDetails = lazy(() =>
+  import('./pages/project/ProjectDetails').then((m) => ({ default: m.ProjectDetails })),
+);
+const ProjectSettings = lazy(() =>
+  import('./pages/project/ProjectSettings').then((m) => ({ default: m.ProjectSettings })),
+);
+const PreferencesProfile = lazy(() =>
+  import('./pages/preferences/PreferencesProfile').then((m) => ({ default: m.PreferencesProfile })),
+);
+const PreferencesPrompts = lazy(() =>
+  import('./pages/preferences/PreferencesPrompts').then((m) => ({ default: m.PreferencesPrompts })),
+);
 
 export function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <OrgProvider>
+          <Suspense
+            fallback={
+              <div className="page">
+                <p className="ts-empty">Loading…</p>
+              </div>
+            }
+          >
           <Routes>
             <Route path="login" element={<Login />} />
             <Route element={<ProtectedRoute />}>
@@ -108,6 +153,7 @@ export function App() {
               </Route>
             </Route>
           </Routes>
+          </Suspense>
         </OrgProvider>
       </BrowserRouter>
     </AuthProvider>

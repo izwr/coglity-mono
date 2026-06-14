@@ -18,8 +18,8 @@ export const testSuites = pgTable('test_suites', {
 });
 
 export const insertTestSuiteSchema = createInsertSchema(testSuites, {
-  name: (schema) => schema.min(1, 'Name is required').max(255),
-  description: (schema) => schema.max(2000).optional().default(''),
+  name: z.string().min(1, 'Name is required').max(255),
+  description: z.string().max(2000).optional().default(''),
 }).omit({
   id: true,
   projectId: true,

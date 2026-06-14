@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, timestamp, primaryKey } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, timestamp, primaryKey, index } from 'drizzle-orm/pg-core';
 import { tags } from './tags';
 import { users } from './users';
 
@@ -21,5 +21,9 @@ export const entityTags = pgTable(
     createdBy: uuid('created_by').references(() => users.id),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
-  (table) => [primaryKey({ columns: [table.entityId, table.tagId, table.entityType] })],
+  (table) => [
+    primaryKey({ columns: [table.entityId, table.tagId, table.entityType] }),
+    // The PK leads with entity_id; tag-filter reverse lookups need the other direction.
+    index('entity_tags_tag_type_idx').on(table.tagId, table.entityType),
+  ],
 );

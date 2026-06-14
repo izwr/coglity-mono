@@ -1,17 +1,23 @@
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import type { TimeseriesBucket } from '@coglity/shared';
 import { useAuth } from '../context/AuthContext';
-import { CardHead } from '../components/ui/Card';
-import { Chip } from '../components/ui/Chip';
-import { Sparkline } from '../components/ui/Sparkline';
+import { Chip, type ChipVariant } from '../components/ui/Chip';
 import { Button } from '../components/ui/Button';
+import { Tabs } from '../components/ui/Tabs';
+import { StatTile } from '../components/ui/StatTile';
+import { TimeSeries } from '../components/viz/TimeSeries';
+import { Heatmap } from '../components/viz/Heatmap';
 import { useSetBreadcrumbs } from '../context/BreadcrumbsContext';
-import { testCaseService, type TestCaseWithTags } from '../services/testCaseService';
-import { testSuiteService } from '../services/testSuiteService';
+import { testCaseService } from '../services/testCaseService';
 import { bugService } from '../services/bugService';
-import { scheduledTestSuiteService } from '../services/scheduledTestSuiteService';
-import { botConnectionService, type BotConnectionWithUser } from '../services/botConnectionService';
+import { botConnectionService } from '../services/botConnectionService';
 import { useCurrentOrg } from '../context/OrgContext';
+import { useRunsOverview, useRunsTimeseries, useRunsHeatmap } from '../queries/stats';
+import { useTestRunsInfinite } from '../queries/testRuns';
+import { queryKeys } from '../lib/queryKeys';
+import { formatRelative } from '../lib/format';
 
 function greeting(hour: number) {
   if (hour < 5) return 'Good evening';
@@ -20,12 +26,12 @@ function greeting(hour: number) {
   return 'Good evening';
 }
 
-function daysFeelCopy(fails: number) {
-  if (fails === 0) return 'Today is calm.';
-  if (fails <= 3) return 'A few things need your eye.';
-  if (fails <= 8) return 'A busy morning ahead.';
-  return 'Storm clouds brewing.';
-}
+const TS_RANGES = {
+  '24h': { ms: 24 * 3_600_000, bucket: 'hour' as TimeseriesBucket },
+  '7d': { ms: 7 * 86_400_000, bucket: 'day' as TimeseriesBucket },
+  '30d': { ms: 30 * 86_400_000, bucket: 'day' as TimeseriesBucket },
+};
+type TsRange = keyof typeof TS_RANGES;
 
 export function Dashboard() {
   const { user } = useAuth();
@@ -33,261 +39,276 @@ export function Dashboard() {
   const navigate = useNavigate();
   useSetBreadcrumbs([{ label: 'Dashboard' }]);
 
-  const [suiteCount, setSuiteCount] = useState<number | null>(null);
-  const [caseCount, setCaseCount] = useState<number | null>(null);
-  const [bugCount, setBugCount] = useState<number | null>(null);
-  const [runCount, setRunCount] = useState<number | null>(null);
-  const [recentCases, setRecentCases] = useState<TestCaseWithTags[]>([]);
-  const [bots, setBots] = useState<BotConnectionWithUser[]>([]);
+  const orgId = org?.organizationId ?? '';
+  const projectIds = useMemo(
+    () => (org?.projects ?? []).map((p) => p.projectId),
+    [org?.projects],
+  );
 
-  useEffect(() => {
-    if (!org) return;
-    const orgId = org.organizationId;
-    const ids = org.projects.map((p) => p.projectId);
-    if (ids.length === 0) {
-      setSuiteCount(0);
-      setCaseCount(0);
-      setBugCount(0);
-      setRunCount(0);
-      setBots([]);
-      setRecentCases([]);
-      return;
-    }
-    (async () => {
-      try {
-        const suites = await testSuiteService.getAll(orgId, ids, { limit: 1 });
-        setSuiteCount(suites.total);
-      } catch {
-        setSuiteCount(0);
-      }
-      try {
-        const cases = await testCaseService.getAll(orgId, ids, {
-          limit: 5,
-          sortBy: 'updatedAt',
-          sortDir: 'desc',
-        });
-        setCaseCount(cases.total);
-        setRecentCases(cases.data);
-      } catch {
-        setCaseCount(0);
-      }
-      try {
-        const bugs = await bugService.getAll(orgId, ids, { limit: 1 });
-        setBugCount(bugs.total);
-      } catch {
-        setBugCount(0);
-      }
-      try {
-        const runs = await scheduledTestSuiteService.getAll(orgId, ids, { limit: 1 });
-        setRunCount(runs.total);
-      } catch {
-        setRunCount(0);
-      }
-      try {
-        const b = await botConnectionService.getAll(orgId, ids, { limit: 10 });
-        setBots(b.data);
-      } catch {
-        setBots([]);
-      }
-    })();
-  }, [org]);
+  const [tsRange, setTsRange] = useState<TsRange>('7d');
+
+  // Time anchors are memoized so query keys stay stable across renders.
+  const from24h = useMemo(() => new Date(Date.now() - TS_RANGES['24h'].ms).toISOString(), []);
+  const from7d = useMemo(() => new Date(Date.now() - TS_RANGES['7d'].ms).toISOString(), []);
+  const tsFrom = useMemo(
+    () => new Date(Date.now() - TS_RANGES[tsRange].ms).toISOString(),
+    [tsRange],
+  );
+
+  // Dials — counts come from cursor-list first pages (estimated when large)
+  // and the stats overview, never from client-side math over a page of rows.
+  const caseCount = useQuery({
+    queryKey: queryKeys.testCases.list(orgId, { projectIds, countOnly: true }),
+    queryFn: () => testCaseService.listCursor(orgId, projectIds, { limit: 1 }),
+    enabled: Boolean(orgId) && projectIds.length > 0,
+    select: (page) => page.totalCount,
+  });
+  const bugCount = useQuery({
+    queryKey: ['orgs', orgId, 'bugs', 'count', { projectIds: [...projectIds].sort() }],
+    queryFn: () => bugService.getAll(orgId, projectIds, { limit: 1, page: 1 }),
+    enabled: Boolean(orgId) && projectIds.length > 0,
+    select: (r) => r.total,
+  });
+  const overview24h = useRunsOverview(orgId, projectIds, { from: from24h });
+  const overview7d = useRunsOverview(orgId, projectIds, { from: from7d });
+  const timeseries = useRunsTimeseries(orgId, projectIds, TS_RANGES[tsRange].bucket, {
+    from: tsFrom,
+  });
+  const heatmap = useRunsHeatmap(orgId, projectIds, { days: 14, limit: 8 });
+  const recentFailures = useTestRunsInfinite(orgId, projectIds, { state: 'failed', limit: 8 });
+  const bots = useQuery({
+    queryKey: ['orgs', orgId, 'bot-connections', 'top', { projectIds: [...projectIds].sort() }],
+    queryFn: () => botConnectionService.getAll(orgId, projectIds, { limit: 5, page: 1 }),
+    enabled: Boolean(orgId) && projectIds.length > 0,
+    select: (r) => r.data,
+  });
 
   const firstName = user?.displayName?.split(' ')[0] ?? 'there';
-  const feel = daysFeelCopy(bugCount ?? 0);
-  const sparkA = [88, 91, 90, 93, 95, 92, 94, 96, 95, 97];
-  const sparkB = [120, 132, 125, 140, 138, 150, 145, 160, 158, 165];
-
-  const stats: Array<{
-    label: string;
-    value: string;
-    delta?: string;
-    dir?: 'up' | 'down';
-    foot?: React.ReactNode;
-  }> = [
-    {
-      label: '30d pass rate',
-      value: '95.1%',
-      delta: '+1.8% vs prev',
-      dir: 'up',
-      foot: <Sparkline data={sparkA} height={32} />,
-    },
-    {
-      label: 'Runs this week',
-      value: String(runCount ?? '—'),
-      delta: 'scheduled',
-      foot: <Sparkline data={sparkB} height={32} color="var(--ink-3)" />,
-    },
-    {
-      label: 'Open failures',
-      value: String(bugCount ?? '—'),
-      delta: feel,
-    },
-    {
-      label: 'CU balance',
-      value: '72%',
-      delta: '22 days remaining',
-      foot: (
-        <div className="meter" style={{ marginTop: 10 }}>
-          <span style={{ width: '72%' }} />
-        </div>
-      ),
-    },
-  ];
+  const ov24 = overview24h.data;
+  const ov7 = overview7d.data;
+  const running = ov24?.byState.running ?? 0;
+  const lastFailure = recentFailures.rows[0]?.createdAt;
+  const passRate7d = ov7?.passRate != null ? `${Math.round(ov7.passRate * 100)}%` : '—';
+  const sparkFromTs = (timeseries.data?.points ?? []).map((p) => p.total);
 
   return (
-    <div className="page">
-      <div className="dash-hero">
+    <div className="page wide">
+      <div className="page-head--console">
         <h1>
-          {greeting(new Date().getHours())}, {firstName}. <em>{feel}</em>
+          {greeting(new Date().getHours())}, <em className="italic-teal">{firstName}</em>.
         </h1>
-        <div className="sub">
-          {suiteCount ?? 0} suites · {caseCount ?? 0} cases · {runCount ?? 0} scheduled runs ·{' '}
-          {bugCount ?? 0} open bugs
-        </div>
+        <span className="status-line">
+          {running > 0 && (
+            <>
+              <span className="dot pulse" />
+              {running} running ·{' '}
+            </>
+          )}
+          {lastFailure ? `last failure ${formatRelative(lastFailure)}` : 'no recent failures'}
+        </span>
       </div>
 
-      <div className="page-head" style={{ marginBottom: 20 }}>
-        <div className="row gap-lg">
-          <Button variant="teal" onClick={() => navigate('/test-cases/generate')}>
-            <svg className="ico" viewBox="0 0 24 24">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-            </svg>
-            Ask Coglity
-          </Button>
-          <Button onClick={() => navigate('/test-cases')}>
-            <svg className="ico" viewBox="0 0 24 24">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            New test case
-          </Button>
-          <Button variant="primary" onClick={() => navigate('/scheduled-test-suites')}>
-            <svg className="ico" viewBox="0 0 24 24">
-              <path d="M5 3l14 9-14 9V3z" />
-            </svg>
-            Run suite
-          </Button>
-        </div>
+      <div className="row gap-lg" style={{ marginBottom: 18 }}>
+        <Button variant="teal" onClick={() => navigate('/test-cases/generate')}>
+          <svg className="ico" viewBox="0 0 24 24">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+          </svg>
+          Ask Coglity
+        </Button>
+        <Button onClick={() => navigate('/test-cases')}>
+          <svg className="ico" viewBox="0 0 24 24">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          New test case
+        </Button>
+        <Button variant="primary" onClick={() => navigate('/scheduled-test-suites')}>
+          <svg className="ico" viewBox="0 0 24 24">
+            <path d="M5 3l14 9-14 9V3z" />
+          </svg>
+          Run suite
+        </Button>
       </div>
 
-      <div className="dash-grid">
-        {stats.map((s) => (
-          <div key={s.label} className="card stat">
-            <div className="label">{s.label}</div>
-            <div className="value">{s.value}</div>
-            {s.delta && <div className={`delta${s.dir ? ` ${s.dir}` : ''}`}>{s.delta}</div>}
-            {s.foot}
-          </div>
-        ))}
+      {/* ── Dial row ── */}
+      <div className="dial-row stagger" style={{ marginBottom: 16 }}>
+        <StatTile
+          label="Test cases"
+          value={caseCount.data?.value ?? null}
+          approx={caseCount.data?.isEstimate}
+          delta="across projects"
+        />
+        <StatTile
+          label="Executions 24h"
+          value={ov24?.total.value ?? null}
+          approx={ov24?.total.isEstimate}
+          delta={ov24 ? `${ov24.byState.failed} failed` : undefined}
+          deltaDir={ov24 && ov24.byState.failed > 0 ? 'down' : undefined}
+        />
+        <StatTile
+          label="Pass rate 7d"
+          display={passRate7d}
+          delta={ov7 ? `${ov7.byState.passed} passed` : undefined}
+          deltaDir="up"
+          spark={sparkFromTs.length > 1 ? sparkFromTs : undefined}
+        />
+        <StatTile
+          label="Active runs"
+          value={ov24 ? ov24.byState.running + ov24.byState.queued : null}
+          live={running > 0}
+          delta={ov24 ? `${ov24.byState.queued} queued` : undefined}
+          onClick={() => navigate('/reporting')}
+        />
+        <StatTile
+          label="Open bugs"
+          value={bugCount.data ?? null}
+          delta="tracker"
+          onClick={() => navigate('/bugs')}
+        />
       </div>
 
-      <div className="dash-layout">
-        <div className="col gap-lg">
-          <div className="card">
-            <CardHead
-              title={
-                <>
-                  Recent <em className="italic-teal">activity</em>
-                </>
-              }
-              actions={
-                <Button variant="ghost" size="sm" onClick={() => navigate('/test-cases')}>
-                  See all
-                </Button>
-              }
-            />
-            {recentCases.length === 0 ? (
-              <div className="card-body muted" style={{ fontSize: 13 }}>
-                No recent activity yet.
-              </div>
-            ) : (
-              <div className="table-scroll">
-                <table className="t">
-                  <thead>
-                    <tr>
-                      <th>Case</th>
-                      <th>Suite</th>
-                      <th>Type</th>
-                      <th>Status</th>
-                      <th>Updated</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentCases.map((c) => (
-                      <tr
-                        key={c.id}
-                        onClick={() => navigate(`/test-cases/${c.projectId}/${c.id}`)}
-                        style={{ cursor: 'pointer' }}
-                      >
-                        <td>{c.title}</td>
-                        <td className="muted">{c.testSuiteName}</td>
-                        <td>
-                          <Chip variant={c.testCaseType as any}>{c.testCaseType}</Chip>
-                        </td>
-                        <td>
-                          {c.status === 'active' ? (
-                            <Chip variant="pass" dot>
-                              active
-                            </Chip>
-                          ) : (
-                            <Chip variant="warn" dot>
-                              draft
-                            </Chip>
-                          )}
-                        </td>
-                        <td className="mono">{new Date(c.updatedAt).toLocaleDateString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
-          <div className="dash-ai">
-            <div className="section-label" style={{ marginBottom: 10 }}>
-              AI · surfaced
+      {/* ── Main split: telemetry | density + failures ── */}
+      <div
+        className="stagger"
+        style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 14, alignItems: 'start' }}
+      >
+        <div className="col" style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
+          <div className="panel">
+            <div className="panel-head">
+              <span className="microlabel">Executions over time</span>
+              <Tabs
+                variant="segmented"
+                size="sm"
+                value={tsRange}
+                onChange={(v) => setTsRange(v as TsRange)}
+                options={Object.keys(TS_RANGES).map((key) => ({ value: key, label: key }))}
+              />
             </div>
-            <h3>
-              Three cases show signs of <em className="italic-teal">flakiness</em>
-            </h3>
-            <p>
-              Coglity noticed <code>bill-payment/confirm-number</code> failing ~14% of runs on
-              <code>staging</code>. Worth reviewing against the new intent schema.
-            </p>
-            <div className="row" style={{ marginTop: 14 }}>
-              <Button variant="teal" size="sm" onClick={() => navigate('/reporting')}>
-                Open report
-              </Button>
-              <Button variant="ghost" size="sm">
-                Dismiss
-              </Button>
+            <div className="panel-body">
+              {timeseries.isLoading ? (
+                <div className="skel" style={{ height: 200 }} />
+              ) : (
+                <TimeSeries
+                  points={timeseries.data?.points ?? []}
+                  bucket={TS_RANGES[tsRange].bucket}
+                  height={200}
+                />
+              )}
             </div>
           </div>
+
+          <div className="panel">
+            <div className="panel-head">
+              <span className="microlabel">Recent failures</span>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/reporting?state=failed')}>
+                Open reports
+              </Button>
+            </div>
+            <div>
+              {recentFailures.isLoading ? (
+                <div className="panel-body">
+                  <div className="skel" style={{ height: 120 }} />
+                </div>
+              ) : recentFailures.rows.length === 0 ? (
+                <div className="empty--inline" style={{ minHeight: 100 }}>
+                  <span className="microlabel plain">All clear</span>
+                  <div className="sub">No failed runs across your projects.</div>
+                </div>
+              ) : (
+                recentFailures.rows.slice(0, 8).map((run) => (
+                  <button
+                    key={run.id}
+                    type="button"
+                    onClick={() => navigate(`/reporting/${run.projectId}/${run.id}`)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '0 16px',
+                      height: 'var(--row-h)',
+                      borderTop: '1px solid var(--hairline)',
+                      cursor: 'pointer',
+                      fontSize: 'var(--fs-cell)',
+                    }}
+                  >
+                    <Chip variant="fail" size="sm" dot>
+                      failed
+                    </Chip>
+                    <span
+                      style={{
+                        color: 'var(--ink)',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        minWidth: 0,
+                        flex: 1,
+                      }}
+                    >
+                      {run.testCaseTitle ?? run.testCaseId.slice(0, 8)}
+                    </span>
+                    <span className="num">{run.environment}</span>
+                    <span className="num" style={{ color: 'var(--muted-2)' }}>
+                      {formatRelative(run.createdAt)}
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
         </div>
 
-        <div className="col gap-lg">
-          <div className="card">
-            <CardHead
-              title={<>Systems under test</>}
-              actions={
-                <Button variant="ghost" size="sm" onClick={() => navigate('/bot-connections')}>
-                  Manage
-                </Button>
-              }
-            />
-            <div className="card-body col">
-              {bots.length === 0 ? (
+        <div className="col" style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
+          <div className="panel">
+            <div className="panel-head">
+              <span className="microlabel">Failure density · 14d</span>
+              <span className="heat-legend" title="failures per suite per day">
+                {[1, 2, 3, 4, 5].map((b) => (
+                  <i key={b} style={{ background: `var(--heat-${b})` }} />
+                ))}
+              </span>
+            </div>
+            <div className="panel-body">
+              {heatmap.isLoading ? (
+                <div className="skel" style={{ height: 140 }} />
+              ) : (
+                <Heatmap
+                  rows={(heatmap.data?.rows ?? []).map((r) => ({ id: r.suiteId, label: r.suiteName }))}
+                  cols={(heatmap.data?.cols ?? []).map((c) =>
+                    new Date(c).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+                  )}
+                  values={(heatmap.data?.rows ?? []).map((r) => r.cells)}
+                  onCellClick={(suiteId) => {
+                    const suite = heatmap.data?.rows.find((r) => r.suiteId === suiteId);
+                    navigate(
+                      `/reporting?suite=${suiteId}&suiteLabel=${encodeURIComponent(suite?.suiteName ?? '')}&state=failed`,
+                    );
+                  }}
+                />
+              )}
+            </div>
+          </div>
+
+          <div className="panel">
+            <div className="panel-head">
+              <span className="microlabel">Systems under test</span>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/bot-connections')}>
+                Manage
+              </Button>
+            </div>
+            <div className="panel-body" style={{ paddingTop: 6 }}>
+              {(bots.data ?? []).length === 0 ? (
                 <div className="muted" style={{ fontSize: 13 }}>
                   No bots connected yet.
                 </div>
               ) : (
-                bots.slice(0, 5).map((b) => (
+                (bots.data ?? []).map((b) => (
                   <div
                     key={b.id}
                     className="row"
-                    style={{ padding: '8px 0', borderBottom: '1px solid var(--line)' }}
+                    style={{ padding: '8px 0', borderBottom: '1px solid var(--hairline)' }}
                   >
-                    <Chip variant={(b.botType as any) || 'neutral'} dot pulse>
+                    <Chip variant={(b.botType as ChipVariant) || 'neutral'} size="sm" dot pulse>
                       {b.botType}
                     </Chip>
                     <div
@@ -302,75 +323,12 @@ export function Dashboard() {
                     >
                       {b.name}
                     </div>
-                    <span className="mono muted-2" style={{ marginLeft: 'auto', fontSize: 11.5 }}>
+                    <span className="num" style={{ marginLeft: 'auto' }}>
                       {b.provider}
                     </span>
                   </div>
                 ))
               )}
-            </div>
-          </div>
-
-          <div className="card">
-            <CardHead
-              title={
-                <>
-                  Quick <em className="italic-teal">actions</em>
-                </>
-              }
-            />
-            <div className="card-body col gap-lg">
-              {[
-                {
-                  label: 'Generate cases from a story',
-                  to: '/test-cases/generate',
-                  d: 'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5',
-                },
-                {
-                  label: 'Schedule a suite run',
-                  to: '/scheduled-test-suites',
-                  d: 'M5 3l14 9-14 9V3z',
-                },
-                {
-                  label: 'Connect a new bot',
-                  to: '/bot-connections',
-                  d: 'M12 2v3M6 9h12a2 2 0 012 2v7a2 2 0 01-2 2H6a2 2 0 01-2-2v-7a2 2 0 012-2z',
-                },
-                { label: 'View reports', to: '/reporting', d: 'M4 20V10M10 20V4M16 20v-7M22 20H2' },
-              ].map((a) => (
-                <button
-                  key={a.to}
-                  className="row"
-                  onClick={() => navigate(a.to)}
-                  style={{ padding: '8px 0', cursor: 'pointer', textAlign: 'left', width: '100%' }}
-                >
-                  <div
-                    style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 8,
-                      background: 'var(--bg-2)',
-                      display: 'grid',
-                      placeItems: 'center',
-                      color: 'var(--teal)',
-                    }}
-                  >
-                    <svg className="ico" width="14" height="14" viewBox="0 0 24 24">
-                      <path d={a.d} />
-                    </svg>
-                  </div>
-                  <span style={{ fontSize: 13.5, color: 'var(--ink)' }}>{a.label}</span>
-                  <svg
-                    className="ico"
-                    style={{ marginLeft: 'auto', color: 'var(--muted-2)' }}
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M9 6l6 6-6 6" />
-                  </svg>
-                </button>
-              ))}
             </div>
           </div>
         </div>

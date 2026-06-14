@@ -1,5 +1,5 @@
 import { Router, type Router as RouterType } from 'express';
-import { and, eq, or, ilike, desc, asc, sql, inArray, isNull } from 'drizzle-orm';
+import { and, eq, or, ilike, desc, asc, sql, inArray, isNull, gte, lte } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import {
   testSuites,
@@ -16,7 +16,10 @@ import {
   users,
   type EntityTagEntityType,
 } from '@coglity/shared/schema';
+import { cursorListQuerySchema, decodeCursor } from '@coglity/shared';
 import { db } from '../db';
+import { keysetWhere, nextCursorFrom } from '../lib/keyset';
+import { countWithEstimate } from '../lib/estimatedCount';
 
 const router: RouterType = Router({ mergeParams: true });
 
@@ -112,17 +115,25 @@ router.get('/test-suites', async (req, res) => {
 });
 
 // ── Test Cases ────────────────────────────────────────────────
+const TEST_CASE_SORTS = ['createdAt', 'updatedAt', 'title'] as const;
+type TestCaseSort = (typeof TEST_CASE_SORTS)[number];
+
 router.get('/test-cases', async (req, res) => {
   const ids = req.projectIdsScope ?? [];
+  const legacyPaging = typeof req.query.page === 'string';
   if (ids.length === 0) {
-    res.json({ data: [], total: 0, page: 1, limit: 10 });
+    if (legacyPaging) {
+      res.json({ data: [], total: 0, page: 1, limit: 10 });
+    } else {
+      res.json({ data: [], nextCursor: null, totalCount: { value: 0, isEstimate: false } });
+    }
     return;
   }
   const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
   const status = typeof req.query.status === 'string' ? req.query.status : '';
   const suiteId = typeof req.query.testSuiteId === 'string' ? req.query.testSuiteId : '';
+  const testCaseType = typeof req.query.testCaseType === 'string' ? req.query.testCaseType : '';
   const tagId = typeof req.query.tagId === 'string' ? req.query.tagId : '';
-  const { page, limit, sortBy, sortDir } = paging(req);
 
   const testSuiteAlias = alias(testSuites, 'ts');
   const conditions = [inArray(testCases.projectId, ids)];
@@ -132,69 +143,142 @@ router.get('/test-cases', async (req, res) => {
     );
   if (status === 'draft' || status === 'active') conditions.push(eq(testCases.status, status));
   if (suiteId) conditions.push(eq(testCases.testSuiteId, suiteId));
+  if (
+    testCaseType === 'web' ||
+    testCaseType === 'mobile' ||
+    testCaseType === 'chat' ||
+    testCaseType === 'voice' ||
+    testCaseType === 'agent'
+  )
+    conditions.push(eq(testCases.testCaseType, testCaseType));
   if (tagId) {
-    const tagRows = await db
-      .select({ entityId: entityTags.entityId })
-      .from(entityTags)
-      .innerJoin(testCases, eq(entityTags.entityId, testCases.id))
-      .where(
-        and(
-          eq(entityTags.tagId, tagId),
-          eq(entityTags.entityType, 'test_case'),
-          inArray(testCases.projectId, ids),
-        ),
-      );
-    const tagged = tagRows.map((r) => r.entityId);
-    if (tagged.length === 0) {
-      res.json({ data: [], total: 0, page, limit });
-      return;
-    }
-    conditions.push(inArray(testCases.id, tagged));
+    // EXISTS instead of materializing tagged ids: at 100K+ tagged cases an
+    // IN (...) list explodes; the entity_tags PK serves this lookup per row.
+    conditions.push(
+      sql`exists (select 1 from ${entityTags} where ${entityTags.entityId} = ${testCases.id} and ${entityTags.tagId} = ${tagId} and ${entityTags.entityType} = 'test_case')`,
+    );
   }
   const where = and(...conditions);
 
+  const caseListColumns = {
+    id: testCases.id,
+    projectId: testCases.projectId,
+    projectName: projects.name,
+    testSuiteId: testCases.testSuiteId,
+    testSuiteName: testSuiteAlias.name,
+    title: testCases.title,
+    status: testCases.status,
+    testCaseType: testCases.testCaseType,
+    createdBy: testCases.createdBy,
+    updatedBy: testCases.updatedBy,
+    createdAt: testCases.createdAt,
+    updatedAt: testCases.updatedAt,
+    createdByName: createdByUser.displayName,
+    updatedByName: updatedByUser.displayName,
+  };
+
+  const caseListQuery = () =>
+    db
+      .select(caseListColumns)
+      .from(testCases)
+      .innerJoin(testSuiteAlias, eq(testCases.testSuiteId, testSuiteAlias.id))
+      .innerJoin(projects, eq(testCases.projectId, projects.id))
+      .leftJoin(createdByUser, eq(testCases.createdBy, createdByUser.id))
+      .leftJoin(updatedByUser, eq(testCases.updatedBy, updatedByUser.id));
+
+  // ── Legacy offset path (kept until all clients send cursors) ──
+  if (legacyPaging) {
+    const { page, limit, sortBy, sortDir } = paging(req);
+    const sortCol =
+      sortBy === 'title'
+        ? testCases.title
+        : sortBy === 'updatedAt'
+          ? testCases.updatedAt
+          : testCases.createdAt;
+    const orderFn = sortDir === 'asc' ? asc : desc;
+
+    const [{ count: total }] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(testCases)
+      .innerJoin(testSuiteAlias, eq(testCases.testSuiteId, testSuiteAlias.id))
+      .where(where);
+
+    const data = await caseListQuery()
+      .where(where)
+      .orderBy(orderFn(sortCol))
+      .limit(limit)
+      .offset((page - 1) * limit);
+
+    res.setHeader('Deprecation', 'true');
+    res.json({ data, total, page, limit });
+    return;
+  }
+
+  // ── Keyset path ──
+  const parsedQuery = cursorListQuerySchema.safeParse({ ...req.query });
+  if (!parsedQuery.success) {
+    res.status(400).json({ error: parsedQuery.error.flatten().fieldErrors });
+    return;
+  }
+  const { cursor: rawCursor, limit, sortDir } = parsedQuery.data;
+  const sortBy = (TEST_CASE_SORTS as readonly string[]).includes(parsedQuery.data.sortBy ?? '')
+    ? (parsedQuery.data.sortBy as TestCaseSort)
+    : 'createdAt';
   const sortCol =
     sortBy === 'title'
       ? testCases.title
       : sortBy === 'updatedAt'
         ? testCases.updatedAt
         : testCases.createdAt;
+
+  let cursor = null;
+  if (rawCursor) {
+    cursor = decodeCursor(rawCursor);
+    if (!cursor || cursor.s !== sortBy || cursor.d !== sortDir) {
+      res.status(400).json({ error: 'Invalid cursor' });
+      return;
+    }
+  }
+
+  const keysetConditions = cursor
+    ? and(where, keysetWhere(sortCol, testCases.id, cursor))
+    : where;
   const orderFn = sortDir === 'asc' ? asc : desc;
 
-  const [{ count: total }] = await db
-    .select({ count: sql<number>`cast(count(*) as int)` })
-    .from(testCases)
-    .innerJoin(testSuiteAlias, eq(testCases.testSuiteId, testSuiteAlias.id))
-    .where(where);
+  const rows = await caseListQuery()
+    .where(keysetConditions)
+    .orderBy(orderFn(sortCol), orderFn(testCases.id))
+    .limit(limit + 1);
 
-  const data = await db
-    .select({
-      id: testCases.id,
-      projectId: testCases.projectId,
-      projectName: projects.name,
-      testSuiteId: testCases.testSuiteId,
-      testSuiteName: testSuiteAlias.name,
-      title: testCases.title,
-      status: testCases.status,
-      testCaseType: testCases.testCaseType,
-      createdBy: testCases.createdBy,
-      updatedBy: testCases.updatedBy,
-      createdAt: testCases.createdAt,
-      updatedAt: testCases.updatedAt,
-      createdByName: createdByUser.displayName,
-      updatedByName: updatedByUser.displayName,
-    })
-    .from(testCases)
-    .innerJoin(testSuiteAlias, eq(testCases.testSuiteId, testSuiteAlias.id))
-    .innerJoin(projects, eq(testCases.projectId, projects.id))
-    .leftJoin(createdByUser, eq(testCases.createdBy, createdByUser.id))
-    .leftJoin(updatedByUser, eq(testCases.updatedBy, updatedByUser.id))
-    .where(where)
-    .orderBy(orderFn(sortCol))
-    .limit(limit)
-    .offset((page - 1) * limit);
+  const hasMore = rows.length > limit;
+  const data = hasMore ? rows.slice(0, limit) : rows;
+  const last = data[data.length - 1];
+  const nextCursor =
+    hasMore && last
+      ? nextCursorFrom(sortBy, sortDir, last[sortBy as 'createdAt' | 'updatedAt' | 'title'], last.id)
+      : null;
 
-  res.json({ data, total, page, limit });
+  let totalCount = null;
+  if (!cursor) {
+    totalCount = await countWithEstimate(
+      db,
+      db
+        .select({ one: sql`1` })
+        .from(testCases)
+        .innerJoin(testSuiteAlias, eq(testCases.testSuiteId, testSuiteAlias.id))
+        .where(where),
+      async () => {
+        const [{ count }] = await db
+          .select({ count: sql<number>`cast(count(*) as int)` })
+          .from(testCases)
+          .innerJoin(testSuiteAlias, eq(testCases.testSuiteId, testSuiteAlias.id))
+          .where(where);
+        return count;
+      },
+    );
+  }
+
+  res.json({ data, nextCursor, totalCount });
 });
 
 // ── Tags ────────────────────────────────────────────────
@@ -520,60 +604,146 @@ router.get('/knowledge-sources', async (req, res) => {
 });
 
 // ── Test Runs (reports) ───────────────────────────────────────
+// List columns deliberately exclude transcript/recordingBlobName: at scale a
+// page of transcripts is megabytes of jsonb nobody renders in a grid. The
+// run detail endpoint still returns them.
+const runListColumns = {
+  id: testRuns.id,
+  projectId: testRuns.projectId,
+  testCaseId: testRuns.testCaseId,
+  botConnectionId: testRuns.botConnectionId,
+  state: testRuns.state,
+  verdict: testRuns.verdict,
+  error: testRuns.error,
+  recordingUrl: testRuns.recordingUrl,
+  recordingDurationMs: testRuns.recordingDurationMs,
+  properties: testRuns.properties,
+  language: testRuns.language,
+  environment: testRuns.environment,
+  batchId: testRuns.batchId,
+  startedAt: testRuns.startedAt,
+  finishedAt: testRuns.finishedAt,
+  createdBy: testRuns.createdBy,
+  createdAt: testRuns.createdAt,
+  createdByName: createdByUser.displayName,
+  testCaseTitle: testCases.title,
+};
+
+const RUN_STATE_VALUES = ['queued', 'running', 'passed', 'failed', 'errored', 'cancelled'] as const;
+type RunStateValue = (typeof RUN_STATE_VALUES)[number];
+
 router.get('/test-runs', async (req, res) => {
   const ids = req.projectIdsScope ?? [];
+  const legacyPaging = typeof req.query.page === 'string';
   if (ids.length === 0) {
-    res.json({ data: [], total: 0, page: 1, limit: 10 });
+    if (legacyPaging) {
+      res.json({ data: [], total: 0, page: 1, limit: 10 });
+    } else {
+      res.json({ data: [], nextCursor: null, totalCount: { value: 0, isEstimate: false } });
+    }
     return;
   }
-  const { page, limit, sortDir } = paging(req);
+
   const state = typeof req.query.state === 'string' ? req.query.state : '';
   const testCaseId = typeof req.query.testCaseId === 'string' ? req.query.testCaseId : '';
+  const testSuiteId = typeof req.query.testSuiteId === 'string' ? req.query.testSuiteId : '';
+  const batchId = typeof req.query.batchId === 'string' ? req.query.batchId : '';
+  const environment = typeof req.query.environment === 'string' ? req.query.environment : '';
+  const language = typeof req.query.language === 'string' ? req.query.language : '';
+  const from = typeof req.query.from === 'string' ? new Date(req.query.from) : null;
+  const to = typeof req.query.to === 'string' ? new Date(req.query.to) : null;
 
   const conditions = [inArray(testRuns.projectId, ids)];
-  if (state) conditions.push(eq(testRuns.state, state as 'passed' | 'failed' | 'errored'));
+  if (state && (RUN_STATE_VALUES as readonly string[]).includes(state))
+    conditions.push(eq(testRuns.state, state as RunStateValue));
   if (testCaseId) conditions.push(eq(testRuns.testCaseId, testCaseId));
+  if (testSuiteId)
+    conditions.push(
+      sql`exists (select 1 from ${testCases} where ${testCases.id} = ${testRuns.testCaseId} and ${testCases.testSuiteId} = ${testSuiteId})`,
+    );
+  if (batchId) conditions.push(eq(testRuns.batchId, batchId));
+  if (environment) conditions.push(eq(testRuns.environment, environment));
+  if (language) conditions.push(eq(testRuns.language, language));
+  if (from && !Number.isNaN(from.getTime())) conditions.push(gte(testRuns.createdAt, from));
+  if (to && !Number.isNaN(to.getTime())) conditions.push(lte(testRuns.createdAt, to));
   const where = and(...conditions);
 
-  const [{ count: total }] = await db
-    .select({ count: sql<number>`cast(count(*) as int)` })
-    .from(testRuns)
-    .where(where);
+  // ── Legacy offset path (kept until all clients send cursors) ──
+  if (legacyPaging) {
+    const { page, limit, sortDir } = paging(req);
+    const [{ count: total }] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(testRuns)
+      .where(where);
+    const orderFn = sortDir === 'asc' ? asc : desc;
+    const data = await db
+      .select(runListColumns)
+      .from(testRuns)
+      .leftJoin(createdByUser, eq(testRuns.createdBy, createdByUser.id))
+      .leftJoin(testCases, eq(testRuns.testCaseId, testCases.id))
+      .where(where)
+      .orderBy(orderFn(testRuns.createdAt))
+      .limit(limit)
+      .offset((page - 1) * limit);
+    res.setHeader('Deprecation', 'true');
+    res.json({ data, total, page, limit });
+    return;
+  }
 
+  // ── Keyset path ──
+  const parsedQuery = cursorListQuerySchema.safeParse({ ...req.query });
+  if (!parsedQuery.success) {
+    res.status(400).json({ error: parsedQuery.error.flatten().fieldErrors });
+    return;
+  }
+  const { cursor: rawCursor, limit, sortDir } = parsedQuery.data;
+
+  let cursor = null;
+  if (rawCursor) {
+    cursor = decodeCursor(rawCursor);
+    if (!cursor || cursor.s !== 'createdAt' || cursor.d !== sortDir) {
+      res.status(400).json({ error: 'Invalid cursor' });
+      return;
+    }
+  }
+
+  const keysetConditions = cursor
+    ? and(where, keysetWhere(testRuns.createdAt, testRuns.id, cursor))
+    : where;
   const orderFn = sortDir === 'asc' ? asc : desc;
-  const data = await db
-    .select({
-      id: testRuns.id,
-      projectId: testRuns.projectId,
-      testCaseId: testRuns.testCaseId,
-      botConnectionId: testRuns.botConnectionId,
-      state: testRuns.state,
-      verdict: testRuns.verdict,
-      transcript: testRuns.transcript,
-      error: testRuns.error,
-      recordingUrl: testRuns.recordingUrl,
-      recordingBlobName: testRuns.recordingBlobName,
-      recordingDurationMs: testRuns.recordingDurationMs,
-      properties: testRuns.properties,
-      language: testRuns.language,
-      environment: testRuns.environment,
-      batchId: testRuns.batchId,
-      startedAt: testRuns.startedAt,
-      finishedAt: testRuns.finishedAt,
-      createdBy: testRuns.createdBy,
-      createdAt: testRuns.createdAt,
-      createdByName: createdByUser.displayName,
-      testCaseTitle: testCases.title,
-    })
+
+  const rows = await db
+    .select(runListColumns)
     .from(testRuns)
     .leftJoin(createdByUser, eq(testRuns.createdBy, createdByUser.id))
     .leftJoin(testCases, eq(testRuns.testCaseId, testCases.id))
-    .where(where)
-    .orderBy(orderFn(testRuns.createdAt))
-    .limit(limit)
-    .offset((page - 1) * limit);
+    .where(keysetConditions)
+    .orderBy(orderFn(testRuns.createdAt), orderFn(testRuns.id))
+    .limit(limit + 1);
 
-  res.json({ data, total, page, limit });
+  const hasMore = rows.length > limit;
+  const data = hasMore ? rows.slice(0, limit) : rows;
+  const last = data[data.length - 1];
+  const nextCursor =
+    hasMore && last ? nextCursorFrom('createdAt', sortDir, last.createdAt, last.id) : null;
+
+  // Totals are computed once per result set (first page only), estimated when large.
+  let totalCount = null;
+  if (!cursor) {
+    totalCount = await countWithEstimate(
+      db,
+      db.select({ one: sql`1` }).from(testRuns).where(where),
+      async () => {
+        const [{ count }] = await db
+          .select({ count: sql<number>`cast(count(*) as int)` })
+          .from(testRuns)
+          .where(where);
+        return count;
+      },
+    );
+  }
+
+  res.json({ data, nextCursor, totalCount });
 });
 
 export default router;

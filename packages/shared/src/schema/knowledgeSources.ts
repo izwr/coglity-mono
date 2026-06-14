@@ -39,9 +39,9 @@ export const knowledgeSources = pgTable('knowledge_sources', {
 });
 
 export const insertKnowledgeSourceSchema = createInsertSchema(knowledgeSources, {
-  name: (schema) => schema.min(1, 'Name is required').max(255),
-  url: (schema) => schema.max(2000).optional().default(''),
-  description: (schema) => schema.max(2000).optional().default(''),
+  name: z.string().min(1, 'Name is required').max(255),
+  url: z.string().max(2000).optional().default(''),
+  description: z.string().max(2000).optional().default(''),
 }).omit({
   id: true,
   projectId: true,

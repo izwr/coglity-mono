@@ -1,22 +1,27 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import type { Tag } from '@coglity/shared';
-import { testCaseService, type TestCaseWithTags } from '../services/testCaseService';
+import { testCaseService, type TestCaseListRow } from '../services/testCaseService';
 import { testSuiteService, type TestSuiteWithTags } from '../services/testSuiteService';
 import { tagService } from '../services/tagService';
 import { botConnectionService, type BotConnectionWithUser } from '../services/botConnectionService';
-import { ListToolbar, type AppliedFilters } from '../components/ListToolbar';
 import { Button } from '../components/ui/Button';
 import { Chip, type ChipVariant } from '../components/ui/Chip';
 import { Select } from '../components/ui/Select';
-import { PageHead } from '../components/ui/PageHead';
+import { DataTable } from '../components/data/DataTable';
+import { DensityToggle } from '../components/ui/DensityToggle';
 import { useSetBreadcrumbs } from '../context/BreadcrumbsContext';
 import { ProjectFilter, useSelectedProjectIds } from '../components/ProjectFilter';
 import { ProjectPickerField, useWritableProjects } from '../components/ProjectPickerField';
 import { useCurrentOrg } from '../context/OrgContext';
+import { useTestCasesInfinite, type TestCaseFilters } from '../queries/testCases';
+import { queryKeys } from '../lib/queryKeys';
+import { formatCount, formatRelative } from '../lib/format';
 
 const TEST_CASE_TYPES = [
   { value: 'web', label: 'Web' },
@@ -43,51 +48,132 @@ const createTestCaseSchema = yup.object({
 
 type CreateFormValues = yup.InferType<typeof createTestCaseSchema>;
 
-const PAGE_SIZE = 12;
+type QuickView = 'all' | 'active' | 'draft';
 
-const SORT_OPTIONS = [
-  { label: 'Newest first', field: 'createdAt', dir: 'desc' as const },
-  { label: 'Oldest first', field: 'createdAt', dir: 'asc' as const },
-  { label: 'Title A–Z', field: 'title', dir: 'asc' as const },
-  { label: 'Title Z–A', field: 'title', dir: 'desc' as const },
-  { label: 'Recently updated', field: 'updatedAt', dir: 'desc' as const },
+interface SavedView {
+  name: string;
+  filters: { search: string; suiteId: string; testCaseType: string; status: string };
+}
+
+const VIEWS_KEY = 'coglity-views:testcases';
+const COLS_KEY = 'coglity-cols:testcases';
+const OPTIONAL_COLUMNS = [
+  { id: 'type', label: 'Type' },
+  { id: 'suite', label: 'Suite' },
+  { id: 'status', label: 'Status' },
+  { id: 'updatedAt', label: 'Updated' },
+  { id: 'createdByName', label: 'Created by' },
 ];
 
-const STATUS_TOGGLE = {
-  options: [
-    { value: 'active', label: 'Active', activeClass: 'active-selected' },
-    { value: 'draft', label: 'Draft', activeClass: 'draft-selected' },
-  ],
-};
+function readJson<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 export function TestCases() {
   useSetBreadcrumbs([{ label: 'Test cases' }]);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { org } = useCurrentOrg();
-  const projectIds = useSelectedProjectIds();
+  const orgId = org?.organizationId ?? '';
+  const selectedProjectIds = useSelectedProjectIds();
+  // No selection means "all projects I can read" — the backend scopes to
+  // readable projects regardless.
+  const projectIds = useMemo(
+    () =>
+      selectedProjectIds.length > 0
+        ? selectedProjectIds
+        : (org?.projects ?? []).map((p) => p.projectId),
+    [selectedProjectIds, org?.projects],
+  );
   const writable = useWritableProjects();
-  const [formProjectId, setFormProjectId] = useState<string>('');
-  const [cases, setCases] = useState<TestCaseWithTags[]>([]);
-  const [total, setTotal] = useState(0);
-  const [allTags, setAllTags] = useState<Tag[]>([]);
-  const [allSuites, setAllSuites] = useState<TestSuiteWithTags[]>([]);
-  const [allBotConnections, setAllBotConnections] = useState<BotConnectionWithUser[]>([]);
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [initialLoad, setInitialLoad] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  const [filters, setFilters] = useState<AppliedFilters>({
-    search: '',
-    tagId: '',
-    sortBy: 'updatedAt',
-    sortDir: 'desc',
-    suiteId: '',
-    status: '',
+  // ── Filters (server-driven) ──
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
+  const [suiteId, setSuiteId] = useState('');
+  const [testCaseType, setTestCaseType] = useState('');
+  const [quickView, setQuickView] = useState<QuickView>('all');
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'updatedAt', desc: true }]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [savedViews, setSavedViews] = useState<SavedView[]>(() => readJson(VIEWS_KEY, []));
+  const [visibleCols, setVisibleCols] = useState<string[]>(() =>
+    readJson(
+      COLS_KEY,
+      OPTIONAL_COLUMNS.map((c) => c.id),
+    ),
+  );
+  const [colPopOpen, setColPopOpen] = useState(false);
+  const colPopRef = useRef<HTMLDivElement>(null);
+
+  // Debounced filter-as-you-type
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(searchInput.trim()), 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  useEffect(() => {
+    if (!colPopOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!colPopRef.current?.contains(e.target as Node)) setColPopOpen(false);
+    };
+    window.addEventListener('mousedown', onDown);
+    return () => window.removeEventListener('mousedown', onDown);
+  }, [colPopOpen]);
+
+  const sort = sorting[0] ?? { id: 'updatedAt', desc: true };
+  const sortBy = (['createdAt', 'updatedAt', 'title'].includes(sort.id) ? sort.id : 'updatedAt') as
+    | 'createdAt'
+    | 'updatedAt'
+    | 'title';
+
+  const filters: TestCaseFilters = {
+    ...(search ? { search } : {}),
+    ...(suiteId ? { testSuiteId: suiteId } : {}),
+    ...(testCaseType ? { testCaseType } : {}),
+    ...(quickView !== 'all' ? { status: quickView } : {}),
+    sortBy,
+    sortDir: sort.desc ? 'desc' : 'asc',
+    limit: 60,
+  };
+
+  const cases = useTestCasesInfinite(orgId, projectIds, filters);
+
+  // ── Form metadata (suites, tags, bots) ──
+  const [showForm, setShowForm] = useState(false);
+  const [formProjectId, setFormProjectId] = useState('');
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+
+  const allTags = useQuery({
+    queryKey: queryKeys.tags.list(orgId, { projectIds }),
+    queryFn: () => tagService.getAll(orgId, projectIds),
+    enabled: Boolean(orgId) && projectIds.length > 0,
   });
-  const [page, setPage] = useState(1);
-  const reqIdRef = useRef(0);
+  const writableIdsKey = writable.map((p) => p.projectId).join(',');
+  const allSuites = useQuery({
+    queryKey: ['orgs', orgId, 'test-suites', 'picker', writableIdsKey],
+    queryFn: () =>
+      testSuiteService
+        .getAll(orgId, writableIdsKey.split(','), { limit: 100, page: 1 })
+        .then((r) => r.data),
+    enabled: Boolean(orgId) && writableIdsKey.length > 0,
+  });
+  const allBots = useQuery({
+    queryKey: ['orgs', orgId, 'bot-connections', 'picker', writableIdsKey],
+    queryFn: () =>
+      botConnectionService
+        .getAll(orgId, writableIdsKey.split(','), { limit: 100, page: 1 })
+        .then((r) => r.data),
+    enabled: Boolean(orgId) && writableIdsKey.length > 0,
+  });
+
+  const suitesForFilter: TestSuiteWithTags[] = (allSuites.data ?? []).filter(
+    (s) => projectIds.length === 0 || projectIds.includes(s.projectId),
+  );
 
   const {
     register,
@@ -104,87 +190,12 @@ export function TestCases() {
 
   const selectedType = watch('testCaseType');
   const showBotConnectionPicker = selectedType === 'chat' || selectedType === 'voice';
-  const filteredBotConnections = allBotConnections.filter(
+  const filteredBotConnections: BotConnectionWithUser[] = (allBots.data ?? []).filter(
     (bc) => bc.botType === selectedType && bc.projectId === formProjectId,
   );
 
-  const fetchCases = useCallback(async () => {
-    if (!org) return;
-    const reqId = ++reqIdRef.current;
-    setLoading(true);
-    try {
-      const res = await testCaseService.getAll(org.organizationId, projectIds, {
-        search: filters.search || undefined,
-        testSuiteId: filters.suiteId || undefined,
-        tagId: filters.tagId || undefined,
-        status: filters.status || undefined,
-        sortBy: filters.sortBy,
-        sortDir: filters.sortDir,
-        page,
-        limit: PAGE_SIZE,
-      });
-      if (reqId !== reqIdRef.current) return; // a newer fetch superseded this one
-      setCases(res.data);
-      setTotal(res.total);
-    } catch {
-      if (reqId !== reqIdRef.current) return;
-      setCases([]);
-      setTotal(0);
-    } finally {
-      if (reqId === reqIdRef.current) {
-        setLoading(false);
-        setInitialLoad(false);
-      }
-    }
-  }, [org, projectIds, filters, page]);
-
-  useEffect(() => {
-    if (!org) return;
-    tagService
-      .getAll(org.organizationId, projectIds)
-      .then(setAllTags)
-      .catch(() => setAllTags([]));
-  }, [org, projectIds]);
-
-  useEffect(() => {
-    if (!org || writable.length === 0) {
-      setAllSuites([]);
-      return;
-    }
-    const writableIds = writable.map((p) => p.projectId);
-    testSuiteService
-      .getAll(org.organizationId, writableIds, { limit: 100 })
-      .then((d) => setAllSuites(d.data))
-      .catch(() => setAllSuites([]));
-  }, [org, writable]);
-
-  useEffect(() => {
-    if (!org || writable.length === 0) {
-      setAllBotConnections([]);
-      return;
-    }
-    const writableIds = writable.map((p) => p.projectId);
-    botConnectionService
-      .getAll(org.organizationId, writableIds, { limit: 100 })
-      .then((d) => setAllBotConnections(d.data))
-      .catch(() => setAllBotConnections([]));
-  }, [org, writable]);
-  useEffect(() => {
-    fetchCases();
-  }, [fetchCases]);
-
-  // Reset to page 1 when the project filter changes so a stale page isn't re-requested for a
-  // project set that may have fewer pages (which strands the user on an empty result).
-  const projectIdsKey = projectIds.join(',');
-  useEffect(() => {
-    setPage(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectIdsKey]);
-
-  const handleApplyFilters = (applied: AppliedFilters) => {
-    setFilters(applied);
-    setPage(1);
-  };
+  const invalidateCases = () =>
+    queryClient.invalidateQueries({ queryKey: queryKeys.testCases.all(orgId) });
 
   const closeForm = () => {
     reset({ title: '', testSuiteId: '', testCaseType: 'web', botConnectionId: '' });
@@ -202,7 +213,7 @@ export function TestCases() {
 
   const onSubmit = async (data: CreateFormValues) => {
     if (!org || !formProjectId) return;
-    const created = await testCaseService.create(org.organizationId, formProjectId, {
+    const created = await testCaseService.create(orgId, formProjectId, {
       title: data.title,
       testSuiteId: data.testSuiteId,
       preCondition: '',
@@ -214,75 +225,192 @@ export function TestCases() {
       botConnectionId: data.botConnectionId || null,
     });
     closeForm();
+    invalidateCases();
     navigate(`/test-cases/${formProjectId}/${created.id}`);
   };
 
-  const handleDelete = async (tc: TestCaseWithTags) => {
-    if (!org) return;
-    await testCaseService.remove(org.organizationId, tc.projectId, tc.id);
-    setDeleteConfirmId(null);
-    fetchCases();
+  const deleteRows = async (rows: TestCaseListRow[]) => {
+    if (!org || rows.length === 0) return;
+    const label = rows.length === 1 ? `"${rows[0].title}"` : `${rows.length} test cases`;
+    if (!window.confirm(`Delete ${label}? This cannot be undone.`)) return;
+    for (const row of rows) {
+      await testCaseService.remove(orgId, row.projectId, row.id);
+    }
+    setSelectedIds(new Set());
+    invalidateCases();
   };
 
-  const toggleTag = (tagId: string) => {
-    setSelectedTagIds((prev) =>
-      prev.includes(tagId) ? prev.filter((i) => i !== tagId) : [...prev, tagId],
-    );
+  const saveCurrentView = () => {
+    const name = window.prompt('Name this view:');
+    if (!name) return;
+    const next = [
+      ...savedViews.filter((v) => v.name !== name),
+      { name, filters: { search, suiteId, testCaseType, status: quickView === 'all' ? '' : quickView } },
+    ].slice(0, 8);
+    setSavedViews(next);
+    localStorage.setItem(VIEWS_KEY, JSON.stringify(next));
   };
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const hasFilters = !!(filters.search || filters.tagId || filters.suiteId || filters.status);
+  const applyView = (view: SavedView) => {
+    setSearchInput(view.filters.search);
+    setSearch(view.filters.search);
+    setSuiteId(view.filters.suiteId);
+    setTestCaseType(view.filters.testCaseType);
+    setQuickView((view.filters.status as QuickView) || 'all');
+  };
+
+  const removeView = (name: string) => {
+    const next = savedViews.filter((v) => v.name !== name);
+    setSavedViews(next);
+    localStorage.setItem(VIEWS_KEY, JSON.stringify(next));
+  };
+
+  const toggleCol = (id: string) => {
+    const next = visibleCols.includes(id)
+      ? visibleCols.filter((c) => c !== id)
+      : [...visibleCols, id];
+    setVisibleCols(next);
+    localStorage.setItem(COLS_KEY, JSON.stringify(next));
+  };
+
+  const hasCustomFilters = Boolean(search || suiteId || testCaseType);
+
+  // ── Columns ──
+  const columns = useMemo<ColumnDef<TestCaseListRow, unknown>[]>(() => {
+    const cols: ColumnDef<TestCaseListRow, unknown>[] = [
+      {
+        id: 'title',
+        header: 'Title',
+        size: 280,
+        meta: { flex: true },
+        cell: ({ row }) => (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+            <span
+              style={{
+                fontWeight: 500,
+                color: 'var(--ink)',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {row.original.title}
+            </span>
+            <span className="row-actions" onClick={(e) => e.stopPropagation()}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate(`/test-cases/${row.original.projectId}/${row.original.id}`)}
+              >
+                Open
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => deleteRows([row.original])}>
+                Delete
+              </Button>
+            </span>
+          </div>
+        ),
+      },
+    ];
+    if (visibleCols.includes('type'))
+      cols.push({
+        id: 'type',
+        header: 'Type',
+        size: 86,
+        cell: ({ row }) => (
+          <Chip variant={typeChipVariant[row.original.testCaseType] ?? 'neutral'} size="sm">
+            {row.original.testCaseType}
+          </Chip>
+        ),
+      });
+    if (visibleCols.includes('suite'))
+      cols.push({
+        id: 'suite',
+        header: 'Suite',
+        size: 170,
+        cell: ({ row }) => (
+          <span className="muted" style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {row.original.testSuiteName}
+          </span>
+        ),
+      });
+    if (visibleCols.includes('status'))
+      cols.push({
+        id: 'status',
+        header: 'Status',
+        size: 92,
+        cell: ({ row }) =>
+          row.original.status === 'active' ? (
+            <Chip variant="pass" size="sm" dot>
+              active
+            </Chip>
+          ) : (
+            <Chip variant="warn" size="sm" dot>
+              draft
+            </Chip>
+          ),
+      });
+    if (visibleCols.includes('updatedAt'))
+      cols.push({
+        id: 'updatedAt',
+        header: 'Updated',
+        size: 104,
+        cell: ({ row }) => <span className="num">{formatRelative(row.original.updatedAt)}</span>,
+      });
+    if (visibleCols.includes('createdByName'))
+      cols.push({
+        id: 'createdByName',
+        header: 'Created by',
+        size: 130,
+        cell: ({ row }) => (
+          <span className="muted" style={{ fontSize: 'var(--fs-meta)' }}>
+            {row.original.createdByName ?? '—'}
+          </span>
+        ),
+      });
+    return cols;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleCols, orgId]);
+
+  const selectedRows = cases.rows.filter((row) => selectedIds.has(row.id));
+  const isLibraryEmpty =
+    !cases.isLoading && cases.rows.length === 0 && !hasCustomFilters && quickView === 'all';
 
   return (
     <div className="page wide">
-      <PageHead
-        title={
-          <>
-            Test case <em className="italic-teal">library</em>
-          </>
-        }
-        subtitle={
-          <>
-            {total} cases across{' '}
-            {
-              (projectIds.length > 0
-                ? allSuites.filter((s) => projectIds.includes(s.projectId))
-                : allSuites
-              ).length
-            }{' '}
-            suites
-          </>
-        }
-        actions={
-          !showForm && (
-            <>
-              <Button variant="ghost" onClick={() => navigate('/test-cases/generate')}>
-                <svg className="ico" viewBox="0 0 24 24">
-                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-                </svg>
-                Generate with AI
-              </Button>
-              <Button
-                variant="primary"
-                disabled={writable.length === 0}
-                title={
-                  writable.length === 0
-                    ? "You don't have write access to any project in this organization"
-                    : undefined
-                }
-                onClick={openCreate}
-              >
-                <svg className="ico" viewBox="0 0 24 24">
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
-                New test case
-              </Button>
-            </>
-          )
-        }
-      />
+      <div className="page-head--console">
+        <h1>
+          Test case <em className="italic-teal">library</em>
+          <span className="head-count">{formatCount(cases.totalCount)}</span>
+        </h1>
+        {!showForm && (
+          <div className="row gap-lg">
+            <Button variant="ghost" onClick={() => navigate('/test-cases/generate')}>
+              <svg className="ico" viewBox="0 0 24 24">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+              </svg>
+              Generate with AI
+            </Button>
+            <Button
+              variant="primary"
+              disabled={writable.length === 0}
+              title={
+                writable.length === 0
+                  ? "You don't have write access to any project in this organization"
+                  : undefined
+              }
+              onClick={openCreate}
+            >
+              <svg className="ico" viewBox="0 0 24 24">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              New test case
+            </Button>
+          </div>
+        )}
+      </div>
 
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 12 }}>
         <ProjectFilter placeholder="Filter by project pick one or more…" />
       </div>
 
@@ -316,9 +444,9 @@ export function TestCases() {
           <div className="ts-form-field">
             <label htmlFor="tc-suite">Test suite</label>
             {(() => {
-              const suites = formProjectId
-                ? allSuites.filter((s) => s.projectId === formProjectId)
-                : allSuites;
+              const suites = (allSuites.data ?? []).filter(
+                (s) => !formProjectId || s.projectId === formProjectId,
+              );
               return suites.length === 0 ? (
                 <p className="ts-form-hint">No test suites available. Create a suite first.</p>
               ) : (
@@ -396,16 +524,22 @@ export function TestCases() {
           )}
           <div className="ts-form-field">
             <label>Tags</label>
-            {allTags.length === 0 ? (
+            {(allTags.data ?? []).length === 0 ? (
               <p className="ts-form-hint">No tags available. Create tags first.</p>
             ) : (
               <div className="tag-picker">
-                {allTags.map((tag) => (
+                {(allTags.data ?? []).map((tag: Tag) => (
                   <button
                     key={tag.id}
                     type="button"
                     className={`chip-btn${selectedTagIds.includes(tag.id) ? ' selected' : ''}`}
-                    onClick={() => toggleTag(tag.id)}
+                    onClick={() =>
+                      setSelectedTagIds((prev) =>
+                        prev.includes(tag.id)
+                          ? prev.filter((i) => i !== tag.id)
+                          : [...prev, tag.id],
+                      )
+                    }
                   >
                     {tag.name}
                   </button>
@@ -428,9 +562,7 @@ export function TestCases() {
         </form>
       )}
 
-      {initialLoad ? (
-        <p className="ts-empty">Loading…</p>
-      ) : total === 0 && !hasFilters && !showForm ? (
+      {isLibraryEmpty && !showForm ? (
         <div className="empty">
           <div className="title">
             Your <em className="italic-teal">library</em> is empty.
@@ -439,7 +571,7 @@ export function TestCases() {
             Author a test case by hand, or let Coglity draft some from a user story.
           </div>
           <div className="row">
-            <Button variant="primary" onClick={() => setShowForm(true)}>
+            <Button variant="primary" onClick={openCreate}>
               New test case
             </Button>
             <Button variant="teal" onClick={() => navigate('/test-cases/generate')}>
@@ -449,157 +581,169 @@ export function TestCases() {
         </div>
       ) : (
         <>
-          <ListToolbar
-            searchPlaceholder="Search test cases…"
-            tags={allTags}
-            sortOptions={SORT_OPTIONS}
-            onApply={handleApplyFilters}
-            suites={
-              projectIds.length > 0
-                ? allSuites.filter((s) => projectIds.includes(s.projectId))
-                : allSuites
-            }
-            statusToggle={STATUS_TOGGLE}
-          />
-
-          {loading ? (
-            <p className="ts-empty">Loading…</p>
-          ) : cases.length === 0 ? (
-            <p className="ts-empty">No test cases match your filters.</p>
-          ) : (
-            <div className="card" style={{ overflow: 'hidden' }}>
-              <div className="table-scroll">
-                <table className="t">
-                  <thead>
-                    <tr>
-                      <th>Title</th>
-                      <th>Type</th>
-                      <th>Suite</th>
-                      <th>Status</th>
-                      <th>Tags</th>
-                      <th>Updated</th>
-                      <th style={{ textAlign: 'right' }}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {cases.map((tc) => (
-                      <tr
-                        key={tc.id}
-                        onClick={() => navigate(`/test-cases/${tc.projectId}/${tc.id}`)}
-                        style={{ cursor: 'pointer' }}
-                      >
-                        <td style={{ maxWidth: 340 }}>
-                          <div style={{ color: 'var(--ink)', fontWeight: 500 }}>{tc.title}</div>
-                          <div className="mono muted-2" style={{ fontSize: 11, marginTop: 2 }}>
-                            {tc.id.slice(0, 8)}
-                          </div>
-                        </td>
-                        <td>
-                          <Chip variant={typeChipVariant[tc.testCaseType] ?? 'neutral'}>
-                            {tc.testCaseType}
-                          </Chip>
-                        </td>
-                        <td className="muted">{tc.testSuiteName}</td>
-                        <td>
-                          {tc.status === 'active' ? (
-                            <Chip variant="pass" dot>
-                              active
-                            </Chip>
-                          ) : (
-                            <Chip variant="warn" dot>
-                              draft
-                            </Chip>
-                          )}
-                        </td>
-                        <td>
-                          <div className="row" style={{ flexWrap: 'wrap', gap: 4 }}>
-                            {(tc.tags ?? []).slice(0, 3).map((t) => (
-                              <span key={t.id} className="tag-badge">
-                                {t.name}
-                              </span>
-                            ))}
-                            {(tc.tags?.length ?? 0) > 3 && (
-                              <span className="muted" style={{ fontSize: 11 }}>
-                                +{tc.tags!.length - 3}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="mono">{new Date(tc.updatedAt).toLocaleDateString()}</td>
-                        <td onClick={(e) => e.stopPropagation()} style={{ textAlign: 'right' }}>
-                          {deleteConfirmId === tc.id ? (
-                            <div className="row" style={{ justifyContent: 'flex-end', gap: 4 }}>
-                              <Button variant="danger" size="sm" onClick={() => handleDelete(tc)}>
-                                Confirm
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setDeleteConfirmId(null)}
-                              >
-                                Cancel
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="row" style={{ justifyContent: 'flex-end', gap: 4 }}>
-                              {tc.testCaseType === 'voice' && tc.botConnectionId && (
-                                <Button
-                                  variant="teal"
-                                  size="sm"
-                                  onClick={() =>
-                                    navigate(`/test-cases/${tc.projectId}/${tc.id}?run=1`)
-                                  }
-                                  title="Run this voice test case"
-                                >
-                                  Run
-                                </Button>
-                              )}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setDeleteConfirmId(tc.id)}
-                              >
-                                Delete
-                              </Button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+          {/* ── Workbench toolbar ── */}
+          <div
+            className="dt-toolbar"
+            style={{
+              border: '1px solid var(--hairline-strong)',
+              borderRadius: 10,
+              background: 'var(--surface)',
+              marginBottom: 10,
+            }}
+          >
+            <div className="search" style={{ width: 260 }}>
+              <svg className="ico" width="13" height="13" viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="7" />
+                <path d="M20 20l-3-3" />
+              </svg>
+              <input
+                placeholder="Filter test cases…"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+              />
             </div>
-          )}
-
-          {totalPages > 1 && (
-            <div className="pagination">
-              <button
-                className="pagination-btn"
-                disabled={page <= 1}
-                onClick={() => setPage(page - 1)}
-              >
-                Prev
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+            <div className="tag-picker" style={{ gap: 4 }}>
+              {(['all', 'active', 'draft'] as QuickView[]).map((view) => (
                 <button
-                  key={p}
-                  className={`pagination-btn${p === page ? ' active' : ''}`}
-                  onClick={() => setPage(p)}
+                  key={view}
+                  type="button"
+                  className={`chip-btn${quickView === view ? ' selected' : ''}`}
+                  onClick={() => setQuickView(view)}
                 >
-                  {p}
+                  {view === 'all' ? 'All' : view === 'active' ? 'Active' : 'Drafts'}
                 </button>
               ))}
-              <button
-                className="pagination-btn"
-                disabled={page >= totalPages}
-                onClick={() => setPage(page + 1)}
-              >
-                Next
-              </button>
-              <span className="pagination-info">
-                {total} result{total !== 1 ? 's' : ''}
-              </span>
+              {savedViews.map((view) => (
+                <button
+                  key={view.name}
+                  type="button"
+                  className="chip-btn"
+                  onClick={() => applyView(view)}
+                  title="Apply saved view (double-click to remove)"
+                  onDoubleClick={() => removeView(view.name)}
+                >
+                  ★ {view.name}
+                </button>
+              ))}
+              {hasCustomFilters && (
+                <button type="button" className="chip-btn" onClick={saveCurrentView}>
+                  + Save view
+                </button>
+              )}
+            </div>
+            <div className="spacer" />
+            <div style={{ width: 170 }}>
+              <Select
+                compact
+                isClearable
+                value={
+                  suiteId
+                    ? {
+                        value: suiteId,
+                        label: suitesForFilter.find((s) => s.id === suiteId)?.name ?? 'Suite',
+                      }
+                    : null
+                }
+                onChange={(opt) => setSuiteId(opt?.value ?? '')}
+                options={suitesForFilter.map((s) => ({ value: s.id, label: s.name }))}
+                placeholder="Suite"
+              />
+            </div>
+            <div style={{ width: 130 }}>
+              <Select
+                compact
+                isClearable
+                value={
+                  testCaseType
+                    ? {
+                        value: testCaseType,
+                        label:
+                          TEST_CASE_TYPES.find((t) => t.value === testCaseType)?.label ?? 'Type',
+                      }
+                    : null
+                }
+                onChange={(opt) => setTestCaseType(opt?.value ?? '')}
+                options={TEST_CASE_TYPES}
+                placeholder="Type"
+              />
+            </div>
+            <div style={{ position: 'relative' }} ref={colPopRef}>
+              <Button variant="ghost" size="sm" onClick={() => setColPopOpen((v) => !v)}>
+                Columns
+              </Button>
+              {colPopOpen && (
+                <div className="col-pop">
+                  {OPTIONAL_COLUMNS.map((col) => (
+                    <label key={col.id}>
+                      <input
+                        type="checkbox"
+                        checked={visibleCols.includes(col.id)}
+                        onChange={() => toggleCol(col.id)}
+                      />
+                      {col.label}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+            <DensityToggle />
+          </div>
+
+          <DataTable<TestCaseListRow>
+            columns={columns}
+            data={cases.rows}
+            getRowId={(row) => row.id}
+            totalCount={cases.totalCount}
+            hasNextPage={cases.hasNextPage}
+            isFetchingNextPage={cases.isFetchingNextPage}
+            fetchNextPage={() => cases.fetchNextPage()}
+            isLoading={cases.isLoading}
+            sorting={sorting}
+            onSortingChange={setSorting}
+            sortableColumnIds={['title', 'updatedAt', 'createdAt']}
+            onRowClick={(row) => navigate(`/test-cases/${row.projectId}/${row.id}`)}
+            enableRowSelection
+            selectedIds={selectedIds}
+            onSelectionChange={setSelectedIds}
+            height="calc(100vh - 300px)"
+            emptyState={
+              <div className="empty--inline">
+                <span className="microlabel">No matches</span>
+                <div className="sub">
+                  0 of {formatCount(cases.totalCount)} cases match these filters.
+                </div>
+                <div className="actions">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => {
+                      setSearchInput('');
+                      setSuiteId('');
+                      setTestCaseType('');
+                      setQuickView('all');
+                    }}
+                  >
+                    Clear filters
+                  </Button>
+                  {hasCustomFilters && (
+                    <Button variant="ghost" size="sm" onClick={saveCurrentView}>
+                      Save as view
+                    </Button>
+                  )}
+                </div>
+              </div>
+            }
+          />
+
+          {selectedIds.size > 0 && (
+            <div className="bulk-bar">
+              <span className="count">{selectedIds.size} selected</span>
+              <Button variant="danger" size="sm" onClick={() => deleteRows(selectedRows)}>
+                Delete
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
+                Clear
+              </Button>
             </div>
           )}
         </>

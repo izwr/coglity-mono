@@ -52,8 +52,8 @@ export const projectMembers = pgTable(
 );
 
 export const insertProjectSchema = createInsertSchema(projects, {
-  name: (schema) => schema.min(1, 'Name is required').max(255),
-  description: (schema) => schema.max(2000).optional().default(''),
+  name: z.string().min(1, 'Name is required').max(255),
+  description: z.string().max(2000).optional().default(''),
 }).omit({ id: true, createdBy: true, updatedBy: true, createdAt: true, updatedAt: true });
 
 export const selectProjectSchema = createSelectSchema(projects);

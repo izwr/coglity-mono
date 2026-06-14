@@ -10,6 +10,7 @@ import {
   type EntityTagEntityType,
 } from '@coglity/shared/schema';
 import { db as rootDb } from '../db';
+import { getTagsForEntity, getTagsForEntities } from '../lib/entityTagsLoader';
 
 const router: RouterType = Router({ mergeParams: true });
 
@@ -17,15 +18,6 @@ const createdByUser = alias(users, 'createdByUser');
 const updatedByUser = alias(users, 'updatedByUser');
 
 type DbHandle = typeof rootDb;
-
-async function getTagsForEntity(db: DbHandle, entityId: string, entityType: EntityTagEntityType) {
-  const rows = await db
-    .select({ tag: tags })
-    .from(entityTags)
-    .innerJoin(tags, eq(entityTags.tagId, tags.id))
-    .where(and(eq(entityTags.entityId, entityId), eq(entityTags.entityType, entityType)));
-  return rows.map((r) => r.tag);
-}
 
 async function syncEntityTags(
   db: DbHandle,
@@ -135,12 +127,12 @@ router.get('/', async (req, res) => {
     .limit(limit)
     .offset(offset);
 
-  const result = await Promise.all(
-    suites.map(async (suite) => ({
-      ...suite,
-      tags: await getTagsForEntity(db, suite.id, 'test_suite'),
-    })),
+  const tagsBySuite = await getTagsForEntities(
+    db,
+    suites.map((suite) => suite.id),
+    'test_suite',
   );
+  const result = suites.map((suite) => ({ ...suite, tags: tagsBySuite.get(suite.id) ?? [] }));
 
   res.json({ data: result, total, page, limit });
 });

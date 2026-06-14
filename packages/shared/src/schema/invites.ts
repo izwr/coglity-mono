@@ -34,7 +34,7 @@ export const invites = pgTable(
 );
 
 export const insertInviteSchema = createInsertSchema(invites, {
-  email: (schema) => schema.min(3).max(255),
+  email: z.string().min(3).max(255),
 }).omit({
   id: true,
   token: true,

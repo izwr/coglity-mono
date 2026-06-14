@@ -1,4 +1,4 @@
-import { type Router as RouterType, Router } from 'express';
+import { type Request, type Router as RouterType, Router } from 'express';
 import { eq, and, desc } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { ServiceBusClient } from '@azure/service-bus';
@@ -42,9 +42,23 @@ const columns = {
   createdByName: createdByUser.displayName,
 } as const;
 
+// Lists never return transcript/recordingBlobName — a page of transcripts is
+// megabytes of jsonb nobody renders in a grid. Detail (GET /:id) keeps them.
+const { transcript: _transcript, recordingBlobName: _recordingBlobName, ...listColumns } = columns;
+
+const DISPATCH_ATTEMPTS = 3;
+const DISPATCH_RETRY_DELAY_MS = 250;
+
 function baseQuery(db: DbHandle) {
   return db
     .select(columns)
+    .from(testRuns)
+    .leftJoin(createdByUser, eq(testRuns.createdBy, createdByUser.id));
+}
+
+function listQuery(db: DbHandle) {
+  return db
+    .select(listColumns)
     .from(testRuns)
     .leftJoin(createdByUser, eq(testRuns.createdBy, createdByUser.id));
 }
@@ -72,7 +86,7 @@ router.get('/', async (req, res) => {
   if (testCaseId) conditions.push(eq(testRuns.testCaseId, testCaseId));
   if (batchId) conditions.push(eq(testRuns.batchId, batchId));
 
-  const rows = await baseQuery(db)
+  const rows = await listQuery(db)
     .where(and(...conditions))
     .orderBy(desc(testRuns.createdAt))
     .offset(offset)
@@ -234,7 +248,7 @@ router.post('/', async (req, res) => {
       const langConfig = getLanguageConfig(language);
       const envConfig = getEnvironmentConfig(environment);
 
-      sendToQueue(inserted.id, {
+      dispatchRunAfterCommit(req, projectId, inserted.id, {
         runId: inserted.id,
         testCase: {
           id: tc.id,
@@ -252,8 +266,6 @@ router.post('/', async (req, res) => {
         ttsVoice: langConfig?.ttsVoice,
         environment: envConfig?.id ?? 'quiet',
         environmentSnrDb: envConfig?.defaultSnrDb,
-      }).catch((err) => {
-        console.error(`[test-runs] dispatch failed for ${inserted.id}:`, err);
       });
 
       return inserted;
@@ -276,10 +288,7 @@ async function sendToQueue(runId: string, payload: Record<string, unknown>): Pro
   const namespace = process.env.AZURE_SERVICE_BUS_NAMESPACE;
   const queueName = process.env.AZURE_SERVICE_BUS_QUEUE_NAME;
   if (!namespace || !queueName) {
-    console.warn(
-      `[test-runs] AZURE_SERVICE_BUS_NAMESPACE or AZURE_SERVICE_BUS_QUEUE_NAME not set; run ${runId} will stay queued`,
-    );
-    return;
+    throw new Error('AZURE_SERVICE_BUS_NAMESPACE or AZURE_SERVICE_BUS_QUEUE_NAME is not set');
   }
   const client = new ServiceBusClient(namespace, new ManagedIdentityCredential());
   const sender = client.createSender(queueName);
@@ -293,6 +302,60 @@ async function sendToQueue(runId: string, payload: Record<string, unknown>): Pro
     await sender.close();
     await client.close();
   }
+}
+
+function dispatchRunAfterCommit(
+  req: Request,
+  projectId: string,
+  runId: string,
+  payload: Record<string, unknown>,
+) {
+  const dispatch = async () => {
+    try {
+      await retryQueueDispatch(() => sendToQueue(runId, payload));
+    } catch (err) {
+      const message = getErrorMessage(err);
+      console.error(`[test-runs] dispatch failed for ${runId}:`, err);
+      await rootDb
+        .update(testRuns)
+        .set({
+          state: 'errored',
+          error: `Dispatch failed: ${message}`.slice(0, 10000),
+          finishedAt: new Date(),
+        })
+        .where(and(eq(testRuns.id, runId), eq(testRuns.projectId, projectId)));
+    }
+  };
+
+  if (req.afterCommit) {
+    req.afterCommit(dispatch);
+  } else {
+    void dispatch();
+  }
+}
+
+async function retryQueueDispatch(send: () => Promise<void>): Promise<void> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= DISPATCH_ATTEMPTS; attempt++) {
+    try {
+      await send();
+      return;
+    } catch (err) {
+      lastError = err;
+      if (attempt < DISPATCH_ATTEMPTS) {
+        await sleep(DISPATCH_RETRY_DELAY_MS * attempt);
+      }
+    }
+  }
+  throw lastError;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getErrorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
 }
 
 export default router;

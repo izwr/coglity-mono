@@ -11,6 +11,7 @@ import {
   type EntityTagEntityType,
 } from '@coglity/shared/schema';
 import { db as rootDb } from '../db';
+import { getTagsForEntity, getTagsForEntities } from '../lib/entityTagsLoader';
 
 const router: RouterType = Router({ mergeParams: true });
 
@@ -18,15 +19,6 @@ type DbHandle = typeof rootDb;
 
 const createdByUser = alias(users, 'createdByUser');
 const updatedByUser = alias(users, 'updatedByUser');
-
-async function getTagsForEntity(db: DbHandle, entityId: string, entityType: EntityTagEntityType) {
-  const rows = await db
-    .select({ tag: tags })
-    .from(entityTags)
-    .innerJoin(tags, eq(entityTags.tagId, tags.id))
-    .where(and(eq(entityTags.entityId, entityId), eq(entityTags.entityType, entityType)));
-  return rows.map((r) => r.tag);
-}
 
 async function syncEntityTags(
   db: DbHandle,
@@ -79,7 +71,10 @@ function casesBaseQuery(db: DbHandle) {
   return db
     .select(caseColumns)
     .from(testCases)
-    .innerJoin(testSuites, eq(testCases.testSuiteId, testSuites.id))
+    .innerJoin(
+      testSuites,
+      and(eq(testCases.testSuiteId, testSuites.id), eq(testSuites.projectId, testCases.projectId)),
+    )
     .leftJoin(createdByUser, eq(testCases.createdBy, createdByUser.id))
     .leftJoin(updatedByUser, eq(testCases.updatedBy, updatedByUser.id));
 }
@@ -137,7 +132,10 @@ router.get('/', async (req, res) => {
   const [{ count: total }] = await db
     .select({ count: sql<number>`cast(count(*) as int)` })
     .from(testCases)
-    .innerJoin(testSuites, eq(testCases.testSuiteId, testSuites.id))
+    .innerJoin(
+      testSuites,
+      and(eq(testCases.testSuiteId, testSuites.id), eq(testSuites.projectId, testCases.projectId)),
+    )
     .where(where);
 
   const offset = (page - 1) * limit;
@@ -147,12 +145,12 @@ router.get('/', async (req, res) => {
     .limit(limit)
     .offset(offset);
 
-  const result = await Promise.all(
-    cases.map(async (tc) => ({
-      ...tc,
-      tags: await getTagsForEntity(db, tc.id, 'test_case'),
-    })),
+  const tagsByCase = await getTagsForEntities(
+    db,
+    cases.map((tc) => tc.id),
+    'test_case',
   );
+  const result = cases.map((tc) => ({ ...tc, tags: tagsByCase.get(tc.id) ?? [] }));
 
   res.json({ data: result, total, page, limit });
 });
@@ -179,6 +177,14 @@ router.post('/', async (req, res) => {
     res.status(400).json({ error: parsed.error.flatten().fieldErrors });
     return;
   }
+  const [suiteOwned] = await db
+    .select({ id: testSuites.id })
+    .from(testSuites)
+    .where(and(eq(testSuites.id, parsed.data.testSuiteId), eq(testSuites.projectId, projectId)));
+  if (!suiteOwned) {
+    res.status(400).json({ error: 'Test suite not found in this project' });
+    return;
+  }
   const userId = req.session.userId;
   const [inserted] = await db
     .insert(testCases)
@@ -187,7 +193,9 @@ router.post('/', async (req, res) => {
   if (Array.isArray(tagIds) && tagIds.length > 0) {
     await syncEntityTags(db, inserted.id, 'test_case', tagIds, projectId, userId);
   }
-  const [tc] = await casesBaseQuery(db).where(eq(testCases.id, inserted.id));
+  const [tc] = await casesBaseQuery(db).where(
+    and(eq(testCases.id, inserted.id), eq(testCases.projectId, projectId)),
+  );
   res.status(201).json({ ...tc, tags: await getTagsForEntity(db, tc.id, 'test_case') });
 });
 
@@ -213,7 +221,9 @@ router.put('/:id', async (req, res) => {
   if (Array.isArray(tagIds)) {
     await syncEntityTags(db, updated.id, 'test_case', tagIds, projectId, userId);
   }
-  const [tc] = await casesBaseQuery(db).where(eq(testCases.id, updated.id));
+  const [tc] = await casesBaseQuery(db).where(
+    and(eq(testCases.id, updated.id), eq(testCases.projectId, projectId)),
+  );
   res.json({ ...tc, tags: await getTagsForEntity(db, tc.id, 'test_case') });
 });
 

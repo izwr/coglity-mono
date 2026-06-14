@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar, type SidebarVariant } from './Sidebar';
 import { Topbar } from './Topbar';
 import { BreadcrumbsProvider } from '../context/BreadcrumbsContext';
+import { CommandPaletteProvider } from '../context/CommandPaletteContext';
 import { useAuth } from '../context/AuthContext';
 import { useCurrentOrg } from '../context/OrgContext';
 
@@ -24,6 +25,7 @@ export function Layout() {
 
   return (
     <BreadcrumbsProvider>
+      <CommandPaletteProvider>
       <div className="app-layout">
         <Sidebar open={mobileOpen} onClose={() => setMobileOpen(false)} variant={variant} />
         {mobileOpen && (
@@ -54,6 +56,7 @@ export function Layout() {
           </main>
         </div>
       </div>
+      </CommandPaletteProvider>
     </BreadcrumbsProvider>
   );
 }

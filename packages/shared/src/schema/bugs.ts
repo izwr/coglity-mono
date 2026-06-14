@@ -1,4 +1,5 @@
-import { pgTable, uuid, varchar, text, timestamp, pgEnum, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, timestamp, pgEnum, jsonb, index } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { z } from 'zod/v4';
 import { users } from './users';
@@ -68,7 +69,13 @@ export const bugs = pgTable('bugs', {
   reproducibility: bugReproducibilityEnum('reproducibility').default('always').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-});
+},
+(table) => [
+  index('bugs_project_created_idx').on(table.projectId, table.createdAt),
+  index('bugs_project_state_created_idx').on(table.projectId, table.state, table.createdAt),
+  // Trigram index for ILIKE '%term%' title search (pg_trgm extension required).
+  index('bugs_title_trgm_idx').using('gin', sql`${table.title} gin_trgm_ops`),
+]);
 
 export interface BugComment {
   id: string;
@@ -87,8 +94,8 @@ export interface BugAttachment {
 }
 
 export const insertBugSchema = createInsertSchema(bugs, {
-  title: (schema) => schema.min(1, 'Title is required').max(255),
-  description: (schema) => schema.max(50000).optional().default(''),
+  title: z.string().min(1, 'Title is required').max(255),
+  description: z.string().max(50000).optional().default(''),
 }).omit({
   id: true,
   projectId: true,

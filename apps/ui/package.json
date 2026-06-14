@@ -13,6 +13,9 @@
     "@coglity/shared": "workspace:*",
     "@hookform/resolvers": "^5.2.2",
     "@monaco-editor/react": "^4.7.0",
+    "@tanstack/react-query": "^5.101.0",
+    "@tanstack/react-table": "^8.21.3",
+    "@tanstack/react-virtual": "^3.14.2",
     "axios": "^1.13.6",
     "react": "^19",
     "react-dom": "^19",
@@ -23,6 +26,7 @@
     "zod": "^3.25.0"
   },
   "devDependencies": {
+    "@tanstack/react-query-devtools": "^5.101.0",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
