@@ -7,7 +7,7 @@ import { PROJECT_ROLE_RANK } from '../services/rbac';
 type DbHandle = typeof rootDb;
 
 export function canSeeConfig(role: string | undefined): boolean {
-  return !!role && PROJECT_ROLE_RANK[role] >= PROJECT_ROLE_RANK.writer;
+  return !!role && (PROJECT_ROLE_RANK[role as keyof typeof PROJECT_ROLE_RANK] ?? 0) >= PROJECT_ROLE_RANK.writer;
 }
 
 export function redactConfig<T extends { config?: unknown }>(row: T): T {

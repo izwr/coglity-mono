@@ -95,14 +95,14 @@ export class TestSuiteService {
       }
     }
 
-    const conditions = [eq(testSuites.projectId, projectId)];
+    const conditions: any[] = [];
     if (search) {
       conditions.push(
         or(ilike(testSuites.name, `%${search}%`), ilike(testSuites.description, `%${search}%`))!,
       );
     }
     if (tagFilterIds) conditions.push(inArray(testSuites.id, tagFilterIds));
-    const where = and(...conditions);
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
 
     const sortColumn =
       sortBy === 'name'
@@ -135,9 +135,7 @@ export class TestSuiteService {
   }
 
   static async getTestSuite(db: DbHandle, projectId: string, id: string) {
-    const [suite] = await suitesBaseQuery(db).where(
-      and(eq(testSuites.id, id), eq(testSuites.projectId, projectId)),
-    );
+    const [suite] = await suitesBaseQuery(db).where(eq(testSuites.id, id));
     if (!suite) return null;
     return { ...suite, tags: await getTagsForEntity(db, suite.id, 'test_suite') };
   }
@@ -173,7 +171,7 @@ export class TestSuiteService {
     const [updated] = await db
       .update(testSuites)
       .set({ ...data, updatedBy: userId, updatedAt: new Date() })
-      .where(and(eq(testSuites.id, id), eq(testSuites.projectId, projectId)))
+      .where(eq(testSuites.id, id))
       .returning();
 
     if (!updated) {
@@ -191,7 +189,7 @@ export class TestSuiteService {
   static async deleteTestSuite(db: DbHandle, projectId: string, id: string) {
     const [deleted] = await db
       .delete(testSuites)
-      .where(and(eq(testSuites.id, id), eq(testSuites.projectId, projectId)))
+      .where(eq(testSuites.id, id))
       .returning({ id: testSuites.id });
 
     if (!deleted) {

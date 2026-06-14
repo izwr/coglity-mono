@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { insertTestCaseSchema, type InsertTestCase } from '@coglity/shared/schema';
+import { insertTestCaseSchema } from '@coglity/shared/schema';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import type { Tag } from '@coglity/shared';
@@ -11,7 +11,7 @@ import { testSuiteService, type TestSuiteWithTags } from '../services/testSuiteS
 import { tagService } from '../services/tagService';
 import { botConnectionService, type BotConnectionWithUser } from '../services/botConnectionService';
 import { Button } from '../components/ui/Button';
-import { Chip, type ChipVariant } from '../components/ui/Chip';
+import { Chip } from '../components/ui/Chip';
 import { Select } from '../components/ui/Select';
 import { DataTable } from '../components/data/DataTable';
 import { DensityToggle } from '../components/ui/DensityToggle';
@@ -146,7 +146,7 @@ export function TestCases() {
     setValue,
     watch,
     formState: { errors, isSubmitting, isValid },
-  } = useForm<InsertTestCase>({
+  } = useForm({
     resolver: zodResolver(insertTestCaseSchema),
     mode: 'onChange',
     defaultValues: { title: '', testSuiteId: '', testCaseType: 'web', botConnectionId: '' },
@@ -175,7 +175,7 @@ export function TestCases() {
     setShowForm(true);
   };
 
-  const onSubmit = async (data: InsertTestCase) => {
+  const onSubmit = async (data: any) => {
     if (!org || !formProjectId) return;
     const created = await testCaseService.create(orgId, formProjectId, {
       title: data.title,
@@ -400,7 +400,7 @@ export function TestCases() {
               autoFocus
               {...register('title')}
             />
-            {errors.title && <span className="ts-form-error">{errors.title.message}</span>}
+            {errors.title?.message && <span className="ts-form-error">{String(errors.title.message)}</span>}
           </div>
           <div className="ts-form-field">
             <label htmlFor="tc-suite">Test suite</label>
@@ -429,7 +429,7 @@ export function TestCases() {
               );
             })()}
             {errors.testSuiteId && (
-              <span className="ts-form-error">{errors.testSuiteId.message}</span>
+              <span className="ts-form-error">{String(errors.testSuiteId.message)}</span>
             )}
           </div>
           <div className="ts-form-field">
@@ -441,7 +441,7 @@ export function TestCases() {
                   type="button"
                   className={`chip-btn${selectedType === t.value ? ' selected' : ''}`}
                   onClick={() => {
-                    setValue('testCaseType', t.value, { shouldValidate: true });
+                    setValue('testCaseType', t.value as any, { shouldValidate: true });
                     if (t.value !== 'chat' && t.value !== 'voice') {
                       setValue('botConnectionId', '', { shouldValidate: true });
                     }
@@ -464,7 +464,7 @@ export function TestCases() {
                   value={
                     watch('botConnectionId')
                       ? {
-                          value: watch('botConnectionId'),
+                          value: (watch('botConnectionId') || '') as string,
                           label:
                             filteredBotConnections.find((bc) => bc.id === watch('botConnectionId'))
                               ?.name ?? '',

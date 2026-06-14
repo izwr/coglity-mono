@@ -21,7 +21,7 @@ export function validateQuery(schema: ZodSchema) {
       res.status(400).json({ error: parsed.error.flatten().fieldErrors });
       return;
     }
-    req.query = parsed.data;
+    req.query = parsed.data as any;
     next();
   };
 }

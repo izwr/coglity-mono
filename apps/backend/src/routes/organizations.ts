@@ -1,6 +1,7 @@
 import { Router, type Router as RouterType } from 'express';
 import { z } from 'zod/v4';
 import { insertOrganizationSchema, insertProjectSchema } from '@coglity/shared/schema';
+import { requireAuth } from '../middleware/requireAuth';
 import { withOrgAccess, withOrgSuperAdmin } from '../middleware/groups';
 import { validateBody } from '../middleware/validate';
 import { OrganizationService } from '../services/organizationService';

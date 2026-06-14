@@ -1,11 +1,11 @@
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import { testSuiteService, type TestSuiteListParams } from '../services/testSuiteService';
+import { testSuiteService } from '../services/testSuiteService';
 import { queryKeys } from '../lib/queryKeys';
 
 export function useTestSuitesPaginated(
   orgId: string,
   projectIds: string[],
-  filters: TestSuiteListParams,
+  filters: any,
 ) {
   const query = useQuery({
     queryKey: queryKeys.testSuites.list(orgId, { projectIds, ...filters }),

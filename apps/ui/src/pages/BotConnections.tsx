@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { insertBotConnectionSchema, type InsertBotConnection } from '@coglity/shared/schema';
+import { insertBotConnectionSchema } from '@coglity/shared/schema';
 import Editor from '@monaco-editor/react';
 import { botConnectionService, type BotConnectionWithUser } from '../services/botConnectionService';
 import { Button } from '../components/ui/Button';
@@ -105,7 +105,7 @@ export function BotConnections() {
     setValue,
     watch,
     formState: { errors, isSubmitting, isValid },
-  } = useForm<InsertBotConnection>({
+  } = useForm({
     resolver: zodResolver(insertBotConnectionSchema),
     mode: 'onChange',
     defaultValues: { name: '', botType: 'chat', provider: 'http', description: '' },
@@ -155,7 +155,7 @@ export function BotConnections() {
     setShowForm(true);
   };
 
-  const onSubmit = async (data: InsertBotConnection) => {
+  const onSubmit = async (data: any) => {
     const config: Record<string, unknown> = { ...configValues };
     if (data.botType === 'chat' || data.botType === 'voice') {
       const validHeaders = authHeaders.filter((h) => h.key.trim());

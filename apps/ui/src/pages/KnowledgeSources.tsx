@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { insertKnowledgeSourceSchema, type InsertKnowledgeSource } from '@coglity/shared/schema';
+import { insertKnowledgeSourceSchema } from '@coglity/shared/schema';
 import {
   knowledgeSourceService,
   type KnowledgeSourceWithUser,
@@ -139,7 +139,7 @@ export function KnowledgeSources() {
     setValue,
     watch,
     formState: { errors, isSubmitting, isValid },
-  } = useForm<InsertKnowledgeSource>({
+  } = useForm({
     resolver: zodResolver(insertKnowledgeSourceSchema),
     mode: 'onChange',
     defaultValues: { name: '', sourceType: 'pdf', url: '', description: '' },
@@ -203,7 +203,7 @@ export function KnowledgeSources() {
     setShowForm(true);
   };
 
-  const onSubmit = async (data: InsertKnowledgeSource) => {
+  const onSubmit = async (data: any) => {
     const payload = {
       name: data.name,
       sourceType: data.sourceType as 'pdf' | 'docx' | 'screen' | 'figma' | 'url',
@@ -302,7 +302,7 @@ export function KnowledgeSources() {
               autoFocus
               {...register('name')}
             />
-            {errors.name && <span className="ts-form-error">{errors.name.message}</span>}
+            {errors.name?.message && <span className="ts-form-error">{String(errors.name.message)}</span>}
           </div>
 
           <div className="ts-form-field">
@@ -322,7 +322,7 @@ export function KnowledgeSources() {
               ))}
             </div>
             {errors.sourceType && (
-              <span className="ts-form-error">{errors.sourceType.message}</span>
+              <span className="ts-form-error">{String(errors.sourceType.message)}</span>
             )}
           </div>
 

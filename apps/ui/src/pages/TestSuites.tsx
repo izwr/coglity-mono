@@ -1,8 +1,8 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { Tag } from '@coglity/shared';
-import { insertTestSuiteSchema, type InsertTestSuite } from '@coglity/shared/schema';
+import { insertTestSuiteSchema } from '@coglity/shared/schema';
 import { testSuiteService, type TestSuiteWithTags } from '../services/testSuiteService';
 import { tagService } from '../services/tagService';
 import { ListToolbar, type AppliedFilters } from '../components/ListToolbar';
@@ -76,7 +76,7 @@ export function TestSuites() {
     handleSubmit,
     reset,
     formState: { errors, isSubmitting, isValid },
-  } = useForm<InsertTestSuite>({
+  } = useForm({
     resolver: zodResolver(insertTestSuiteSchema),
     mode: 'onChange',
     defaultValues: { name: '', description: '' },
@@ -119,7 +119,7 @@ export function TestSuites() {
     setShowForm(true);
   };
 
-  const onSubmit = async (data: InsertTestSuite) => {
+  const onSubmit = async (data: any) => {
     if (!org || !formProjectId) return;
     if (editingId) {
       await testSuiteService.update(org.organizationId, formProjectId, editingId, {
@@ -216,7 +216,7 @@ export function TestSuites() {
               autoFocus
               {...register('name')}
             />
-            {errors.name && <span className="ts-form-error">{errors.name.message}</span>}
+            {errors.name?.message && <span className="ts-form-error">{String(errors.name.message)}</span>}
           </div>
           <div className="ts-form-field">
             <label htmlFor="ts-desc">Description</label>
@@ -226,9 +226,7 @@ export function TestSuites() {
               rows={3}
               {...register('description')}
             />
-            {errors.description && (
-              <span className="ts-form-error">{errors.description.message}</span>
-            )}
+            {errors.description?.message && <span className="ts-form-error">{String(errors.description.message)}</span>}
           </div>
           <div className="ts-form-field">
             <label>Tags</label>

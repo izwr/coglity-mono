@@ -1,16 +1,16 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { Tag } from '@coglity/shared';
-import { insertBugSchema, type InsertBug } from '@coglity/shared/schema';
+import { insertBugSchema } from '@coglity/shared/schema';
 import { bugService, type BugWithDetails } from '../services/bugService';
 import { tagService } from '../services/tagService';
 import { userService, type UserOption } from '../services/userService';
 import { ProjectFilter, useSelectedProjectIds } from '../components/ProjectFilter';
 import { ProjectPickerField, useWritableProjects } from '../components/ProjectPickerField';
 import { useCurrentOrg } from '../context/OrgContext';
-import { ListToolbar, type AppliedFilters } from '../components/ListToolbar';
+import { ListToolbar } from '../components/ListToolbar';
 import { Button } from '../components/ui/Button';
 import { Select } from '../components/ui/Select';
 import { PageHead } from '../components/ui/PageHead';
@@ -71,7 +71,7 @@ export function Bugs() {
     setValue,
     watch,
     formState: { errors, isSubmitting, isValid },
-  } = useForm<InsertBug>({
+  } = useForm({
     resolver: zodResolver(insertBugSchema),
     mode: 'onChange',
     defaultValues: { title: '', bugType: 'functional', priority: 'medium', severity: 'major', description: '' },
@@ -118,7 +118,7 @@ export function Bugs() {
     setShowForm(true);
   };
 
-  const onSubmit = async (data: InsertBug) => {
+  const onSubmit = async (data: any) => {
     if (!org || !formProjectId) return;
     const created = await bugService.create(org.organizationId, formProjectId, {
       title: data.title,
@@ -208,7 +208,7 @@ export function Bugs() {
               autoFocus
               {...register('title')}
             />
-            {errors.title && <span className="ts-form-error">{errors.title.message}</span>}
+            {errors.title?.message && <span className="ts-form-error">{String(errors.title.message)}</span>}
           </div>
           <div
             className="ts-form-row"
@@ -217,9 +217,9 @@ export function Bugs() {
             <div className="ts-form-field">
               <label htmlFor="bug-type">Bug Type</label>
               <Select
-                value={{ value: watch('bugType'), label: BUG_TYPE_LABELS[watch('bugType')] ?? '' }}
+                value={watch('bugType') ? { value: watch('bugType') || '', label: BUG_TYPE_LABELS[watch('bugType') as keyof typeof BUG_TYPE_LABELS] ?? '' } : null}
                 onChange={(opt) =>
-                  setValue('bugType', opt?.value ?? 'functional', { shouldValidate: true })
+                  setValue('bugType', (opt?.value as any) ?? 'functional', { shouldValidate: true })
                 }
                 options={Object.entries(BUG_TYPE_LABELS).map(([val, label]) => ({
                   value: val,
@@ -231,12 +231,12 @@ export function Bugs() {
             <div className="ts-form-field">
               <label htmlFor="bug-priority">Priority</label>
               <Select
-                value={{
-                  value: watch('priority'),
-                  label: PRIORITY_LABELS[watch('priority')] ?? '',
-                }}
+                value={watch('priority') ? {
+                  value: watch('priority') || '',
+                  label: PRIORITY_LABELS[watch('priority') as keyof typeof PRIORITY_LABELS] ?? '',
+                } : null}
                 onChange={(opt) =>
-                  setValue('priority', opt?.value ?? 'medium', { shouldValidate: true })
+                  setValue('priority', (opt?.value as any) ?? 'medium', { shouldValidate: true })
                 }
                 options={Object.entries(PRIORITY_LABELS).map(([val, label]) => ({
                   value: val,
@@ -248,12 +248,12 @@ export function Bugs() {
             <div className="ts-form-field">
               <label htmlFor="bug-severity">Severity</label>
               <Select
-                value={{
-                  value: watch('severity'),
-                  label: SEVERITY_LABELS[watch('severity')] ?? '',
-                }}
+                value={watch('severity') ? {
+                  value: watch('severity') || '',
+                  label: SEVERITY_LABELS[watch('severity') as keyof typeof SEVERITY_LABELS] ?? '',
+                } : null}
                 onChange={(opt) =>
-                  setValue('severity', opt?.value ?? 'major', { shouldValidate: true })
+                  setValue('severity', (opt?.value as any) ?? 'major', { shouldValidate: true })
                 }
                 options={Object.entries(SEVERITY_LABELS).map(([val, label]) => ({
                   value: val,
@@ -310,7 +310,7 @@ export function Bugs() {
         </form>
       )}
 
-      {initialLoad ? (
+      {loading && !bugsList.length ? (
         <p className="ts-empty">Loading…</p>
       ) : total === 0 && !hasFilters && !showForm ? (
         <div className="empty">
@@ -328,7 +328,7 @@ export function Bugs() {
             searchPlaceholder="Search bugs..."
             tags={allTags}
             sortOptions={BUG_SORT_OPTIONS}
-            onApply={handleApplyFilters}
+            onApply={setFilters as any}
             statusToggle={BUG_STATE_TOGGLE}
           />
 
