@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { testSuiteService, type TestSuiteWithTags } from '../services/testSuiteService';
 import {
@@ -13,6 +13,10 @@ import { useSetBreadcrumbs } from '../context/BreadcrumbsContext';
 import { ProjectFilter, useSelectedProjectIds } from '../components/ProjectFilter';
 import { ProjectPickerField, useWritableProjects } from '../components/ProjectPickerField';
 import { useCurrentOrg } from '../context/OrgContext';
+import { useTableState } from '../hooks/useTableState';
+import { useQueryClient } from '@tanstack/react-query';
+import { useScheduledTestSuitesPaginated } from '../queries/scheduledTestSuites';
+import { queryKeys } from '../lib/queryKeys';
 
 const PAGE_SIZE = 10;
 
@@ -23,12 +27,19 @@ export function ScheduledTestSuites() {
   const projectIds = useSelectedProjectIds();
   const writable = useWritableProjects();
   const [formProjectId, setFormProjectId] = useState<string>('');
-  const [items, setItems] = useState<ScheduledTestSuiteListItem[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [initialLoad, setInitialLoad] = useState(true);
-  const [page, setPage] = useState(1);
-  const reqIdRef = useRef(0);
+
+  const { page, setPage } = useTableState();
+  const orgId = org?.organizationId ?? '';
+  const queryParams = {
+    page,
+    limit: PAGE_SIZE,
+    sortBy: 'createdAt',
+    sortDir: 'desc' as const,
+  };
+
+  const { rows: items, total, isLoading: loading } = useScheduledTestSuitesPaginated(orgId, projectIds, queryParams);
+  const queryClient = useQueryClient();
+  const invalidateItems = () => queryClient.invalidateQueries({ queryKey: queryKeys.scheduledTestSuites.all(orgId) });
 
   const [showForm, setShowForm] = useState(false);
   const [allSuites, setAllSuites] = useState<TestSuiteWithTags[]>([]);
@@ -38,36 +49,6 @@ export function ScheduledTestSuites() {
   const [creating, setCreating] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  const fetchItems = useCallback(async () => {
-    if (!org) return;
-    const reqId = ++reqIdRef.current;
-    setLoading(true);
-    try {
-      const res = await scheduledTestSuiteService.getAll(org.organizationId, projectIds, {
-        page,
-        limit: PAGE_SIZE,
-        sortBy: 'createdAt',
-        sortDir: 'desc',
-      });
-      if (reqId !== reqIdRef.current) return; // a newer fetch superseded this one
-      setItems(res.data);
-      setTotal(res.total);
-    } catch {
-      if (reqId !== reqIdRef.current) return;
-      setItems([]);
-      setTotal(0);
-    } finally {
-      if (reqId === reqIdRef.current) {
-        setLoading(false);
-        setInitialLoad(false);
-      }
-    }
-  }, [org, projectIds, page]);
-
-  useEffect(() => {
-    fetchItems();
-  }, [fetchItems]);
-
   // Reset to page 1 when the project filter changes so a stale page isn't re-requested for a
   // project set that may have fewer pages (which strands the user on an empty result).
   const projectIdsKey = projectIds.join(',');
@@ -75,6 +56,7 @@ export function ScheduledTestSuites() {
     setPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectIdsKey]);
+
   useEffect(() => {
     if (!org) return;
     testSuiteService
@@ -111,6 +93,7 @@ export function ScheduledTestSuites() {
         endDate: new Date(`${endDate}T00:00:00`).toISOString(),
       });
       closeForm();
+      invalidateItems();
       navigate(`/scheduled-test-suites/${formProjectId}/${created.id}`);
     } finally {
       setCreating(false);
@@ -121,7 +104,7 @@ export function ScheduledTestSuites() {
     if (!org) return;
     await scheduledTestSuiteService.remove(org.organizationId, item.projectId, item.id);
     setDeleteConfirmId(null);
-    fetchItems();
+    invalidateItems();
   };
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -223,7 +206,7 @@ export function ScheduledTestSuites() {
         </div>
       )}
 
-      {initialLoad ? (
+      {loading && !items.length ? (
         <p className="ts-empty">Loading…</p>
       ) : total === 0 && !showForm ? (
         <div className="empty">

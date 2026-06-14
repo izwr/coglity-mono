@@ -1,140 +1,81 @@
 import { Router, type Router as RouterType } from 'express';
-import { and, eq, inArray } from 'drizzle-orm';
-import { projects, projectMembers, insertProjectSchema } from '@coglity/shared/schema';
-import { db } from '../db';
-import { requireAuth } from '../middleware/requireAuth';
-import { resolveOrg } from '../middleware/resolveOrg';
-import { requireOrgRole } from '../middleware/requireOrgRole';
-import { resolveProject } from '../middleware/resolveProject';
-import { requireProjectRole } from '../middleware/requireProjectRole';
-import { auditRbac } from '../services/rbac';
+import { insertProjectSchema } from '@coglity/shared/schema';
+import { withOrgAccess, withOrgSuperAdmin, withProjectRead, withProjectAdmin } from '../middleware/groups';
+import { validateBody } from '../middleware/validate';
+import { ProjectService } from '../services/projectService';
 
 const router: RouterType = Router({ mergeParams: true });
 
 // List projects in this org
-router.get('/', requireAuth, resolveOrg, async (req, res) => {
-  const userId = req.session.userId!;
-  let rows;
-  if (req.orgRole === 'super_admin') {
-    rows = await db
-      .select({
-        id: projects.id,
-        organizationId: projects.organizationId,
-        name: projects.name,
-        description: projects.description,
-        createdAt: projects.createdAt,
-        updatedAt: projects.updatedAt,
-      })
-      .from(projects)
-      .where(eq(projects.organizationId, req.organizationId!));
-  } else {
-    rows = await db
-      .select({
-        id: projects.id,
-        organizationId: projects.organizationId,
-        name: projects.name,
-        description: projects.description,
-        createdAt: projects.createdAt,
-        updatedAt: projects.updatedAt,
-        role: projectMembers.role,
-      })
-      .from(projectMembers)
-      .innerJoin(projects, eq(projectMembers.projectId, projects.id))
-      .where(
-        and(eq(projects.organizationId, req.organizationId!), eq(projectMembers.userId, userId)),
-      );
-  }
+router.get('/', ...withOrgAccess, async (req, res) => {
+  const rows = await ProjectService.listProjects(
+    req.organizationId!,
+    req.session.userId!,
+    req.orgRole!
+  );
   res.json({ data: rows });
 });
 
 // Create project (super_admin only)
-router.post('/', requireAuth, resolveOrg, requireOrgRole('super_admin'), async (req, res) => {
-  const parsed = insertProjectSchema.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.flatten().fieldErrors });
-    return;
+router.post(
+  '/',
+  ...withOrgSuperAdmin,
+  validateBody(insertProjectSchema),
+  async (req, res) => {
+    const project = await ProjectService.createProject(
+      req.organizationId!,
+      req.session.userId!,
+      req.body
+    );
+    res.status(201).json(project);
   }
-  const userId = req.session.userId!;
-  const [project] = await db
-    .insert(projects)
-    .values({
-      organizationId: req.organizationId!,
-      name: parsed.data.name,
-      description: parsed.data.description ?? '',
-      createdBy: userId,
-      updatedBy: userId,
-    })
-    .returning();
-  await auditRbac({
-    actorUserId: userId,
-    organizationId: req.organizationId!,
-    projectId: project.id,
-    action: 'create_project',
-    metadata: { name: project.name },
-  });
-  res.status(201).json(project);
-});
+);
 
 // Get project
 router.get(
   '/:projectId',
-  requireAuth,
-  resolveOrg,
-  resolveProject,
-  requireProjectRole('read'),
+  ...withProjectRead,
   async (req, res) => {
-    const [proj] = await db.select().from(projects).where(eq(projects.id, req.projectId!));
+    const proj = await ProjectService.getProject(req.projectId!);
     if (!proj) {
       res.status(404).json({ error: 'Project not found' });
       return;
     }
     res.json({ ...proj, role: req.projectRole });
-  },
+  }
 );
 
 // Update project
 router.put(
   '/:projectId',
-  requireAuth,
-  resolveOrg,
-  resolveProject,
-  requireProjectRole('admin'),
+  ...withProjectAdmin,
+  validateBody(insertProjectSchema.partial()),
   async (req, res) => {
-    const parsed = insertProjectSchema.partial().safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.flatten().fieldErrors });
-      return;
-    }
-    const [updated] = await db
-      .update(projects)
-      .set({ ...parsed.data, updatedBy: req.session.userId!, updatedAt: new Date() })
-      .where(eq(projects.id, req.projectId!))
-      .returning();
+    const updated = await ProjectService.updateProject(
+      req.projectId!,
+      req.session.userId!,
+      req.body
+    );
     if (!updated) {
       res.status(404).json({ error: 'Project not found' });
       return;
     }
     res.json(updated);
-  },
+  }
 );
 
 // Delete project
 router.delete(
   '/:projectId',
-  requireAuth,
-  resolveOrg,
-  resolveProject,
-  requireProjectRole('admin'),
+  ...withProjectAdmin,
   async (req, res) => {
-    await db.delete(projects).where(eq(projects.id, req.projectId!));
-    await auditRbac({
-      actorUserId: req.session.userId!,
-      organizationId: req.organizationId!,
-      projectId: req.projectId!,
-      action: 'delete_project',
-    });
+    await ProjectService.deleteProject(
+      req.organizationId!,
+      req.projectId!,
+      req.session.userId!
+    );
     res.status(204).send();
-  },
+  }
 );
 
 export default router;

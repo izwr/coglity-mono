@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
+import { zodResolver } from '@hookform/resolvers/zod';
 import type { Tag } from '@coglity/shared';
+import { insertBugSchema, type InsertBug } from '@coglity/shared/schema';
 import { bugService, type BugWithDetails } from '../services/bugService';
 import { tagService } from '../services/tagService';
 import { userService, type UserOption } from '../services/userService';
@@ -15,71 +15,22 @@ import { Button } from '../components/ui/Button';
 import { Select } from '../components/ui/Select';
 import { PageHead } from '../components/ui/PageHead';
 import { useSetBreadcrumbs } from '../context/BreadcrumbsContext';
+import { useTableState } from '../hooks/useTableState';
+import { useQueryClient } from '@tanstack/react-query';
+import { useBugsPaginated } from '../queries/bugs';
+import { queryKeys } from '../lib/queryKeys';
 
-const createBugSchema = yup.object({
-  title: yup.string().required('Title is required').max(255),
-  bugType: yup.string().required('Bug type is required'),
-  priority: yup.string().required('Priority is required'),
-  severity: yup.string().required('Severity is required'),
-});
-
-type CreateFormValues = yup.InferType<typeof createBugSchema>;
-
-const PAGE_SIZE = 10;
-
-const SORT_OPTIONS = [
-  { label: 'Newest first', field: 'createdAt', dir: 'desc' as const },
-  { label: 'Oldest first', field: 'createdAt', dir: 'asc' as const },
-  { label: 'Title A-Z', field: 'title', dir: 'asc' as const },
-  { label: 'Title Z-A', field: 'title', dir: 'desc' as const },
-  { label: 'Recently updated', field: 'updatedAt', dir: 'desc' as const },
-  { label: 'Priority', field: 'priority', dir: 'asc' as const },
-  { label: 'Severity', field: 'severity', dir: 'asc' as const },
-];
-
-const STATE_TOGGLE = {
-  options: [
-    { value: 'new', label: 'New', activeClass: 'state-new-selected' },
-    { value: 'open', label: 'Open', activeClass: 'state-open-selected' },
-    { value: 'in_progress', label: 'In Progress', activeClass: 'state-progress-selected' },
-    { value: 'resolved', label: 'Resolved', activeClass: 'state-resolved-selected' },
-    { value: 'closed', label: 'Closed', activeClass: 'state-closed-selected' },
-  ],
-};
-
-const PRIORITY_LABELS: Record<string, string> = {
-  critical: 'Critical',
-  high: 'High',
-  medium: 'Medium',
-  low: 'Low',
-};
-
-const SEVERITY_LABELS: Record<string, string> = {
-  blocker: 'Blocker',
-  critical: 'Critical',
-  major: 'Major',
-  minor: 'Minor',
-  trivial: 'Trivial',
-};
-
-const BUG_TYPE_LABELS: Record<string, string> = {
-  functional: 'Functional',
-  performance: 'Performance',
-  security: 'Security',
-  usability: 'Usability',
-  compatibility: 'Compatibility',
-  regression: 'Regression',
-  other: 'Other',
-};
-
-const STATE_LABELS: Record<string, string> = {
-  new: 'New',
-  open: 'Open',
-  in_progress: 'In Progress',
-  resolved: 'Resolved',
-  closed: 'Closed',
-  reopened: 'Reopened',
-};
+import {
+  BUG_PAGE_SIZE,
+  BUG_SORT_OPTIONS,
+  BUG_STATE_TOGGLE,
+} from '../lib/constants/bug.constants';
+import {
+  PRIORITY_LABELS,
+  SEVERITY_LABELS,
+  BUG_TYPE_LABELS,
+  BUG_STATE_LABELS,
+} from '@coglity/shared';
 
 export function Bugs() {
   useSetBreadcrumbs([{ label: 'Bugs' }]);
@@ -87,27 +38,31 @@ export function Bugs() {
   const { org } = useCurrentOrg();
   const projectIds = useSelectedProjectIds();
   const writable = useWritableProjects();
+  const queryClient = useQueryClient();
+  const orgId = org?.organizationId ?? '';
   const [formProjectId, setFormProjectId] = useState<string>('');
-  const [bugsList, setBugsList] = useState<BugWithDetails[]>([]);
-  const [total, setTotal] = useState(0);
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [allUsers, setAllUsers] = useState<UserOption[]>([]);
   const [assignedTo, setAssignedTo] = useState<string>('');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [initialLoad, setInitialLoad] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  const [filters, setFilters] = useState<AppliedFilters>({
-    search: '',
-    tagId: '',
-    sortBy: 'createdAt',
-    sortDir: 'desc',
-    status: '',
-  });
-  const [page, setPage] = useState(1);
-  const reqIdRef = useRef(0);
+  const { filters, setFilters, page, setPage } = useTableState();
+  const queryParams = {
+    search: filters.search || undefined,
+    state: filters.status || undefined,
+    tagId: filters.tagId || undefined,
+    sortBy: filters.sortBy,
+    sortDir: filters.sortDir,
+    page,
+    limit: BUG_PAGE_SIZE,
+  };
+
+  const { rows: bugsList, total, isLoading: loading } = useBugsPaginated(orgId, projectIds, queryParams);
+
+  const invalidateBugs = () =>
+    queryClient.invalidateQueries({ queryKey: queryKeys.bugs.all(orgId) });
 
   const {
     register,
@@ -116,40 +71,11 @@ export function Bugs() {
     setValue,
     watch,
     formState: { errors, isSubmitting, isValid },
-  } = useForm<CreateFormValues>({
-    resolver: yupResolver(createBugSchema),
+  } = useForm<InsertBug>({
+    resolver: zodResolver(insertBugSchema),
     mode: 'onChange',
-    defaultValues: { title: '', bugType: 'functional', priority: 'medium', severity: 'major' },
+    defaultValues: { title: '', bugType: 'functional', priority: 'medium', severity: 'major', description: '' },
   });
-
-  const fetchBugs = useCallback(async () => {
-    if (!org) return;
-    const reqId = ++reqIdRef.current;
-    setLoading(true);
-    try {
-      const res = await bugService.getAll(org.organizationId, projectIds, {
-        search: filters.search || undefined,
-        state: filters.status || undefined,
-        tagId: filters.tagId || undefined,
-        sortBy: filters.sortBy,
-        sortDir: filters.sortDir,
-        page,
-        limit: PAGE_SIZE,
-      });
-      if (reqId !== reqIdRef.current) return; // a newer fetch superseded this one
-      setBugsList(res.data);
-      setTotal(res.total);
-    } catch {
-      if (reqId !== reqIdRef.current) return;
-      setBugsList([]);
-      setTotal(0);
-    } finally {
-      if (reqId === reqIdRef.current) {
-        setLoading(false);
-        setInitialLoad(false);
-      }
-    }
-  }, [org, projectIds, filters, page]);
 
   useEffect(() => {
     if (!org) return;
@@ -167,10 +93,6 @@ export function Bugs() {
     }
   }, [org, projectIds, formProjectId]);
 
-  useEffect(() => {
-    fetchBugs();
-  }, [fetchBugs]);
-
   // Reset to page 1 when the project filter changes so a stale page isn't re-requested for a
   // project set that may have fewer pages (which strands the user on an empty result).
   const projectIdsKey = projectIds.join(',');
@@ -179,10 +101,6 @@ export function Bugs() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectIdsKey]);
 
-  const handleApplyFilters = (applied: AppliedFilters) => {
-    setFilters(applied);
-    setPage(1);
-  };
 
   const closeForm = () => {
     reset({ title: '', bugType: 'functional', priority: 'medium', severity: 'major' });
@@ -200,7 +118,7 @@ export function Bugs() {
     setShowForm(true);
   };
 
-  const onSubmit = async (data: CreateFormValues) => {
+  const onSubmit = async (data: InsertBug) => {
     if (!org || !formProjectId) return;
     const created = await bugService.create(org.organizationId, formProjectId, {
       title: data.title,
@@ -211,6 +129,7 @@ export function Bugs() {
       tagIds: selectedTagIds,
     });
     closeForm();
+    invalidateBugs();
     navigate(`/bugs/${formProjectId}/${created.id}`);
   };
 
@@ -218,7 +137,7 @@ export function Bugs() {
     if (!org) return;
     await bugService.remove(org.organizationId, bug.projectId, bug.id);
     setDeleteConfirmId(null);
-    fetchBugs();
+    invalidateBugs();
   };
 
   const toggleTag = (tagId: string) => {
@@ -227,7 +146,7 @@ export function Bugs() {
     );
   };
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / BUG_PAGE_SIZE));
   const hasFilters = !!(filters.search || filters.tagId || filters.status);
 
   return (
@@ -408,9 +327,9 @@ export function Bugs() {
           <ListToolbar
             searchPlaceholder="Search bugs..."
             tags={allTags}
-            sortOptions={SORT_OPTIONS}
+            sortOptions={BUG_SORT_OPTIONS}
             onApply={handleApplyFilters}
-            statusToggle={STATE_TOGGLE}
+            statusToggle={BUG_STATE_TOGGLE}
           />
 
           {loading ? (
@@ -430,7 +349,7 @@ export function Bugs() {
                     <div className="ts-card-name">
                       {bug.title}
                       <span className={`status-badge status-${bug.state}`}>
-                        {STATE_LABELS[bug.state] ?? bug.state}
+                        {BUG_STATE_LABELS[bug.state] ?? bug.state}
                       </span>
                     </div>
                     <div

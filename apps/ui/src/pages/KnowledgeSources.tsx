@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { insertKnowledgeSourceSchema, type InsertKnowledgeSource } from '@coglity/shared/schema';
 import {
   knowledgeSourceService,
   type KnowledgeSourceWithUser,
@@ -14,6 +14,10 @@ import { useSetBreadcrumbs } from '../context/BreadcrumbsContext';
 import { ProjectFilter, useSelectedProjectIds } from '../components/ProjectFilter';
 import { ProjectPickerField, useWritableProjects } from '../components/ProjectPickerField';
 import { useCurrentOrg } from '../context/OrgContext';
+import { useTableState } from '../hooks/useTableState';
+import { useQueryClient } from '@tanstack/react-query';
+import { useKnowledgeSourcesPaginated } from '../queries/knowledgeSources';
+import { queryKeys } from '../lib/queryKeys';
 
 const SOURCE_TYPES = [
   { value: 'pdf', label: 'PDF' },
@@ -102,15 +106,6 @@ const SOURCE_TYPE_ICONS: Record<string, React.ReactElement> = {
   ),
 };
 
-const createSchema = yup.object({
-  name: yup.string().required('Name is required').max(255),
-  sourceType: yup.string().required('Source type is required'),
-  url: yup.string().max(2000).default(''),
-  description: yup.string().max(2000).default(''),
-});
-
-type FormValues = yup.InferType<typeof createSchema>;
-
 const PAGE_SIZE = 10;
 
 export function KnowledgeSources() {
@@ -119,15 +114,23 @@ export function KnowledgeSources() {
   const projectIds = useSelectedProjectIds();
   const writable = useWritableProjects();
   const [formProjectId, setFormProjectId] = useState<string>('');
-  const [sources, setSources] = useState<KnowledgeSourceWithUser[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [initialLoad, setInitialLoad] = useState(true);
+
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
   const [filterType, setFilterType] = useState('');
+
+  const { page, setPage } = useTableState();
+  const orgId = org?.organizationId ?? '';
+  const queryParams = {
+    sourceType: filterType || undefined,
+    page,
+    limit: PAGE_SIZE,
+  };
+
+  const { rows: sources, total, isLoading: loading } = useKnowledgeSourcesPaginated(orgId, projectIds, queryParams);
+  const queryClient = useQueryClient();
+  const invalidateSources = () => queryClient.invalidateQueries({ queryKey: queryKeys.knowledgeSources.all(orgId) });
 
   const {
     register,
@@ -136,10 +139,10 @@ export function KnowledgeSources() {
     setValue,
     watch,
     formState: { errors, isSubmitting, isValid },
-  } = useForm<FormValues>({
-    resolver: yupResolver(createSchema),
+  } = useForm<InsertKnowledgeSource>({
+    resolver: zodResolver(insertKnowledgeSourceSchema),
     mode: 'onChange',
-    defaultValues: { name: '', sourceType: '', url: '', description: '' },
+    defaultValues: { name: '', sourceType: 'pdf', url: '', description: '' },
   });
 
   const selectedSourceType = watch('sourceType');
@@ -172,32 +175,8 @@ export function KnowledgeSources() {
     if (file) handleFileSelect(file);
   };
 
-  const fetchSources = useCallback(async () => {
-    if (!org) return;
-    setLoading(true);
-    try {
-      const res = await knowledgeSourceService.getAll(org.organizationId, projectIds, {
-        sourceType: filterType || undefined,
-        page,
-        limit: PAGE_SIZE,
-      });
-      setSources(res.data);
-      setTotal(res.total);
-    } catch {
-      setSources([]);
-      setTotal(0);
-    } finally {
-      setLoading(false);
-      setInitialLoad(false);
-    }
-  }, [org, projectIds, filterType, page]);
-
-  useEffect(() => {
-    fetchSources();
-  }, [fetchSources]);
-
   const closeForm = () => {
-    reset({ name: '', sourceType: '', url: '', description: '' });
+    reset({ name: '', sourceType: 'pdf', url: '', description: '' });
     setUploadedFile(null);
     setUploadedFileName('');
     setEditingId(null);
@@ -206,7 +185,7 @@ export function KnowledgeSources() {
   };
 
   const openCreate = () => {
-    reset({ name: '', sourceType: '', url: '', description: '' });
+    reset({ name: '', sourceType: 'pdf', url: '', description: '' });
     setUploadedFile(null);
     setUploadedFileName('');
     setEditingId(null);
@@ -224,7 +203,7 @@ export function KnowledgeSources() {
     setShowForm(true);
   };
 
-  const onSubmit = async (data: FormValues) => {
+  const onSubmit = async (data: InsertKnowledgeSource) => {
     const payload = {
       name: data.name,
       sourceType: data.sourceType as 'pdf' | 'docx' | 'screen' | 'figma' | 'url',
@@ -240,14 +219,14 @@ export function KnowledgeSources() {
       await knowledgeSourceService.create(org.organizationId, formProjectId, payload);
     }
     closeForm();
-    fetchSources();
+    invalidateSources();
   };
 
   const handleDelete = async (src: KnowledgeSourceWithUser) => {
     if (!org) return;
     await knowledgeSourceService.remove(org.organizationId, src.projectId, src.id);
     setDeleteConfirmId(null);
-    fetchSources();
+    invalidateSources();
   };
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -334,7 +313,7 @@ export function KnowledgeSources() {
                   key={st.value}
                   type="button"
                   className={`chip-btn${watch('sourceType') === st.value ? ' selected' : ''}`}
-                  onClick={() => setValue('sourceType', st.value, { shouldValidate: true })}
+                  onClick={() => setValue('sourceType', st.value as any, { shouldValidate: true })}
                   style={{ gap: 6, display: 'inline-flex', alignItems: 'center' }}
                 >
                   {SOURCE_TYPE_ICONS[st.value]}
@@ -509,7 +488,7 @@ export function KnowledgeSources() {
         </div>
       )}
 
-      {initialLoad ? (
+      {loading && !sources.length ? (
         <p className="ts-empty">Loading…</p>
       ) : total === 0 && !filterType && !showForm ? (
         <div className="empty">

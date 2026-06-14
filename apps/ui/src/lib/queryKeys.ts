@@ -31,6 +31,31 @@ export const queryKeys = {
     list: (orgId: string, params: Params) =>
       ['orgs', orgId, 'test-cases', 'list', normalize(params)] as const,
   },
+  bugs: {
+    all: (orgId: string) => ['orgs', orgId, 'bugs'] as const,
+    list: (orgId: string, params: Params) =>
+      ['orgs', orgId, 'bugs', 'list', normalize(params)] as const,
+  },
+  testSuites: {
+    all: (orgId: string) => ['orgs', orgId, 'test-suites'] as const,
+    list: (orgId: string, params: Params) =>
+      ['orgs', orgId, 'test-suites', 'list', normalize(params)] as const,
+  },
+  scheduledTestSuites: {
+    all: (orgId: string) => ['orgs', orgId, 'scheduled-test-suites'] as const,
+    list: (orgId: string, params: Params) =>
+      ['orgs', orgId, 'scheduled-test-suites', 'list', normalize(params)] as const,
+  },
+  botConnections: {
+    all: (orgId: string) => ['orgs', orgId, 'bot-connections'] as const,
+    list: (orgId: string, params: Params) =>
+      ['orgs', orgId, 'bot-connections', 'list', normalize(params)] as const,
+  },
+  knowledgeSources: {
+    all: (orgId: string) => ['orgs', orgId, 'knowledge-sources'] as const,
+    list: (orgId: string, params: Params) =>
+      ['orgs', orgId, 'knowledge-sources', 'list', normalize(params)] as const,
+  },
   stats: {
     all: (orgId: string) => ['orgs', orgId, 'stats'] as const,
     overview: (orgId: string, params: Params) =>

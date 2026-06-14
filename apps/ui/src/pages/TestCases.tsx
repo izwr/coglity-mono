@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { insertTestCaseSchema, type InsertTestCase } from '@coglity/shared/schema';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import type { Tag } from '@coglity/shared';
@@ -22,31 +22,15 @@ import { useCurrentOrg } from '../context/OrgContext';
 import { useTestCasesInfinite, type TestCaseFilters } from '../queries/testCases';
 import { queryKeys } from '../lib/queryKeys';
 import { formatCount, formatRelative } from '../lib/format';
+import { useLocalStorage } from '../hooks/useLocalStorage';
 
-const TEST_CASE_TYPES = [
-  { value: 'web', label: 'Web' },
-  { value: 'mobile', label: 'Mobile' },
-  { value: 'chat', label: 'Chat' },
-  { value: 'voice', label: 'Voice' },
-  { value: 'agent', label: 'Agent' },
-];
-
-const typeChipVariant: Record<string, ChipVariant> = {
-  web: 'web',
-  mobile: 'mobile',
-  chat: 'chat',
-  voice: 'voice',
-  agent: 'agent',
-};
-
-const createTestCaseSchema = yup.object({
-  title: yup.string().required('Title is required').max(255),
-  testSuiteId: yup.string().required('Test suite is required'),
-  testCaseType: yup.string().required('Type is required'),
-  botConnectionId: yup.string().default(''),
-});
-
-type CreateFormValues = yup.InferType<typeof createTestCaseSchema>;
+import { TEST_CASE_TYPES } from '@coglity/shared';
+import {
+  TEST_CASE_TYPE_CHIP_VARIANT,
+  TEST_CASES_VIEWS_KEY,
+  TEST_CASES_COLS_KEY,
+  TEST_CASES_OPTIONAL_COLUMNS,
+} from '../lib/constants/testCase.constants';
 
 type QuickView = 'all' | 'active' | 'draft';
 
@@ -55,24 +39,6 @@ interface SavedView {
   filters: { search: string; suiteId: string; testCaseType: string; status: string };
 }
 
-const VIEWS_KEY = 'coglity-views:testcases';
-const COLS_KEY = 'coglity-cols:testcases';
-const OPTIONAL_COLUMNS = [
-  { id: 'type', label: 'Type' },
-  { id: 'suite', label: 'Suite' },
-  { id: 'status', label: 'Status' },
-  { id: 'updatedAt', label: 'Updated' },
-  { id: 'createdByName', label: 'Created by' },
-];
-
-function readJson<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
 
 export function TestCases() {
   useSetBreadcrumbs([{ label: 'Test cases' }]);
@@ -100,12 +66,10 @@ export function TestCases() {
   const [quickView, setQuickView] = useState<QuickView>('all');
   const [sorting, setSorting] = useState<SortingState>([{ id: 'updatedAt', desc: true }]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [savedViews, setSavedViews] = useState<SavedView[]>(() => readJson(VIEWS_KEY, []));
-  const [visibleCols, setVisibleCols] = useState<string[]>(() =>
-    readJson(
-      COLS_KEY,
-      OPTIONAL_COLUMNS.map((c) => c.id),
-    ),
+  const [savedViews, setSavedViews] = useLocalStorage<SavedView[]>(TEST_CASES_VIEWS_KEY, []);
+  const [visibleCols, setVisibleCols] = useLocalStorage<string[]>(
+    TEST_CASES_COLS_KEY,
+    TEST_CASES_OPTIONAL_COLUMNS.map((c) => c.id),
   );
   const [colPopOpen, setColPopOpen] = useState(false);
   const colPopRef = useRef<HTMLDivElement>(null);
@@ -182,8 +146,8 @@ export function TestCases() {
     setValue,
     watch,
     formState: { errors, isSubmitting, isValid },
-  } = useForm<CreateFormValues>({
-    resolver: yupResolver(createTestCaseSchema),
+  } = useForm<InsertTestCase>({
+    resolver: zodResolver(insertTestCaseSchema),
     mode: 'onChange',
     defaultValues: { title: '', testSuiteId: '', testCaseType: 'web', botConnectionId: '' },
   });
@@ -211,7 +175,7 @@ export function TestCases() {
     setShowForm(true);
   };
 
-  const onSubmit = async (data: CreateFormValues) => {
+  const onSubmit = async (data: InsertTestCase) => {
     if (!org || !formProjectId) return;
     const created = await testCaseService.create(orgId, formProjectId, {
       title: data.title,
@@ -248,7 +212,6 @@ export function TestCases() {
       { name, filters: { search, suiteId, testCaseType, status: quickView === 'all' ? '' : quickView } },
     ].slice(0, 8);
     setSavedViews(next);
-    localStorage.setItem(VIEWS_KEY, JSON.stringify(next));
   };
 
   const applyView = (view: SavedView) => {
@@ -262,7 +225,6 @@ export function TestCases() {
   const removeView = (name: string) => {
     const next = savedViews.filter((v) => v.name !== name);
     setSavedViews(next);
-    localStorage.setItem(VIEWS_KEY, JSON.stringify(next));
   };
 
   const toggleCol = (id: string) => {
@@ -270,7 +232,6 @@ export function TestCases() {
       ? visibleCols.filter((c) => c !== id)
       : [...visibleCols, id];
     setVisibleCols(next);
-    localStorage.setItem(COLS_KEY, JSON.stringify(next));
   };
 
   const hasCustomFilters = Boolean(search || suiteId || testCaseType);
@@ -318,7 +279,7 @@ export function TestCases() {
         header: 'Type',
         size: 86,
         cell: ({ row }) => (
-          <Chip variant={typeChipVariant[row.original.testCaseType] ?? 'neutral'} size="sm">
+          <Chip variant={TEST_CASE_TYPE_CHIP_VARIANT[row.original.testCaseType] ?? 'neutral'} size="sm">
             {row.original.testCaseType}
           </Chip>
         ),
@@ -673,7 +634,7 @@ export function TestCases() {
               </Button>
               {colPopOpen && (
                 <div className="col-pop">
-                  {OPTIONAL_COLUMNS.map((col) => (
+                  {TEST_CASES_OPTIONAL_COLUMNS.map((col) => (
                     <label key={col.id}>
                       <input
                         type="checkbox"

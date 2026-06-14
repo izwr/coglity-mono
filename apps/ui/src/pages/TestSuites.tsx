@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useForm } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
+import { zodResolver } from '@hookform/resolvers/zod';
 import type { Tag } from '@coglity/shared';
+import { insertTestSuiteSchema, type InsertTestSuite } from '@coglity/shared/schema';
 import { testSuiteService, type TestSuiteWithTags } from '../services/testSuiteService';
 import { tagService } from '../services/tagService';
 import { ListToolbar, type AppliedFilters } from '../components/ListToolbar';
@@ -14,13 +14,10 @@ import { useSetBreadcrumbs } from '../context/BreadcrumbsContext';
 import { ProjectFilter, useSelectedProjectIds } from '../components/ProjectFilter';
 import { ProjectPickerField, useWritableProjects } from '../components/ProjectPickerField';
 import { useCurrentOrg } from '../context/OrgContext';
-
-const testSuiteFormSchema = yup.object({
-  name: yup.string().required('Name is required').max(255),
-  description: yup.string().max(2000).default(''),
-});
-
-type FormValues = yup.InferType<typeof testSuiteFormSchema>;
+import { useTableState } from '../hooks/useTableState';
+import { useQueryClient } from '@tanstack/react-query';
+import { useTestSuitesPaginated } from '../queries/testSuites';
+import { queryKeys } from '../lib/queryKeys';
 
 const PAGE_SIZE = 12;
 
@@ -50,64 +47,40 @@ export function TestSuites() {
   const { org } = useCurrentOrg();
   const projectIds = useSelectedProjectIds();
   const writable = useWritableProjects();
-  const [suites, setSuites] = useState<TestSuiteWithTags[]>([]);
-  const [total, setTotal] = useState(0);
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [initialLoad, setInitialLoad] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formProjectId, setFormProjectId] = useState<string>('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  const [filters, setFilters] = useState<AppliedFilters>({
-    search: '',
-    tagId: '',
-    sortBy: 'updatedAt',
-    sortDir: 'desc',
+  const { filters, setFilters, page, setPage } = useTableState({
+    initialFilters: { sortBy: 'updatedAt', sortDir: 'desc' },
   });
-  const [page, setPage] = useState(1);
-  const reqIdRef = useRef(0);
+  const orgId = org?.organizationId ?? '';
+  const queryParams = {
+    search: filters.search || undefined,
+    tagId: filters.tagId || undefined,
+    sortBy: filters.sortBy,
+    sortDir: filters.sortDir,
+    page,
+    limit: PAGE_SIZE,
+  };
+
+  const { rows: suites, total, isLoading: loading } = useTestSuitesPaginated(orgId, projectIds, queryParams);
+  const queryClient = useQueryClient();
+  const invalidateSuites = () => queryClient.invalidateQueries({ queryKey: queryKeys.testSuites.all(orgId) });
 
   const {
     register,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting, isValid },
-  } = useForm<FormValues>({
-    resolver: yupResolver(testSuiteFormSchema),
+  } = useForm<InsertTestSuite>({
+    resolver: zodResolver(insertTestSuiteSchema),
     mode: 'onChange',
     defaultValues: { name: '', description: '' },
   });
-
-  const fetchSuites = useCallback(async () => {
-    if (!org) return;
-    const reqId = ++reqIdRef.current;
-    setLoading(true);
-    try {
-      const res = await testSuiteService.getAll(org.organizationId, projectIds, {
-        search: filters.search || undefined,
-        tagId: filters.tagId || undefined,
-        sortBy: filters.sortBy,
-        sortDir: filters.sortDir,
-        page,
-        limit: PAGE_SIZE,
-      });
-      if (reqId !== reqIdRef.current) return; // a newer fetch superseded this one
-      setSuites(res.data);
-      setTotal(res.total);
-    } catch {
-      if (reqId !== reqIdRef.current) return;
-      setSuites([]);
-      setTotal(0);
-    } finally {
-      if (reqId === reqIdRef.current) {
-        setLoading(false);
-        setInitialLoad(false);
-      }
-    }
-  }, [org, projectIds, filters, page]);
 
   useEffect(() => {
     if (!org) return;
@@ -116,9 +89,6 @@ export function TestSuites() {
       .then(setAllTags)
       .catch(() => setAllTags([]));
   }, [org, projectIds]);
-  useEffect(() => {
-    fetchSuites();
-  }, [fetchSuites]);
 
   // Reset to page 1 when the project filter changes, otherwise a stale page (e.g. page 3)
   // is re-requested for a project set that may only have 1 page, stranding the user on an
@@ -131,7 +101,6 @@ export function TestSuites() {
 
   const handleApplyFilters = (applied: AppliedFilters) => {
     setFilters(applied);
-    setPage(1);
   };
 
   const closeForm = () => {
@@ -150,7 +119,7 @@ export function TestSuites() {
     setShowForm(true);
   };
 
-  const onSubmit = async (data: FormValues) => {
+  const onSubmit = async (data: InsertTestSuite) => {
     if (!org || !formProjectId) return;
     if (editingId) {
       await testSuiteService.update(org.organizationId, formProjectId, editingId, {
@@ -164,7 +133,7 @@ export function TestSuites() {
       });
     }
     closeForm();
-    fetchSuites();
+    invalidateSuites();
   };
 
   const startEdit = (suite: TestSuiteWithTags) => {
@@ -179,7 +148,7 @@ export function TestSuites() {
     if (!org) return;
     await testSuiteService.remove(org.organizationId, suite.projectId, suite.id);
     setDeleteConfirmId(null);
-    fetchSuites();
+    invalidateSuites();
   };
 
   const toggleTag = (tagId: string) => {
@@ -302,7 +271,7 @@ export function TestSuites() {
           </div>
           <div className="sub">Use the filter above to select one or more projects.</div>
         </div>
-      ) : initialLoad ? (
+      ) : loading && !suites.length ? (
         <p className="ts-empty">Loading…</p>
       ) : total === 0 && !hasFilters && !showForm ? (
         <div className="empty">
