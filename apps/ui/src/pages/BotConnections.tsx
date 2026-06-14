@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { insertBotConnectionSchema, type InsertBotConnection } from '@coglity/shared/schema';
 import Editor from '@monaco-editor/react';
 import { botConnectionService, type BotConnectionWithUser } from '../services/botConnectionService';
 import { Button } from '../components/ui/Button';
@@ -14,6 +14,10 @@ import { useSetBreadcrumbs } from '../context/BreadcrumbsContext';
 import { ProjectFilter, useSelectedProjectIds } from '../components/ProjectFilter';
 import { ProjectPickerField, useWritableProjects } from '../components/ProjectPickerField';
 import { useCurrentOrg } from '../context/OrgContext';
+import { useTableState } from '../hooks/useTableState';
+import { useQueryClient } from '@tanstack/react-query';
+import { useBotConnectionsPaginated } from '../queries/botConnections';
+import { queryKeys } from '../lib/queryKeys';
 
 const BOT_TYPES = [
   { value: 'voice', label: 'Voice Bot' },
@@ -65,15 +69,6 @@ const AUDIO_SCHEMA_FIELDS = {
   channels: { label: 'Channels', placeholder: '1' },
 };
 
-const createSchema = yup.object({
-  name: yup.string().required('Name is required').max(255),
-  botType: yup.string().required('Bot type is required'),
-  provider: yup.string().required('Provider is required'),
-  description: yup.string().max(2000).default(''),
-});
-
-type FormValues = yup.InferType<typeof createSchema>;
-
 const PAGE_SIZE = 10;
 
 export function BotConnections() {
@@ -83,17 +78,25 @@ export function BotConnections() {
   const projectIds = useSelectedProjectIds();
   const writable = useWritableProjects();
   const [formProjectId, setFormProjectId] = useState<string>('');
-  const [connections, setConnections] = useState<BotConnectionWithUser[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [initialLoad, setInitialLoad] = useState(true);
+  
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [configValues, setConfigValues] = useState<Record<string, string>>({});
   const [authHeaders, setAuthHeaders] = useState<{ key: string; value: string }[]>([]);
-  const [page, setPage] = useState(1);
   const [filterType, setFilterType] = useState('');
+
+  const { page, setPage } = useTableState();
+  const orgId = org?.organizationId ?? '';
+  const queryParams = {
+    botType: filterType || undefined,
+    page,
+    limit: PAGE_SIZE,
+  };
+
+  const { rows: connections, total, isLoading: loading } = useBotConnectionsPaginated(orgId, projectIds, queryParams);
+  const queryClient = useQueryClient();
+  const invalidateConnections = () => queryClient.invalidateQueries({ queryKey: queryKeys.botConnections.all(orgId) });
 
   const {
     register,
@@ -102,10 +105,10 @@ export function BotConnections() {
     setValue,
     watch,
     formState: { errors, isSubmitting, isValid },
-  } = useForm<FormValues>({
-    resolver: yupResolver(createSchema),
+  } = useForm<InsertBotConnection>({
+    resolver: zodResolver(insertBotConnectionSchema),
     mode: 'onChange',
-    defaultValues: { name: '', botType: '', provider: '', description: '' },
+    defaultValues: { name: '', botType: 'chat', provider: 'http', description: '' },
   });
 
   const selectedProvider = watch('provider');
@@ -118,32 +121,8 @@ export function BotConnections() {
         : [];
   const showAuthHeaders = selectedBotType === 'chat' || selectedBotType === 'voice';
 
-  const fetchConnections = useCallback(async () => {
-    if (!org) return;
-    setLoading(true);
-    try {
-      const res = await botConnectionService.getAll(org.organizationId, projectIds, {
-        botType: filterType || undefined,
-        page,
-        limit: PAGE_SIZE,
-      });
-      setConnections(res.data);
-      setTotal(res.total);
-    } catch {
-      setConnections([]);
-      setTotal(0);
-    } finally {
-      setLoading(false);
-      setInitialLoad(false);
-    }
-  }, [org, projectIds, filterType, page]);
-
-  useEffect(() => {
-    fetchConnections();
-  }, [fetchConnections]);
-
   const closeForm = () => {
-    reset({ name: '', botType: '', provider: '', description: '' });
+    reset({ name: '', botType: 'chat', provider: 'http', description: '' });
     setConfigValues({});
     setAuthHeaders([]);
     setEditingId(null);
@@ -152,7 +131,7 @@ export function BotConnections() {
   };
 
   const openCreate = () => {
-    reset({ name: '', botType: '', provider: '', description: '' });
+    reset({ name: '', botType: 'chat', provider: 'http', description: '' });
     setConfigValues({});
     setAuthHeaders([]);
     setEditingId(null);
@@ -176,7 +155,7 @@ export function BotConnections() {
     setShowForm(true);
   };
 
-  const onSubmit = async (data: FormValues) => {
+  const onSubmit = async (data: InsertBotConnection) => {
     const config: Record<string, unknown> = { ...configValues };
     if (data.botType === 'chat' || data.botType === 'voice') {
       const validHeaders = authHeaders.filter((h) => h.key.trim());
@@ -199,14 +178,14 @@ export function BotConnections() {
       await botConnectionService.create(org.organizationId, formProjectId, payload);
     }
     closeForm();
-    fetchConnections();
+    invalidateConnections();
   };
 
   const handleDelete = async (conn: BotConnectionWithUser) => {
     if (!org) return;
     await botConnectionService.remove(org.organizationId, conn.projectId, conn.id);
     setDeleteConfirmId(null);
-    fetchConnections();
+    invalidateConnections();
   };
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -286,8 +265,8 @@ export function BotConnections() {
                     : null
                 }
                 onChange={(opt) => {
-                  setValue('botType', opt?.value ?? '', { shouldValidate: true });
-                  setValue('provider', '', { shouldValidate: true });
+                  setValue('botType', (opt?.value as any) ?? 'chat', { shouldValidate: true });
+                  setValue('provider', 'http', { shouldValidate: true });
                   setConfigValues({});
                   setAuthHeaders([]);
                 }}
@@ -306,7 +285,7 @@ export function BotConnections() {
                     : null
                 }
                 onChange={(opt) => {
-                  setValue('provider', opt?.value ?? '', { shouldValidate: true });
+                  setValue('provider', (opt?.value as any) ?? 'http', { shouldValidate: true });
                   setConfigValues({});
                 }}
                 options={providerOptions}
@@ -573,7 +552,7 @@ export function BotConnections() {
         </div>
       )}
 
-      {initialLoad ? (
+      {loading && !connections.length ? (
         <p className="ts-empty">Loading…</p>
       ) : total === 0 && !filterType && !showForm ? (
         <div className="empty">
